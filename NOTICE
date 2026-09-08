@@ -1,0 +1,9 @@
+Verge Common community edition
+Copyright (c) 2026 Justin Hart
+Original project code: GNU Affero General Public License v3.0 only.
+
+The generated website scaffold and UI primitives use the OpenAI Sites starter
+and shadcn/ui. Third-party dependencies and UI primitives retain their respective
+licenses. See THIRD_PARTY_NOTICES.md and dependency package license files.
+
+The Verge Common name and branding are not a grant of endorsement to forks.

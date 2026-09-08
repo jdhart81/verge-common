@@ -1,0 +1,10 @@
+name: Community feedback
+description: Tell us how the planner helped, or what made it difficult.
+body:
+  - type: textarea
+    id: experience
+    attributes:
+      label: What did you try, and what did you learn?
+      description: Keep locations general and leave out personal details. Did you use the planner again?
+    validations:
+      required: true

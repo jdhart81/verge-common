@@ -1,0 +1,17 @@
+name: Bug report
+description: Help us fix something that gets in the way.
+body:
+  - type: markdown
+    attributes:
+      value: 'Do not include private locations, personal information, or security vulnerabilities.'
+  - type: textarea
+    id: problem
+    attributes:
+      label: What happened?
+      description: Include steps to reproduce and what you expected.
+    validations:
+      required: true
+  - type: input
+    id: browser
+    attributes:
+      label: Browser and device
