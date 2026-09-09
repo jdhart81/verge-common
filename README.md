@@ -16,6 +16,9 @@ See [Worldwide adoption](docs/WORLDWIDE.md) for regional setup and production ho
 
 ## What is implemented
 
+- A member community board with shared events, capacity-aware RSVPs, private calendar downloads, project discussions, and steward moderation.
+
+
 - A guided six-step co-op setup, local organization discovery links, and self-reported organization profiles.
 - Single-use private invitations with expiry, revocation, and steward approval before record access.
 - Country/territory and accounting currency settings, correct currency minor units, and hectares/acres/m² intake.

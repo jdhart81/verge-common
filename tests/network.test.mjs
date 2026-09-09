@@ -590,3 +590,149 @@ test('pooling assessments freeze reviewed parcels and require independent review
   assert.equal(f.s.lots.length, 0);
   assert.equal(publicWorkspace(f.s).assessments, undefined);
 });
+
+test('events enforce capacity, privacy, membership and cancellation', () => {
+  const f = twoStewards(),
+    startsAt = Date.UTC(2030, 0, 1, 10),
+    endsAt = startsAt + 3600000;
+  const projectId = f.run('create_project', {
+    name: 'Field day',
+    summary: 'Test only',
+    kind: 'restoration',
+    region: 'Nairobi',
+  });
+  f.run('project_status', {
+    id: projectId,
+    status: 'active',
+    visibility: 'public',
+  });
+  const id = f.run('create_event', {
+    projectId,
+    title: 'Planting day',
+    summary: 'Bring a hat',
+    meetingDetails: 'Private gate code 456',
+    startsAt,
+    endsAt,
+    timeZone: 'Africa/Nairobi',
+    capacity: 1,
+    visibility: 'public',
+  });
+  f.run('event_rsvp', { id, response: 'going' });
+  assert.throws(
+    () => f.run('event_rsvp', { id, response: 'going' }, reviewer),
+    /places/,
+  );
+  f.run('event_rsvp', { id, response: 'interested' }, reviewer);
+  const publicEvent = publicWorkspace(f.s).events[0];
+  assert.equal(publicEvent.meetingDetails, undefined);
+  assert.equal(publicEvent.rsvps, undefined);
+  assert.equal(publicEvent.startsAt, startsAt);
+  const member = f.run('request_membership', { name: 'Volunteer' }, stranger);
+  assert.throws(
+    () => f.run('event_rsvp', { id, response: 'going' }, stranger),
+    /membership/,
+  );
+  f.run('member_status', { id: member, status: 'active' });
+  const view = memberView(f.s, stranger.id).state.events[0];
+  assert.equal(view.attendees.length, 0);
+  assert.equal(view.goingCount, 1);
+  assert.equal(view.meetingDetails, 'Private gate code 456');
+  assert.throws(
+    () =>
+      f.run('create_event', {
+        projectId,
+        title: 'Invalid',
+        summary: 'test',
+        meetingDetails: 'test',
+        startsAt,
+        endsAt: startsAt - 1,
+        timeZone: 'UTC',
+        capacity: 0,
+        visibility: 'members',
+      }),
+    /future/,
+  );
+  f.run('cancel_event', { id, reason: 'Weather' }, reviewer);
+  assert.throws(
+    () => f.run('event_rsvp', { id, response: 'going' }),
+    /no longer/,
+  );
+  assert.equal(publicWorkspace(f.s).events[0].status, 'cancelled');
+  f.run('project_status', {
+    id: projectId,
+    status: 'active',
+    visibility: 'members',
+  });
+  assert.equal(publicWorkspace(f.s).events.length, 0);
+});
+
+test('discussions remain private and reports require independent steward resolution', () => {
+  const f = twoStewards();
+  const projectId = f.run('create_project', {
+    name: 'Test',
+    summary: 'Test only',
+    kind: 'ecohedge',
+    region: 'Test',
+  });
+  const member = f.run('request_membership', { name: 'Participant' }, stranger);
+  f.run('member_status', { id: member, status: 'active' });
+  const updateId = f.run('post_update', {
+    projectId,
+    text: 'Public summary',
+    visibility: 'public',
+  });
+  const commentId = f.run(
+    'post_comment',
+    { updateId, text: 'Private reply' },
+    stranger,
+  );
+  assert.equal(publicWorkspace(f.s).comments, undefined);
+  assert.equal(memberView(f.s, stranger.id).state.comments[0].isYou, true);
+  const reportId = f.run(
+    'report_content',
+    { kind: 'update', targetId: updateId, reason: 'Please review' },
+    stranger,
+  );
+  assert.throws(
+    () =>
+      f.run(
+        'report_content',
+        { kind: 'update', targetId: updateId, reason: 'Duplicate' },
+        stranger,
+      ),
+    /already/,
+  );
+  assert.throws(
+    () =>
+      f.run('resolve_report', {
+        id: reportId,
+        decision: 'hide',
+        note: 'Self review',
+      }),
+    /Another steward/,
+  );
+  f.run(
+    'resolve_report',
+    { id: reportId, decision: 'hide', note: 'Reviewed' },
+    reviewer,
+  );
+  assert.equal(memberView(f.s, stranger.id).state.updates.length, 0);
+  assert.equal(memberView(f.s, stranger.id).state.comments.length, 0);
+  assert.throws(
+    () => f.run('post_comment', { updateId, text: 'Hidden thread' }, stranger),
+    /unavailable/,
+  );
+  assert.throws(
+    () =>
+      f.run(
+        'resolve_report',
+        { id: reportId, decision: 'dismiss', note: 'Again' },
+        reviewer,
+      ),
+    /already/,
+  );
+  assert.equal(
+    f.s.comments.find((c) => c.id === commentId).text,
+    'Private reply',
+  );
+});

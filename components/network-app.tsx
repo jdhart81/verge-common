@@ -5,6 +5,7 @@ import {
   formatMoney,
   areaToSquareMetres,
 } from '@/lib/international.mjs';
+import { CommunityBoard, PublicEvents } from '@/components/community-board';
 import { allocateCents } from '@/lib/network.mjs';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import {
@@ -192,7 +193,7 @@ export function NetworkApp({
     [notice, setNotice] = useState(''),
     [busy, setBusy] = useState(false),
     [search, setSearch] = useState(''),
-    [workspaceTab, setWorkspaceTab] = useState('start'),
+    [workspaceTab, setWorkspaceTab] = useState('community'),
     [invitationLink, setInvitationLink] = useState(''),
     [next, setNext] = useState<number | null>(null);
   const load = useCallback(
@@ -230,7 +231,7 @@ export function NetworkApp({
   }, [load]);
   const chooseCoop = (id: string) => {
     setInvitationLink('');
-    setWorkspaceTab('start');
+    setWorkspaceTab('community');
     setSelected(id);
     history.replaceState(
       null,
@@ -462,6 +463,7 @@ export function NetworkApp({
                 </div>
                 <div className="network-columns">
                   <section>
+                    <PublicEvents events={data.coop.events ?? []} />
                     <h2>Conservation projects</h2>
                     {data.coop.projects.length === 0 ? (
                       <Empty>No projects have been made public yet.</Empty>
@@ -639,6 +641,7 @@ export function NetworkApp({
             >
               <TabsList className="coop-tabs">
                 {[
+                  'community',
                   'start',
                   'organizations',
                   'pooling',
@@ -657,6 +660,14 @@ export function NetworkApp({
                   </TabsTrigger>
                 ))}
               </TabsList>
+              <TabsContent value="community">
+                <CommunityBoard
+                  state={state}
+                  steward={steward}
+                  busy={busy}
+                  mutate={mutate}
+                />
+              </TabsContent>
               <TabsContent value="start">
                 <h2>Your next steps</h2>
                 <p>

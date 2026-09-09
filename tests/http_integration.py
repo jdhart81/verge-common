@@ -1,5 +1,7 @@
 import json,uuid,urllib.request,urllib.error,concurrent.futures
-base='http://localhost:3000'
+import os
+base=os.environ.get('VERGE_TEST_ORIGIN','http://localhost:3000')
+assert base in ['http://localhost:3000','http://localhost:3001'], 'Integration fixtures are restricted to local development.'
 import http.cookiejar
 opener=urllib.request.build_opener(urllib.request.HTTPCookieProcessor(http.cookiejar.CookieJar()))
 with opener.open(base+'/signin-with-chatgpt?return_to=/api/workspaces') as response: assert response.status==200
@@ -29,6 +31,16 @@ with concurrent.futures.ThreadPoolExecutor(max_workers=2) as pool: outcomes=list
 assert sorted(c for c,_ in outcomes)==[200,409],outcomes
 code,current=call('/api/workspaces?id='+id);assert len(current['state']['tasks'])==1
 assert current['state']['audit'][-1]['hash'] and current['state']['audit'][-1]['previousHash']
+# Community records survive reloads and hide meeting instructions from discovery.
+import time
+start=int(time.time()*1000)+86400000
+code,current=call('/api/workspaces',{'id':id,'version':current['version'],'op':'create_event','requestId':str(uuid.uuid4()),'payload':{'projectId':project,'title':'Fixture workday','summary':'Synthetic event','meetingDetails':'Private fixture location','startsAt':start,'endsAt':start+3600000,'timeZone':'Africa/Nairobi','capacity':2,'visibility':'members'}})
+assert code==200,(code,current)
+event=current['state']['events'][0]['id']
+code,current=call('/api/workspaces',{'id':id,'version':current['version'],'op':'event_rsvp','requestId':str(uuid.uuid4()),'payload':{'id':event,'response':'going'}})
+assert code==200 and current['state']['events'][0]['goingCount']==1,(code,current)
+code,reloaded=call('/api/workspaces?id='+id)
+assert reloaded['state']['events'][0]['yourResponse']=='going'
 # R2 upload, attachment authorization, digest and durable evidence metadata.
 import hashlib
 content=b'Synthetic conservation evidence. No private information.'

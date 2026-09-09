@@ -44,3 +44,7 @@ Keep transitive dependency overrides under review when upgrading the starter. Th
 ## 0.4.0 — Local circles, worldwide scope
 
 Added guided setup, self-reported organization profiles and regional discovery links, expiring single-use private invitations, reviewed-parcel pathway snapshots, payout illustrations, currency-specific integer minor units, country settings, and area-unit intake. Added `npm run launch` for a local trial. Existing databases require no schema migration; older co-ops default to USD and missing new collections are treated as empty. Website access remains controlled separately by the host. See WORLDWIDE.md for remaining translation and production-hosting limits.
+
+## 0.5.0 — Participation and moderation
+
+Added the member community board, timed events with private meeting instructions, capacity-aware RSVPs, Unicode-safe calendar downloads, member-only discussion replies, reports, and independent steward review of reported content. Public event summaries respect event/project/co-op visibility. Cancelled events reject further responses. Existing JSON records remain compatible without a schema migration. Local launch remains a trial workflow; production access is still separately controlled.
