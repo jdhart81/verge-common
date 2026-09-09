@@ -110,6 +110,8 @@ export async function POST(request: Request) {
     } else if (data.payload) {
       delete data.payload.asset;
     }
+    if (['create_invitation', 'accept_invitation'].includes(data.op))
+      throw new DomainError('Use the invitation endpoint.');
     if (data.op === 'request_membership') {
       const current = await load(data.id);
       data.version = current.row.version;

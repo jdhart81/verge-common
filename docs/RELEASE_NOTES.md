@@ -40,3 +40,7 @@ Project homepage, device-local place planner, action checklist, notes, JSON down
 The site does not run a shared network, authenticate users, verify observations, process money, or issue credits. Invitations are text copies, not links to a shared plan. JSON restoration is future work. There are no claims of active users, adoption, or ecological outcomes.
 
 Keep transitive dependency overrides under review when upgrading the starter. The static output does not use Cloudflare runtime bindings. Node 22+ is required for development.
+
+## 0.4.0 — Local circles, worldwide scope
+
+Added guided setup, self-reported organization profiles and regional discovery links, expiring single-use private invitations, reviewed-parcel pathway snapshots, payout illustrations, currency-specific integer minor units, country settings, and area-unit intake. Added `npm run launch` for a local trial. Existing databases require no schema migration; older co-ops default to USD and missing new collections are treated as empty. Website access remains controlled separately by the host. See WORLDWIDE.md for remaining translation and production-hosting limits.

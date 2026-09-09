@@ -1,4 +1,11 @@
 'use client';
+import {
+  currencies,
+  toMinor,
+  formatMoney,
+  areaToSquareMetres,
+} from '@/lib/international.mjs';
+import { allocateCents } from '@/lib/network.mjs';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   Sprout,
@@ -42,10 +49,6 @@ type Field = {
   max?: number;
   step?: string;
 };
-const money = (n: number) =>
-  new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(
-    n / 100,
-  );
 const date = (n: number) => new Date(n).toLocaleDateString();
 const label = (s: string) => s.replaceAll('_', ' ');
 function Status({ value }: { value: string }) {
@@ -189,6 +192,8 @@ export function NetworkApp({
     [notice, setNotice] = useState(''),
     [busy, setBusy] = useState(false),
     [search, setSearch] = useState(''),
+    [workspaceTab, setWorkspaceTab] = useState('start'),
+    [invitationLink, setInvitationLink] = useState(''),
     [next, setNext] = useState<number | null>(null);
   const load = useCallback(
     async (id = '') => {
@@ -224,6 +229,8 @@ export function NetworkApp({
     void load(id);
   }, [load]);
   const chooseCoop = (id: string) => {
+    setInvitationLink('');
+    setWorkspaceTab('start');
     setSelected(id);
     history.replaceState(
       null,
@@ -305,6 +312,7 @@ export function NetworkApp({
   }
   const state = data?.state,
     steward = data?.role === 'steward';
+  const money = (n: number) => formatMoney(n, state?.currency ?? 'USD');
   const exportRecords = () => {
     if (!state) return;
     const url = URL.createObjectURL(
@@ -435,6 +443,9 @@ export function NetworkApp({
             {data?.coop ? (
               <>
                 <p className="intro">{data.coop.summary}</p>
+                {data.coop.organization && (
+                  <OrganizationCard organization={data.coop.organization} />
+                )}
                 <div className="network-meta">
                   <span>
                     <MapPin size={17} />
@@ -524,6 +535,7 @@ export function NetworkApp({
               </>
             ) : (
               <>
+                <OrganizationDiscovery coops={coops} />
                 <label className="search-label">
                   Find a co-op in the loaded results
                   <Input
@@ -535,7 +547,7 @@ export function NetworkApp({
                 <div className="network-grid">
                   {coops
                     .filter((c) =>
-                      `${c.name} ${c.region} ${c.summary}`
+                      `${c.name} ${c.country ?? ''} ${c.region} ${c.summary}`
                         .toLowerCase()
                         .includes(search.toLowerCase()),
                     )
@@ -620,9 +632,16 @@ export function NetworkApp({
                 available; changes are disabled.
               </div>
             )}
-            <Tabs defaultValue="projects" className="mt-6">
+            <Tabs
+              value={workspaceTab}
+              onValueChange={(v) => setWorkspaceTab(String(v))}
+              className="mt-6"
+            >
               <TabsList className="coop-tabs">
                 {[
+                  'start',
+                  'organizations',
+                  'pooling',
                   'projects',
                   'parcels',
                   'members',
@@ -638,6 +657,261 @@ export function NetworkApp({
                   </TabsTrigger>
                 ))}
               </TabsList>
+              <TabsContent value="start">
+                <h2>Your next steps</h2>
+                <p>
+                  Start with people and a place. Build the shared records as
+                  your group grows.
+                </p>
+                <div className="network-grid">
+                  {[
+                    [
+                      'projects',
+                      '1. Add a place',
+                      'Describe your EcoHedge, woodlot, or conservation project.',
+                      state.projects.length > 0,
+                    ],
+                    [
+                      'organizations',
+                      '2. Connect locally',
+                      'Find a land trust or nonprofit and add your organizer profile.',
+                      !!state.organization,
+                    ],
+                    [
+                      'members',
+                      '3. Invite your circle',
+                      'Invite participants; approve members and appoint a second steward.',
+                      state.members.filter((m: Entity) => m.status === 'active')
+                        .length > 1,
+                    ],
+                    [
+                      'parcels',
+                      '4. Bring land together',
+                      'Record each parcel privately with its consent reference.',
+                      state.parcels.length > 0,
+                    ],
+                    [
+                      'pooling',
+                      '5. Assess a carbon pathway',
+                      'Document the chosen methodology, compatible land, and unresolved requirements.',
+                      (state.assessments ?? []).some(
+                        (a: Entity) => a.status === 'reviewed',
+                      ),
+                    ],
+                    [
+                      'governance',
+                      '6. Agree on benefits',
+                      'Show the proposed split, then let members vote on a frozen policy.',
+                      state.charters.length > 0,
+                    ],
+                  ].map(([tab, title, description, complete]) => (
+                    <article className="network-card" key={String(tab)}>
+                      <p className="eyebrow">
+                        {complete ? 'Recorded' : 'Next step'}
+                      </p>
+                      <h3>{title}</h3>
+                      <p>{description}</p>
+                      <Button
+                        variant="outline"
+                        onClick={() => setWorkspaceTab(String(tab))}
+                      >
+                        Open {String(tab)}
+                      </Button>
+                    </article>
+                  ))}
+                </div>
+                <p className="notice mt-5">
+                  These steps track your organizing progress. Easements, carbon
+                  certification, and payments still require the relevant people
+                  and institutions.
+                </p>
+              </TabsContent>
+              <TabsContent value="organizations">
+                <div className="network-columns">
+                  <section>
+                    <h2>Your organizing group</h2>
+                    {state.organization ? (
+                      <OrganizationCard organization={state.organization} />
+                    ) : (
+                      <Empty>
+                        Add the group organizing this co-op. Do not list an
+                        organization as a partner without its agreement.
+                      </Empty>
+                    )}
+                    <OrganizationDiscovery coops={[]} />
+                  </section>
+                  <aside className="panel">
+                    {steward && (
+                      <ActionForm
+                        title="Organization profile"
+                        fields={[
+                          field('name', 'Organization name', undefined, {
+                            value: state.organization?.name,
+                            max: 160,
+                          }),
+                          choices('kind', 'Organization type', [
+                            'nonprofit',
+                            'land_trust',
+                            'community_group',
+                          ]),
+                          field('region', 'Service area', undefined, {
+                            value: state.organization?.region ?? state.region,
+                            max: 120,
+                          }),
+                          field(
+                            'website',
+                            'Official website (HTTPS)',
+                            undefined,
+                            { value: state.organization?.website, max: 500 },
+                          ),
+                          field(
+                            'services',
+                            'How people can take part',
+                            'textarea',
+                            { value: state.organization?.services, max: 1000 },
+                          ),
+                          choices('visibility', 'Profile visibility', [
+                            'members',
+                            'public',
+                          ]),
+                        ]}
+                        submit="Save organization profile"
+                        onSubmit={(v) => mutate('update_organization', v)}
+                      />
+                    )}
+                    <p className="small mt-4">
+                      Profiles are self-reported. Public profiles appear only
+                      when the co-op itself is public. No affiliation is
+                      independently verified by Verge Common.
+                    </p>
+                  </aside>
+                </div>
+              </TabsContent>
+              <TabsContent value="pooling">
+                <h2>Bring compatible parcels into one pathway</h2>
+                <p>
+                  Reviewed parcels can be assessed together for a selected
+                  program and methodology. An area total is a planning measure,
+                  not a carbon-credit approval.
+                </p>
+                {steward ? (
+                  <div className="network-columns">
+                    <section>
+                      {state.projects.map((p: Entity) => {
+                        const parcels = state.parcels.filter(
+                          (x: Entity) =>
+                            x.projectId === p.id && x.status === 'reviewed',
+                        );
+                        return (
+                          <article className="network-card" key={p.id}>
+                            <h3>{p.name}</h3>
+                            <p>
+                              {parcels.length} reviewed parcels ·{' '}
+                              {(
+                                parcels.reduce(
+                                  (n: number, x: Entity) =>
+                                    n + x.areaSquareMetres,
+                                  0,
+                                ) / 10000
+                              ).toLocaleString()}{' '}
+                              hectares recorded
+                            </p>
+                            <p className="small">
+                              Confirm boundaries do not overlap and each owner
+                              has consented to this pathway.
+                            </p>
+                          </article>
+                        );
+                      })}
+                      {(state.assessments ?? []).map((a: Entity) => (
+                        <article className="network-card" key={a.id}>
+                          <h3>
+                            {a.program} · {a.methodology}
+                          </h3>
+                          <Status value={a.status} />
+                          <p>
+                            Snapshot: {a.areaSquareMetres.toLocaleString()} m²
+                            across {a.parcelIds.length} reviewed parcels.
+                          </p>
+                          <p>
+                            {a.areaSquareMetres >= a.minimumSquareMetres
+                              ? 'Recorded area meets the entered planning threshold.'
+                              : 'More compatible area is needed for the entered planning threshold.'}
+                          </p>
+                          <a href={a.source} target="_blank" rel="noreferrer">
+                            Methodology reference ↗
+                          </a>
+                          <h4>Compatibility assessment</h4>
+                          <p>{a.criteria}</p>
+                          <h4>Unresolved requirements and next action</h4>
+                          <p>{a.gaps}</p>
+                          {a.status === 'submitted' && (
+                            <ActionForm
+                              fields={[
+                                choices('decision', 'Review decision', [
+                                  'approve',
+                                  'reject',
+                                ]),
+                              ]}
+                              submit="Record independent review"
+                              onSubmit={(v) =>
+                                mutate('review_assessment', { ...v, id: a.id })
+                              }
+                            />
+                          )}
+                        </article>
+                      ))}
+                    </section>
+                    <aside className="panel">
+                      <ActionForm
+                        title="Record a pathway assessment"
+                        fields={[
+                          projectField(),
+                          field('program', 'Carbon program'),
+                          field('methodology', 'Methodology and version'),
+                          field(
+                            'source',
+                            'Official methodology URL (HTTPS)',
+                            undefined,
+                            { max: 500 },
+                          ),
+                          field(
+                            'minimumSquareMetres',
+                            'Documented minimum area (m²; 0 if no minimum)',
+                            'number',
+                          ),
+                          field(
+                            'criteria',
+                            'Assess geography, land use, ownership, additionality, permanence, monitoring, and non-overlapping boundaries',
+                            'textarea',
+                            { max: 4000 },
+                          ),
+                          field(
+                            'gaps',
+                            'Unresolved requirements, evidence needed, and next action',
+                            'textarea',
+                            { max: 4000 },
+                          ),
+                        ]}
+                        submit="Save assessment for review"
+                        onSubmit={(v) => mutate('record_assessment', v)}
+                      />
+                      <p className="small mt-4">
+                        This saves the current reviewed-parcel snapshot. Create
+                        a new assessment when land or methodology changes.
+                        Another steward reviews your record; that review does
+                        not certify eligibility or issue credits.
+                      </p>
+                    </aside>
+                  </div>
+                ) : (
+                  <Empty>
+                    Stewards manage pooling assessments because they contain
+                    private land records. Ask a steward to discuss the pathway
+                    with you.
+                  </Empty>
+                )}
+              </TabsContent>
               <TabsContent value="projects">
                 <div className="network-columns">
                   <section>
@@ -877,11 +1151,12 @@ export function NetworkApp({
                           undefined,
                           { max: 300 },
                         ),
-                        field(
-                          'areaSquareMetres',
-                          'Area (square metres)',
-                          'number',
-                        ),
+                        field('area', 'Land area', 'number', { step: 'any' }),
+                        choices('unit', 'Area unit', [
+                          'hectares',
+                          'acres',
+                          'square_metres',
+                        ]),
                         field(
                           'consentReference',
                           'Landowner consent reference',
@@ -896,7 +1171,12 @@ export function NetworkApp({
                         ),
                       ]}
                       submit="Submit parcel for review"
-                      onSubmit={(p) => mutate('record_parcel', p)}
+                      onSubmit={(p) =>
+                        mutate('record_parcel', {
+                          ...p,
+                          areaSquareMetres: areaToSquareMetres(p.area, p.unit),
+                        })
+                      }
                       disabled={busy || !state.projects.length}
                     />
                     <p className="small mt-5">
@@ -907,6 +1187,79 @@ export function NetworkApp({
                 </div>
               </TabsContent>
               <TabsContent value="members">
+                {steward && (
+                  <section className="panel mb-6">
+                    <ActionForm
+                      title="Invite someone to your co-op"
+                      fields={[
+                        field(
+                          'label',
+                          'Private reminder of who this is for',
+                          undefined,
+                          { max: 120 },
+                        ),
+                      ]}
+                      submit="Create a single-use invitation"
+                      onSubmit={async (v) => {
+                        const response = await fetch('/api/invitations', {
+                          method: 'POST',
+                          headers: { 'content-type': 'application/json' },
+                          body: JSON.stringify({
+                            action: 'create',
+                            id: selected,
+                            label: v.label,
+                          }),
+                        });
+                        const result: any = await response.json();
+                        if (!response.ok) throw new Error(result.error);
+                        setInvitationLink(location.origin + result.link);
+                        await load(selected);
+                        return true;
+                      }}
+                    />
+                    <p className="small">
+                      Expires after seven days. Whoever receives the link can
+                      submit one request; a steward must still approve
+                      membership. Share it privately. Site access restrictions
+                      still apply.
+                    </p>
+                    {invitationLink && (
+                      <label>
+                        Copy this invitation before leaving
+                        <Input
+                          readOnly
+                          value={invitationLink}
+                          onFocus={(e) => e.target.select()}
+                        />
+                      </label>
+                    )}
+                    {(state.invitations ?? []).map((i: Entity) => (
+                      <div className="network-meta" key={i.id}>
+                        <span>
+                          {i.label} ·{' '}
+                          {i.revoked
+                            ? 'Revoked'
+                            : i.used
+                              ? 'Request received'
+                              : i.expiresAt <= Date.now()
+                                ? 'Expired'
+                                : `Expires ${date(i.expiresAt)}`}
+                        </span>
+                        {!i.used && !i.revoked && (
+                          <Button
+                            variant="outline"
+                            onClick={() =>
+                              quick('revoke_invitation', { id: i.id })
+                            }
+                          >
+                            Revoke
+                          </Button>
+                        )}
+                      </div>
+                    ))}
+                  </section>
+                )}
+
                 <section className="panel mt-5">
                   <h2>People in the commons</h2>
                   <p className="small">
@@ -1198,6 +1551,12 @@ export function NetworkApp({
                 </div>
               </TabsContent>
               <TabsContent value="governance">
+                <PayoutPreview
+                  currency={state.currency ?? 'USD'}
+                  members={state.members.filter(
+                    (m: Entity) => m.status === 'active',
+                  )}
+                />
                 <div className="network-columns">
                   <section>
                     {state.proposals.length === 0 && (
@@ -1381,6 +1740,40 @@ export function NetworkApp({
                 </section>
               </TabsContent>
               <TabsContent value="settings">
+                {steward && (
+                  <section className="panel mb-6">
+                    <ActionForm
+                      title="Country and accounting currency"
+                      fields={[
+                        field('country', 'Country or territory', undefined, {
+                          value: state.country,
+                          max: 120,
+                        }),
+                        field(
+                          'currency',
+                          'Co-op accounting currency',
+                          'select',
+                          {
+                            value: state.currency ?? 'USD',
+                            options: currencies.map((c) => ({
+                              value: c,
+                              label: c,
+                            })),
+                          },
+                        ),
+                      ]}
+                      submit="Save regional settings"
+                      onSubmit={(v) => mutate('update_regional_settings', v)}
+                    />
+                    <p className="small mt-4">
+                      Choose before recording proceeds. Each co-op uses one
+                      currency, locked after its first settlement. No currency
+                      conversion is performed. Legal documents must be adapted
+                      for your jurisdiction.
+                    </p>
+                  </section>
+                )}
+
                 <section className="panel mt-5">
                   {steward ? (
                     <ActionForm
@@ -1551,6 +1944,13 @@ export function NetworkApp({
                   field('summary', 'Conservation purpose', 'textarea', {
                     max: 1000,
                   }),
+                  field('country', 'Country or territory', undefined, {
+                    max: 120,
+                  }),
+                  field('currency', 'Accounting currency', 'select', {
+                    value: 'USD',
+                    options: currencies.map((c) => ({ value: c, label: c })),
+                  }),
                   field('displayName', 'Your member display name', undefined, {
                     max: 80,
                   }),
@@ -1665,6 +2065,7 @@ function Ledger({
   mutate: (op: string, p: any) => Promise<boolean>;
   quick: (op: string, p: any) => Promise<void>;
 }) {
+  const money = (n: number) => formatMoney(n, state.currency ?? 'USD');
   const reviewed = state.evidence.filter(
     (e: Entity) => e.status === 'reviewed',
   );
@@ -1796,7 +2197,10 @@ function Ledger({
                       'reference',
                     ),
                     field('units', 'Transferred units', 'number'),
-                    field('cents', 'Settled USD cents', 'number'),
+                    field(
+                      'amount',
+                      `Settled amount (${state.currency ?? 'USD'})`,
+                    ),
                     field(
                       'reference',
                       'Unique bank / settlement reference',
@@ -1806,7 +2210,12 @@ function Ledger({
                     evidence(),
                   ]}
                   submit="Submit settlement record"
-                  onSubmit={(p) => mutate('record_settlement', p)}
+                  onSubmit={(p) =>
+                    mutate('record_settlement', {
+                      ...p,
+                      cents: toMinor(p.amount, state.currency ?? 'USD'),
+                    })
+                  }
                   disabled={busy}
                 />
                 <p className="small mt-5">
@@ -1836,7 +2245,7 @@ function Ledger({
                     </div>
                     <div>
                       <dt>Platform percentage cut</dt>
-                      <dd>$0.00</dd>
+                      <dd>{money(0)}</dd>
                     </div>
                     {a.amounts.members.map((m: Entity) => (
                       <div key={m.id}>
@@ -2062,5 +2471,183 @@ function ConfirmAction({
         </AlertDialogContent>
       </AlertDialog>
     </>
+  );
+}
+
+function OrganizationCard({ organization: o }: { organization: any }) {
+  return (
+    <article className="network-card">
+      <p className="eyebrow">{label(o.kind)} · Self-reported profile</p>
+      <h3>{o.name}</h3>
+      <p>{o.region}</p>
+      <p>{o.services}</p>
+      <a
+        className="text-link"
+        href={o.website}
+        target="_blank"
+        rel="noreferrer"
+      >
+        Visit organization website ↗
+      </a>
+    </article>
+  );
+}
+function OrganizationDiscovery({ coops }: { coops: Entity[] }) {
+  const [region, setRegion] = useState('');
+  const organizations = coops.filter(
+    (c) =>
+      c.organization &&
+      `${c.organization.name} ${c.organization.region} ${c.organization.services}`
+        .toLowerCase()
+        .includes(region.toLowerCase()),
+  );
+  return (
+    <section className="panel mb-6">
+      <h2>Connect with conservation anywhere</h2>
+      <label>
+        Country, territory, town, or region
+        <Input
+          value={region}
+          onChange={(e) => setRegion(e.target.value)}
+          placeholder="For example: Kisumu, Kenya; Kerala, India; or your region"
+          maxLength={120}
+        />
+      </label>
+      <div className="network-meta mt-4">
+        <a
+          className="text-link"
+          target="_blank"
+          rel="noreferrer"
+          href={`https://www.google.com/search?q=${encodeURIComponent(`conservation nonprofit land trust ${region}`)}`}
+        >
+          Search the web for local groups ↗
+        </a>
+        <a
+          className="text-link"
+          href="https://landtrustalliance.org/land-trusts"
+          target="_blank"
+          rel="noreferrer"
+        >
+          United States: land trust directory ↗
+        </a>
+      </div>
+      <p className="small">
+        External search results are not verified partners. Use the
+        organization’s official contact details to introduce your project.
+      </p>
+      {organizations.length > 0 && (
+        <>
+          <h3 className="mt-5">Organizers in the loaded network</h3>
+          <div className="network-grid">
+            {organizations.map((c) => (
+              <div key={c.id}>
+                <OrganizationCard organization={c.organization} />
+                <a className="text-link" href={`/network/?coop=${c.id}`}>
+                  Explore their co-op ↗
+                </a>
+              </div>
+            ))}
+          </div>
+        </>
+      )}
+    </section>
+  );
+}
+function PayoutPreview({
+  members,
+  currency,
+}: {
+  members: Entity[];
+  currency: string;
+}) {
+  const money = (n: number) => formatMoney(n, currency);
+  const [receipt, setReceipt] = useState('1000'),
+    [care, setCare] = useState('15'),
+    [reserve, setReserve] = useState('10'),
+    [shares, setShares] = useState<Record<string, string>>({});
+  let result: any = null,
+    error = '';
+  try {
+    const amounts = [care, reserve, ...members.map((m) => shares[m.id] ?? '')];
+    if (amounts.some((v) => !/^\d+(\.\d{1,2})?$/.test(v)))
+      throw new Error(
+        'Enter amounts and each member share using at most two decimal places. Member shares must total 100%.',
+      );
+    result = allocateCents(
+      toMinor(receipt, currency),
+      members.map((m) => ({
+        id: m.id,
+        name: m.name,
+        shareBps: Math.round(Number(shares[m.id]) * 100),
+      })),
+      Math.round(Number(care) * 100),
+      Math.round(Number(reserve) * 100),
+    );
+  } catch (e) {
+    error = (e as Error).message;
+  }
+  return (
+    <section className="panel mb-6">
+      <h2>Work out a fair distribution</h2>
+      <p>
+        Try a receipt and an agreed share for each member. Discuss land
+        contribution, stewardship work, costs, and ongoing obligations before
+        proposing a policy below.
+      </p>
+      <div className="network-grid">
+        {[
+          [`Example proceeds (${currency})`, receipt, setReceipt],
+          ['Stewardship budget (%)', care, setCare],
+          ['Reserve (%)', reserve, setReserve],
+        ].map(([title, value, setter]) => (
+          <label key={String(title)}>
+            {String(title)}
+            <Input
+              type="number"
+              min="0"
+              step="any"
+              value={String(value)}
+              onChange={(e) => (setter as (s: string) => void)(e.target.value)}
+            />
+          </label>
+        ))}
+        {members.map((m) => (
+          <label key={m.id}>
+            {m.name}: share of member pool (%)
+            <Input
+              type="number"
+              min="0"
+              max="100"
+              step="any"
+              value={shares[m.id] ?? ''}
+              onChange={(e) => setShares({ ...shares, [m.id]: e.target.value })}
+            />
+          </label>
+        ))}
+      </div>
+      {result ? (
+        <div className="notice mt-4">
+          <p>
+            Stewardship {money(result.stewardshipCents)} · Reserve{' '}
+            {money(result.treasuryCents)} · Member pool{' '}
+            {money(result.memberPoolCents)}
+          </p>
+          {result.members.map((m: any) => (
+            <p key={m.id}>
+              {m.name}: {money(m.cents)}
+            </p>
+          ))}
+        </div>
+      ) : (
+        <p className="small mt-4" role="status">
+          {error}
+        </p>
+      )}
+      <p className="small mt-4">
+        Illustration only; nothing is saved or paid. Enter the agreed
+        percentages in the proposal below. An adopted policy freezes those
+        shares for later allocations.
+      </p>
+    </section>
   );
 }

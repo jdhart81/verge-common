@@ -452,3 +452,141 @@ test('evidence links reject executable schemes and embedded credentials', () => 
       }),
     );
 });
+
+test('private invitations are single-use, expiring, revocable and require approval', () => {
+  const f = setup(),
+    tokenHash = 'a'.repeat(64);
+  const invitation = f.run('create_invitation', {
+    label: 'A neighbor',
+    tokenHash,
+  });
+  assert.equal(
+    memberView(f.s, owner.id).state.invitations[0].tokenHash,
+    undefined,
+  );
+  assert.equal(publicWorkspace(f.s).invitations, undefined);
+  assert.throws(
+    () =>
+      f.run(
+        'accept_invitation',
+        { name: 'Neighbor', tokenHash: 'b'.repeat(64) },
+        stranger,
+      ),
+    /unavailable/,
+  );
+  const member = f.run(
+    'accept_invitation',
+    { name: 'Neighbor', tokenHash },
+    stranger,
+  );
+  assert.throws(() => memberView(f.s, stranger.id), /membership/);
+  assert.throws(
+    () =>
+      f.run(
+        'accept_invitation',
+        { name: 'Second neighbor', tokenHash },
+        reviewer,
+      ),
+    /unavailable/,
+  );
+  f.run('member_status', { id: member, status: 'active' });
+  assert.equal(memberView(f.s, stranger.id).state.invitations.length, 0);
+  assert.throws(
+    () =>
+      f.run(
+        'create_invitation',
+        { label: 'No permission', tokenHash },
+        stranger,
+      ),
+    /steward/,
+  );
+  f.run('revoke_invitation', { id: invitation });
+  const token2 = 'c'.repeat(64);
+  f.run('create_invitation', { label: 'Expires', tokenHash: token2 });
+  assert.throws(
+    () =>
+      f.run(
+        'accept_invitation',
+        { name: 'Late', tokenHash: token2 },
+        reviewer,
+        8 * 86400000,
+      ),
+    /expired/,
+  );
+  const revoked = f.run('create_invitation', {
+    label: 'Revoked',
+    tokenHash: 'd'.repeat(64),
+  });
+  f.run('revoke_invitation', { id: revoked });
+  assert.throws(
+    () =>
+      f.run(
+        'accept_invitation',
+        { name: 'No', tokenHash: 'd'.repeat(64) },
+        reviewer,
+      ),
+    /unavailable/,
+  );
+});
+
+test('organization profile is opt-in and self-reported, with HTTPS references only', () => {
+  const f = setup();
+  const profile = {
+    name: 'Synthetic group',
+    kind: 'nonprofit',
+    website: 'https://example.org',
+    region: 'Test county',
+    services: 'Restoration workdays',
+    visibility: 'members',
+  };
+  f.run('update_organization', profile);
+  assert.equal(publicWorkspace(f.s).organization, null);
+  f.run('update_organization', { ...profile, visibility: 'public' });
+  assert.equal(publicWorkspace(f.s).organization.relationship, 'self_reported');
+  assert.throws(
+    () =>
+      f.run('update_organization', {
+        ...profile,
+        website: 'javascript:alert(1)',
+      }),
+    /HTTPS/,
+  );
+});
+
+test('pooling assessments freeze reviewed parcels and require independent review', () => {
+  const f = twoStewards();
+  const projectId = f.run('create_project', {
+    name: 'Test forest',
+    summary: 'Synthetic only',
+    region: 'Test',
+    kind: 'landscape',
+  });
+  const assessment = {
+    projectId,
+    program: 'Example program',
+    methodology: 'Example v1',
+    source: 'https://example.org/method',
+    minimumSquareMetres: 500,
+    criteria: 'Compatibility checked by organizer, not certified',
+    gaps: 'External validation needed',
+  };
+  assert.throws(() => f.run('record_assessment', assessment), /review/);
+  const parcel = f.run('record_parcel', {
+    projectId,
+    name: 'Test parcel',
+    landReference: 'Private boundary',
+    areaSquareMetres: 1000,
+    consentReference: 'Consent only for test',
+  });
+  f.run('review_parcel', { id: parcel, decision: 'approve' }, reviewer);
+  const id = f.run('record_assessment', assessment);
+  assert.equal(f.s.assessments[0].areaSquareMetres, 1000);
+  assert.throws(
+    () => f.run('review_assessment', { id, decision: 'approve' }),
+    /Another steward/,
+  );
+  f.run('review_assessment', { id, decision: 'approve' }, reviewer);
+  assert.equal(f.s.assessments[0].status, 'reviewed');
+  assert.equal(f.s.lots.length, 0);
+  assert.equal(publicWorkspace(f.s).assessments, undefined);
+});

@@ -23,3 +23,7 @@ The `/coop/` hypothetical calculator keeps scenarios in page memory until export
 ## Hosting and external references
 
 The host may process request metadata, such as IP addresses, under its own policies. External document links and GitHub have their own policies. An HTTPS reference can change; a stored upload digest refers to the uploaded bytes. The application includes no advertising or application analytics tracker.
+
+Invitation labels are private to stewards. Invitation secrets are stored only as SHA-256 hashes; the complete link is shown once and its fragment is submitted only when the recipient requests membership. Anyone holding a link may consume its single request, so share it privately. A steward must approve that request before private record access. Links expire after seven days. Retained invitations follow the co-op record retention policy; creating 200 invitations reaches the current per-co-op limit.
+
+Organization profiles are self-reported. Public organization details appear only inside public co-ops when that profile also opts into public visibility. Country/territory is part of public co-op discovery. Do not put private locations in public profile fields. External discovery searches send the entered search text to the selected search provider when you follow the link.

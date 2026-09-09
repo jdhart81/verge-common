@@ -43,6 +43,19 @@ with opener.open(base+'/api/files?id='+asset['id']) as response:
 code,current=call('/api/workspaces',{'id':id,'version':current['version'],'op':'submit_evidence','requestId':str(uuid.uuid4()),'payload':{'projectId':project,'title':'File fixture','method':'Test inspection','period':'Test period','notes':'Synthetic local evidence','assetId':asset['id']}})
 assert code==200,(code,current)
 assert current['state']['evidence'][0]['asset']['sha256']==asset['sha256']
+# Private invitation endpoints never expose hashes or permit general command bypass.
+code,invitation=call('/api/invitations',{'action':'create','id':id,'label':'Synthetic neighbor'})
+assert code==200,(code,invitation)
+assert invitation['link'].startswith('/join/#'+id+'.')
+code,current=call('/api/workspaces?id='+id)
+invite=current['state']['invitations'][0]
+assert 'tokenHash' not in invite and 'usedBy' not in invite
+code,_=call('/api/workspaces',{'id':id,'version':current['version'],'op':'create_invitation','requestId':str(uuid.uuid4()),'payload':{'label':'Bypass','tokenHash':'a'*64}})
+assert code==400,code
+code,current=call('/api/workspaces',{'id':id,'version':current['version'],'op':'revoke_invitation','requestId':str(uuid.uuid4()),'payload':{'id':invite['id']}})
+assert code==200,(code,current)
+code,_=call('/api/invitations',{'action':'accept','id':id,'token':invitation['link'].split('.')[-1],'name':'Test','requestId':str(uuid.uuid4())})
+assert code==403,code
 version=current['version']
 code,current=call('/api/workspaces',{'id':id,'version':version,'op':'archive','requestId':str(uuid.uuid4()),'payload':{}});assert code==200,(code,current)
 print('HTTP integration passed: durable creation/readback, replay protection, payload mismatch, stale-write rejection, cross-origin rejection, private discovery, concurrent write isolation, linked audit, private file upload/download, evidence attachment, archive.')

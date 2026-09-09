@@ -8,8 +8,19 @@ A conservation network and shared co-op workspace for EcoHedge projects and larg
 
 The hosted site currently uses owner-only access until the owner approves public website access. The repository is public. Making a co-op profile public within the app does not override the host's access policy.
 
+## Start your own community
+
+Clone or download this repository, install Node.js 22.13+, and run `npm run launch` in the project folder. This installs the locked dependencies, prepares a local database, and opens the development service. Follow its printed local URL, sign in, create a co-op, and use the **Start** checklist. This is a local trial, not a public production deployment.
+
+See [Worldwide adoption](docs/WORLDWIDE.md) for regional setup and production hosting boundaries.
+
 ## What is implemented
 
+- A guided six-step co-op setup, local organization discovery links, and self-reported organization profiles.
+- Single-use private invitations with expiry, revocation, and steward approval before record access.
+- Country/territory and accounting currency settings, correct currency minor units, and hectares/acres/m² intake.
+- Snapshot-based carbon pathway assessments with methodology references and independent human review.
+- A worked payout preview before members propose and vote on their policy.
 - Signed-in, durable co-op workspaces with steward/member roles and membership requests.
 - Opt-in co-op/project discovery, general-region search, shareable links, updates and moderation.
 - Projects, assigned conservation actions, completion records, and private parcel/consent intake.
