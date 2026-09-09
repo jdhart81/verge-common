@@ -846,3 +846,112 @@ test('monitoring needs current reviewed boundaries, consent and private parcel a
   );
   assert.equal(f.s.observations[0].boundaryId, boundaryId);
 });
+
+test('analysis jobs preserve reviewed geometry and scene selection', () => {
+  const f = twoStewards();
+  const projectId = f.run('create_project', {
+    name: 'Analysis',
+    summary: 'Synthetic',
+    kind: 'restoration',
+    region: 'Test',
+  });
+  const parcelId = f.run('record_parcel', {
+    projectId,
+    name: 'Plot',
+    areaSquareMetres: 1000,
+    landReference: 'Test',
+    consentReference: 'Test',
+  });
+  const boundaryId = f.run('save_boundary', {
+    parcelId,
+    geometry: {
+      type: 'Polygon',
+      coordinates: [
+        [
+          [0, 0],
+          [0.01, 0],
+          [0.01, 0.01],
+          [0, 0],
+        ],
+      ],
+    },
+    consentReference: 'Test',
+    externalSearchAllowed: true,
+  });
+  f.run(
+    'review_boundary',
+    { parcelId, id: boundaryId, decision: 'approve' },
+    reviewer,
+  );
+  f.run('record_satellite_search', {
+    parcelId,
+    boundaryId,
+    scenes: [
+      { id: 'a', acquiredAt: '2026-01-01T00:00:00Z' },
+      { id: 'b', acquiredAt: '2026-02-01T00:00:00Z' },
+    ],
+  });
+  assert.throws(
+    () =>
+      f.run('create_analysis_job', { parcelId, beforeId: 'b', afterId: 'a' }),
+    /chronological/,
+  );
+  const jobId = f.run('create_analysis_job', {
+    parcelId,
+    beforeId: 'a',
+    afterId: 'b',
+  });
+  const job = f.s.analysisJobs[0];
+  assert.equal(job.id, jobId);
+  assert.equal(job.geometryCanonical, JSON.stringify(job.geometry));
+  assert.equal(publicWorkspace(f.s).analysisJobs, undefined);
+  const receipt = {
+    algorithm: 'paired-ndvi-v1',
+    jobId,
+    boundaryId,
+    geometryCanonical: job.geometryCanonical,
+    sceneIds: ['a', 'b'],
+    processorSha256: 'a'.repeat(64),
+    inputSha256: [0, 1].map(() => ({
+      red: 'a'.repeat(64),
+      nir: 'b'.repeat(64),
+      scl: 'c'.repeat(64),
+    })),
+    radiometry: [0, 1].map(() => ({
+      red: { scale: 1, offset: 0 },
+      nir: { scale: 1, offset: 0 },
+    })),
+    runtime: { numpy: 'test', rasterio: 'test' },
+    totalPixels: 100,
+    pairedPixels: 0,
+    beforeValidPixels: 0,
+    afterValidPixels: 0,
+    beforeMean: null,
+    afterMean: null,
+    meanChange: null,
+    quality: 'insufficient_coverage',
+    signal: 'unavailable',
+    maskClasses: [4, 5, 6],
+  };
+  const resultId = f.run('import_analysis', { jobId, receipt });
+  assert.throws(
+    () =>
+      f.run('review_analysis', {
+        id: resultId,
+        decision: 'approve',
+        note: 'self',
+      }),
+    /Another steward/,
+  );
+  f.run(
+    'review_analysis',
+    {
+      id: resultId,
+      decision: 'approve',
+      note: 'Accepted record of insufficient data; no conclusion.',
+    },
+    reviewer,
+  );
+  assert.equal(f.s.analysisResults[0].receipt.quality, 'insufficient_coverage');
+  assert.equal(f.s.lots.length, 0);
+});

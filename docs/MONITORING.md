@@ -20,3 +20,9 @@ Limits: 20 boundary revisions per parcel, 200 saved searches per co-op, 1,000 fi
 Imagery download/processing, map drawing and basemaps, complex-polygon/overlap validation, reproducible cloud masks, vegetation and disturbance metrics, automated alerts, formal sampling protocols, satellite/field calibration, methodology-specific uncertainty, and independent verification. Small EcoHedges need suitable field measurements; coarse satellite pixels alone are insufficient to characterize each hedge.
 
 The provider connector is open source. Free catalogue access does not imply unlimited free processing, commercial imagery, validation, or registry services. No account, paid service, background schedule, market listing, or payment execution is created by this release.
+
+## Paired imagery screening (0.7.0)
+
+After discovering at least two scenes for the current reviewed boundary, create a processing job in Monitoring. Download its private job file, run [the imagery worker](../workers/imagery/README.md) with prepared local imagery, and import the receipt. The worker compares common usable pixels and reports a review flag or insufficient coverage. A second steward records field checks and limitations. Jobs preserve their boundary and scene selection; older results remain historical after a boundary revision. Reprocessing requires a new job.
+
+This adds manual imagery processing and review, not automatic ingestion or alerts. Satellite discovery remains metadata-only. The app never converts these results to carbon units. Analysis jobs and results inherit parcel privacy. Each co-op can retain at most 200 jobs under the existing aggregate limits.

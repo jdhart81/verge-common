@@ -37,3 +37,8 @@ next-env.d.ts
 /outputs/
 /work/
 *.tsbuildinfo
+
+# local imagery processing
+__pycache__/
+*.pyc
+.venv/

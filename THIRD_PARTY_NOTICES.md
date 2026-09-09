@@ -70,3 +70,7 @@ SOFTWARE.
 - wrangler: MIT OR Apache-2.0
 
 Full license texts for installed dependencies are included in their respective packages.
+
+## Optional imagery worker
+
+The optional Python worker uses NumPy, Rasterio and dependencies pinned in `workers/imagery/requirements.txt`. They are installed separately and retain their upstream licenses and notices in their installed distributions. Rasterio includes native geospatial dependencies whose applicable notices must also be preserved when distributing a packaged runtime. This repository does not vendor those packages or their binary wheels.

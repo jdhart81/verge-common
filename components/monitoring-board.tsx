@@ -1,4 +1,5 @@
 'use client';
+import { AnalysisPanel } from '@/components/analysis-panel';
 import { useState } from 'react';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -276,6 +277,15 @@ export function MonitoringBoard({
                   </details>
                 </article>
               ))}
+            <AnalysisPanel
+              key={parcel.id}
+              state={state}
+              parcel={parcel}
+              boundary={boundary}
+              steward={steward}
+              disabled={disabled}
+              mutate={mutate}
+            />
             <h3 className="mt-6">Field observations</h3>
             {[...(state.observations ?? [])]
               .filter((o: Item) => o.parcelId === parcel.id)

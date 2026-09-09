@@ -52,3 +52,7 @@ Added the member community board, timed events with private meeting instructions
 ## 0.6.0 — Parcel monitoring foundation
 
 Added private GeoJSON boundary versions and outlines, independent boundary review, revocable consent for catalogue queries, a live Copernicus Sentinel-2 L2A discovery connector, source receipts, and independently reviewed field observations. New boundary versions require review before further monitoring. No imagery processing, automated alerts, vegetation-change calculation, carbon estimation, or credit issuance is implemented by this connector. Existing database schema remains unchanged.
+
+## 0.7.0 — Reproducible imagery screening
+
+Added immutable two-scene processing jobs, private job export, an independently runnable Python NDVI worker, input/source fingerprints, conservative SCL masking, paired-pixel comparisons, insufficient-coverage handling, validated result imports, and independent steward review notes. Added synthetic raster tests and a separate CI job. Prepared imagery is still required; no provider download, background processing, carbon quantification, or market action is enabled.

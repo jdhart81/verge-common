@@ -1,6 +1,6 @@
 # Roadmap
 
-## Built through 0.6.0
+## Built through 0.7.0
 
 - Public conservation discovery and self-reported organization profiles; private co-ops and expiring invitations.
 - Guided setup, country/currency settings, land-unit conversion, and local trial launcher.
@@ -51,4 +51,4 @@ Registry provenance and cross-co-op serial reconciliation; authenticated settlem
 
 ## Next monitoring increment
 
-Process selected imagery in a separately deployable worker: cloud masking, repeatable vegetation/change metrics, uncertainty and field-validation links. The website currently discovers catalogue scenes only. Select the first real monitored parcel and methodology before presenting ecological or carbon conclusions. Add area/overlap validation, complex polygons, and antimeridian support before broader geospatial intake.
+A separately runnable paired-NDVI worker and import/review workflow are now implemented. Next: authorized imagery ingestion, repeatable orchestration, stronger provenance, statistical uncertainty, and field-validation links. The website itself still discovers catalogue metadata and imports worker results; it does not run imagery jobs. Select the first real monitored parcel and methodology before presenting ecological or carbon conclusions. Add area/overlap validation, complex polygons, and antimeridian support before broader geospatial intake.

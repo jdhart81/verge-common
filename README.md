@@ -16,6 +16,9 @@ See [Worldwide adoption](docs/WORLDWIDE.md) for regional setup and production ho
 
 ## What is implemented
 
+- Exportable imagery jobs and an independent NDVI screening worker, with validated result imports and human review. [Worker instructions](workers/imagery/README.md).
+
+
 - Private versioned GeoJSON boundaries, independent review, explicit external-search consent, Copernicus Sentinel-2 catalogue discovery, and reviewed field observations. See [Monitoring](docs/MONITORING.md).
 
 
