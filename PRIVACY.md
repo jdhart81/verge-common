@@ -1,15 +1,25 @@
-# Privacy
+# Privacy and visibility
 
-The co-op workbench (`/coop/`) keeps scenario data in page memory only. Export includes project/member names, quantities, policy inputs and modeled allocations. It does not upload the packet, execute its agreements, or send payments. Use fictional or non-sensitive inputs; there is no secure document vault in this release.
+The shared conservation system stores co-op records in the hosting service's D1 database and files in private R2 storage. It uses the authenticated Site user ID for access control. Members choose their display names; the application does not persist their sign-in email addresses.
 
-The community planner stores one plan under `verge-common-plan-v1` in your browser's local storage. It does not send plan contents to an application server and includes no application analytics or advertising trackers.
+## Public information
 
-Anyone using the same browser profile may be able to read the plan. Private browsing, storage limits, or clearing site data may erase it. Download a backup if you need to keep it.
+A steward can publish a co-op's introduction and general region. Public profiles show active member counts and only explicitly public projects and updates. Signed agreements, exact land references, evidence, member identities, votes, and financial records are not exposed through the discovery API. Website-level access restrictions still apply.
 
-Copying an invitation places the name, area, purpose, and unfinished actions on your clipboard. Notes are excluded. Downloading a plan produces a JSON file containing all plan fields, including notes. You decide whether and where to share either; review them first. The website does not send invitations.
+Do not put private addresses, sensitive habitat locations, personal information, or confidential evidence into public descriptions. The application cannot determine whether you have consent to publish what you enter.
 
-Optional browser agent integration can read the current plan through a read-only WebMCP tool in supporting browsers. Use only agents you trust with the information you enter.
+## Private information
 
-The website host may process standard request information such as IP addresses and browser details under its own policies. Following GitHub links takes you to GitHub, where its policies apply. Claims about local plan storage do not mean the hosting provider receives no request metadata.
+Active members can view co-op projects, governance and financial records. Parcel, agreement and evidence records are visible only to their submitters and stewards. File downloads require the uploader or an active steward. Stewards therefore have access to sensitive submitted material; choose them carefully.
 
-Use general area descriptions. Do not enter precise sensitive habitat locations, private parcel boundaries, contact information, or confidential evidence. To erase the saved plan, clear this site's browser storage. This early edition does not maintain server-side user accounts or records.
+The software does not collect payment-account credentials or send invitations. Sharing a link, copying text, or downloading an export is a deliberate user action. Exports contain private information and must be stored securely.
+
+Removed members lose private access. Their earlier records remain with the co-op. Archiving stops edits and public discovery but preserves authorized reads. The current software has no hard-delete or automatic retention scheduler; operators must establish appropriate retention/deletion procedures before admitting sensitive or regulated records.
+
+## Supporting tools
+
+The `/coop/` hypothetical calculator keeps scenarios in page memory until exported. The `/demo/` local planner stores one plan in browser storage. These supporting tools do not write to the shared co-op ledger. The optional read-only browser-agent tool on `/demo/` can read that local plan in supporting browsers.
+
+## Hosting and external references
+
+The host may process request metadata, such as IP addresses, under its own policies. External document links and GitHub have their own policies. An HTTPS reference can change; a stored upload digest refers to the uploaded bytes. The application includes no advertising or application analytics tracker.

@@ -46,6 +46,8 @@ SOFTWARE.
 - clsx: MIT
 - cmdk: MIT
 - date-fns: MIT
+- drizzle-kit: MIT
+- drizzle-orm: Apache-2.0
 - embla-carousel-react: MIT
 - input-otp: MIT
 - lucide-react: ISC

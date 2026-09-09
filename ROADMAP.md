@@ -1,25 +1,30 @@
-# Cooperative conservation roadmap
+# Roadmap
 
-## Available in v0.2
+## Implemented shared operating system
 
-Mission website, editable EcoHedge/large-parcel co-op scenario, compatible-scope check, exact quantity and money arithmetic, member share schedule, draft packet export, and open agreement/policy workflows. The local stewardship planner remains available.
+Conservation discovery; sign-in and co-op workspaces; membership and steward roles; private land/consent records; projects, actions and updates; agreement/evidence review; private file storage; versioned charter voting; external holding/settlement/retirement records; exact member allocations and payment-receipt reviews; audit history, scoped exports, removal and archival.
 
-## Next: a durable cooperative workspace
+The `/coop/` calculator remains a separate scenario tool.
 
-Build shared project/member records, authenticated roles, consent and visibility controls, private document storage, agreement review states, immutable evidence references, and charter proposal/vote records. Require access-control and privacy tests before admitting real records. Select the first pilot jurisdiction, co-op partner, and easement holder before implementing jurisdiction-specific instruments.
+## Partner launch prerequisites
 
-## Then: program and accounting integration
+- Choose the first real partner co-op, jurisdiction, legal structure, and appropriate easement holder.
+- Review legal instruments, member obligations, carbon rights and chosen program/methodology.
+- Establish privacy, retention, backup/restore, incident and moderation procedures.
+- Run a multi-person pilot and accessibility/browser review; independently assess authentication and authorization.
+- Obtain the owner's explicit approval before changing the hosted website from private to public.
 
-Choose an applicable methodology and program with qualified review; connect reviewed contributions to program-authorized issued holdings with serial-range custody and duplicate-claim controls. Keep incompatible pools separate. Implement version-bound allocation records and external settlement reconciliation.
+## Further integrations
 
-## Then: authorized member payouts
+- Registry-verified provenance and cross-co-op serial/custody reconciliation.
+- Payment-provider and bank receipt authentication; actual payment execution would need separate authorization and controls.
+- Geospatial parcel boundaries, consented maps and monitoring-provider integrations.
+- Cooperative federation with separated pools and liabilities.
+- Normalize the bounded aggregate into a scalable event/record store with migrations.
+- Configurable jurisdiction-specific governance, retention/deletion tooling, file backup and malware scanning, and alternate self-hosted identity providers.
 
-Add co-op-controlled approvals, payment-provider integration, idempotency, receipt matching, disputes, reversals, and reconciliation. Simulate failures and retries before any authorized live transaction. Keep allocated, instructed, paid and reconciled amounts distinct.
+These are not silently enabled by recording a reviewed document. Software status does not establish legal, ecological, registry, or financial authority.
 
-## Continuing conservation
+## Adoption
 
-Track monitoring obligations, disturbances, program responses, stewardship budgets, and member communications. A software release does not establish legal validity, carbon eligibility, or ecological outcomes.
-
-## Adoption milestone
-
-One partner co-op completes a reviewed project intake and validates a draft allocation policy, then returns for a second operating cycle. No partner adoption or paid result is claimed by this release. Open-source growth should follow useful, repeatable conservation work.
+Start with one organizer and real participants. Measure accepted memberships, completed useful actions, repeated work and participant-originated referrals. There is no established adoption, verified environmental impact, or revenue claim from this build.

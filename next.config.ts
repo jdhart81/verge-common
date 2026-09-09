@@ -1,1 +1,1 @@
-export default { output: 'export', trailingSlash: true };
+export default { trailingSlash: true };

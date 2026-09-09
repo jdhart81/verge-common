@@ -61,9 +61,11 @@ Member shares are draft charter inputs, not automatically inferred from acreage 
 
 ## Current implementation
 
-The `/coop/` workbench supports editing projects and members, scenario contributions, a shared scope label, reserves, sale volume, price, and member shares. It produces a quantity ledger and exact-cent modeled allocations. Export produces a JSON scenario and blank agreement review records. This page is session-only: it does not persist to browser storage or a server. The older `/demo/` local stewardship planner remains available.
+The shared `/network/` and `/workspace/` system implements durable co-op records, membership and roles, private parcel/consent intake, conservation projects/actions, updates, agreements, private evidence files and reviews, frozen-electorate charter votes, externally documented holdings/settlements, exact allocations, payment/retirement receipt reviews, and linked audit history. See [OPERATIONS.md](OPERATIONS.md) for the complete user flow and boundaries.
 
-No shared database, participant accounts, electronic signatures, registry adapter, sale, payment rail, or production audit ledger exists in this public edition. No formal certification is claimed. The separate private pilot and unpublished research have not been copied into this repository.
+The `/coop/` workbench remains a separate hypothetical model. It never promotes scenario outputs into issued holdings or settled cash. The `/demo/` planner remains a device-local supporting tool.
+
+Registry and bank actions are external. The software does not independently authenticate receipts, initiate payments, certify ecology, execute legal instruments, or assert that software governance creates legal authority. Shared records are atomically versioned D1 aggregates; files are private R2 objects. This is a bounded initial implementation, not a claim of large-scale readiness or independent security certification.
 
 ## Open easement workflows
 

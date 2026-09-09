@@ -1,6 +1,5 @@
 {
   "project_id": "appgprj_6aa0902356cc819193cd387f585898d2",
-  "static": {
-    "directory": "dist/client"
-  }
+  "d1": "DB",
+  "r2": "EVIDENCE"
 }

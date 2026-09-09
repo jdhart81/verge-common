@@ -17,12 +17,12 @@ Open an issue before a large change so we can agree on scope. An issue is public
 ## Development
 
 1. Fork the repository and create a branch.
-2. Use Node 22.13+ and run `npm ci` followed by `npm run dev`.
+2. Use Node 22.13+ and run `npm ci`, `npm run db:migrate:local`, then `npm run dev`.
 3. Make a focused change. Add tests when behavior or privacy boundaries change.
 4. Run `npm test`, `npm run typecheck`, and `npm run build`.
 5. Open a pull request explaining the problem, resulting behavior, and validation.
 
-Keep the first release easy to self-host without service credentials. Do not add tracking, advertising, external data collection, or invented activity metrics. Treat exact locations and field evidence with care. Do not describe an observation as a verified ecological outcome.
+Keep the authentication boundary explicit. Never add a production development-user fallback or accept caller-supplied identity headers from an untrusted origin. Do not add tracking, advertising, external data collection, or invented activity metrics. Treat exact locations and field evidence with care. Do not describe an observation as a verified ecological outcome.
 
 ## Contributions and governance
 

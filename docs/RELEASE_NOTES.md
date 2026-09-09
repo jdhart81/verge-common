@@ -1,3 +1,13 @@
+# v0.3 — shared conservation network and co-op operating records
+
+Adds D1-backed shared workspaces and R2 private files; sign-in and role checks; membership, discovery, projects, actions, private land/consent records, agreement and evidence review, governance, external authority/holding/settlement/retirement records, exact allocations, payment receipt review, audit history, export, removal and archival.
+
+Validation: 27 domain tests, type checking and the Worker build passed. Local HTTP integration verified durable readback, idempotent retries, payload mismatch protection, stale/concurrent-write rejection, origin rejection, private discovery, linked audit, R2 upload/download, file digest matching, evidence attachment and archival. Browser visual/interaction QA and independent security review have not been performed. Multi-person permissions are covered by domain tests; the local HTTP test uses the starter's single development identity.
+
+The deployed audience remains owner-only pending explicit public-access approval. No real co-op, legal instrument, credit, transaction or environmental outcome was created as part of testing. External documents/transactions are recorded and reviewed by stewards, not independently authenticated through registry/bank integrations.
+
+---
+
 # v0.2 — cooperative conservation workbench
 
 The primary product is now the operating system for EcoHedge and larger-parcel conservation co-ops. This release adds an editable project/member scenario, compatible-scope checks, exact reserve and payout modeling, draft packet export, and open enrollment/easement/payout-policy workflows.

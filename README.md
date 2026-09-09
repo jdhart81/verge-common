@@ -2,42 +2,44 @@
 
 **Open infrastructure for cooperative conservation.**
 
-Verge Common is an open-source cooperative conservation system for EcoHedge projects and larger land parcels. We are releasing the code for the mission: communities should be able to understand, adapt, and carry their tools forward.
+A conservation network and shared co-op workspace for EcoHedge projects and larger land parcels. Communities can organize projects, manage private conservation records, vote on allocation policies, and account for externally documented credit holdings and proceeds.
 
-[Website](https://verge-common-community.jdhart.chatgpt.site) · [Try the planner](https://verge-common-community.jdhart.chatgpt.site/demo/) · [Contribute](CONTRIBUTING.md) · [Roadmap](ROADMAP.md)
+[Website](https://verge-common-community.jdhart.chatgpt.site) · [Conservation network](https://verge-common-community.jdhart.chatgpt.site/network/) · [Member workspace](https://verge-common-community.jdhart.chatgpt.site/workspace/) · [Contribute](CONTRIBUTING.md)
 
-## The cooperative system
+The hosted site currently uses owner-only access until the owner approves public website access. The repository is public. Making a co-op profile public within the app does not override the host's access policy.
 
-Verge Common applies the cooperative model to EcoHedge projects and larger conservation parcels: conservation commitments → reviewed evidence → compatible credit pools → settlement → transparent member payouts → continuing monitoring.
+## What is implemented
 
-[Co-op workbench](https://verge-common-community.jdhart.chatgpt.site/coop/) · [Complete operating model](docs/COOPERATIVE_SYSTEM.md) · [Open agreement workflows](templates/)
+- Signed-in, durable co-op workspaces with steward/member roles and membership requests.
+- Opt-in co-op/project discovery, general-region search, shareable links, updates and moderation.
+- Projects, assigned conservation actions, completion records, and private parcel/consent intake.
+- Private agreement submissions with independent review and externally executed instrument references.
+- Private PDF/image/text uploads, SHA-256 file digests, evidence submissions, and independent review.
+- Versioned allocation-charter proposals with frozen electorates, member votes, quorum, and tallies.
+- External legal authority, serialized credit holding, settlement, allocation, payment receipt, and retirement records.
+- Two-person reviews, integer-cent allocations, per-co-op quantity caps, duplicate references, and linked audit history.
+- Scoped JSON exports, membership removal, member exit, and workspace archival.
+- The separate hypothetical `/coop/` calculator and device-local `/demo/` stewardship planner.
 
-## What works today
+## What the system does not execute
 
-- Model EcoHedge and larger conservation projects, members, draft shares, and a compatible pool scope.
-- Calculate ecological reserves, proposed sales, co-op budgets, and exact-cent member allocations.
-- Reject oversales, invalid shares, incompatible scopes, unsafe quantities, and missing membership references.
-- Export a scenario packet with modeled allocations and uncompleted agreement review records.
-- Adapt open enrollment, easement review, and charter/payout policy scaffolds.
-- Use the supporting local place/action planner at `/demo/`.
-- Run or self-host the static website without service credentials.
+Verge Common does not form legal co-ops, execute or record deeds, certify ecological measurements, issue or transfer registry credits, initiate sales, send payments, or independently validate bank/registry receipts. Authorized people and external institutions perform those actions. The system stores their supporting records and review decisions.
 
-**This is a cooperative system prototype, not a live credit or payment platform.** Workbench data lasts for the page session; export before leaving. It has no shared database, executed conservation agreements, registry connection, real cash settlement, or paid member dividends. Matching scenario scope labels do not establish program eligibility. The agreement scaffolds require authorized parties and jurisdiction-specific review; they are not ready-to-sign deeds.
+The whole operational record flow is implemented; direct registry and payment-provider integrations are not. A `reviewed` receipt means another steward recorded a review, not that a bank or registry independently authenticated it to the software. See [OPERATIONS.md](docs/OPERATIONS.md) and [COOPERATIVE_SYSTEM.md](docs/COOPERATIVE_SYSTEM.md).
 
-The supporting `/demo/` planner separately saves one plan in browser storage. JSON export is a backup; import is not implemented yet.
+## Local development
 
-## Run locally
-
-Use Node.js 22.13 or later and npm.
+Use Node.js 22.13+ and npm. The local development server uses the Sites starter's development-only sign-in flow. Never expose that development server publicly.
 
 ```sh
 npm ci
+npm run db:migrate:local
 npm run dev
 ```
 
-Open the local URL printed in the terminal. No API keys, paid services, database, or hosting account are required.
+Open the printed local URL and use Sign in. Local data and files live under ignored `.wrangler/`. The default local identity is a development fixture, not a production account.
 
-## Check and build
+## Validation
 
 ```sh
 npm test
@@ -45,26 +47,34 @@ npm run typecheck
 npm run build
 ```
 
-The production website is exported to `dist/client/`. Deploy that directory to a static host with directory-index support. To preview a build locally:
+With the local development server running, run the HTTP persistence/concurrency checks:
 
 ```sh
-python3 -m http.server 8080 --directory dist/client
+python3 tests/http_integration.py
 ```
 
-The `.openai/hosting.json` file identifies the official Sites deployment. Forks should remove its `project_id` or use their own Sites project; it is not a credential and does not grant publishing access. Any static host can serve the exported site without that file.
+Tests use synthetic local records and archive their workspaces. No test writes to the hosted service.
 
-## Help the mission
+## Hosting and authentication
 
-Try one small action with a place you care about. Tell us what helped, what was confusing, and whether you used it again. Please share only information you have permission to make public.
+This is a Cloudflare Worker application using D1 and R2, not a static export. The build produces `dist/server/index.js`, static assets, and Sites hosting/migration metadata. `.openai/hosting.json` retains the official project's ID; forks must use their own project ID and logical storage bindings.
 
-Useful contributions include accessibility improvements, translations, documentation, and small fixes. See [CONTRIBUTING.md](CONTRIBUTING.md). Success means useful repeated local action; downloads and stars alone do not establish that.
+On Sites, the dispatcher owns sign-in, strips caller-supplied identity headers, and forwards authenticated identity. Every private API additionally enforces co-op membership/roles server-side. Self-hosting requires an equivalent trusted authentication gateway that strips incoming `oai-authenticated-user-*` headers and injects verified identities. Do not expose a raw Worker accepting arbitrary identity headers. Generic self-hosted OAuth and payment integrations are not bundled.
 
-## Privacy and scope
+D1 migrations are generated by Drizzle and applied before hosting. Do not rewrite migrations after deployment.
 
-Co-op scenarios remain in page memory until exported. The supporting local planner stores its plan in browser storage. The invitation includes the place, general area, purpose, and unfinished actions, but excludes notes. A downloaded JSON file includes notes. Do not enter sensitive parcel locations, personal contact details, or other private information. See [PRIVACY.md](PRIVACY.md) and [SECURITY.md](SECURITY.md).
+## Data boundaries and operating limits
 
-This repository contains the clean public community edition. It does not include the separate private application, internal research, formal proof candidates, production records, or credentials. The project makes no certification or carbon-credit eligibility claim. The platform takes no percentage of co-op credit sales.
+Public profiles show only explicitly public project summaries/updates, general regions, and active member counts. Agreements, land references and evidence are restricted to their submitters and stewards. Members can inspect co-op governance and financial records; payout bank details are not collected. Files download as attachments. Review the [privacy policy](PRIVACY.md).
+
+Each co-op is an atomically versioned aggregate with a 750 KB application limit, 500 member records, and 5,000 audit events. File storage is limited to 200 files per co-op, 4 MB each. This architecture favors correctness for initial partner co-ops; a normalized event/record store is required before larger deployment. Cross-co-op or cross-installation registry claims still need the external registry's authoritative duplicate/custody checks.
+
+## Mission and sustainability
+
+The platform takes no percentage of credit sales. Co-op-approved stewardship and treasury allocations remain co-op funds. Optional hosted operation/support may fund maintenance; no paid service or financial outcome is promised by this release.
+
+The repository contains the clean public system. Separate private research, proof candidates, production records, and private pilot source were not published as a bulk release. No formal or ecological certification is claimed.
 
 ## License
 
-Original project code is licensed under **GNU AGPL v3.0 only**. See [LICENSE](LICENSE) and [NOTICE](NOTICE). Dependency code retains its own licenses. The Verge Common name and marks are not licensed for implying endorsement. Forks are welcome; identify them clearly.
+Original code and original workflow templates: GNU AGPL v3.0 only. See [LICENSE](LICENSE), [NOTICE](NOTICE), and [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md). Dependency code retains its own licenses. Forks are welcome; do not imply endorsement through the Verge Common name.

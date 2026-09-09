@@ -20,8 +20,8 @@ export default function Home() {
           verge common<span className="brand-dot">●</span>
         </a>
         <nav aria-label="Main navigation">
-          <a href="#mission">The mission</a>
-          <a href="#contribute">Contribute</a>
+          <a href="/network/">Projects</a>
+          <a href="/workspace/">My co-ops</a>
           <a className="nav-repo" href={repo}>
             <Code2 size={18} />
             Source <ArrowUpRight size={16} />
@@ -47,16 +47,16 @@ export default function Home() {
                 commons.
               </p>
               <div className="actions">
-                <a className="button primary" href="/coop/">
-                  Explore the co-op workbench <ArrowRight size={18} />
+                <a className="button primary" href="/network/">
+                  Explore conservation projects <ArrowRight size={18} />
                 </a>
                 <a className="text-link" href={repo}>
                   Explore the source <ArrowUpRight size={17} />
                 </a>
               </div>
               <p className="fine">
-                Working scenario model. No live credit issuance or money
-                movement.
+                Start a co-op, invite your community, and turn shared care into
+                action.
               </p>
             </div>
             <aside className="field-note">
@@ -144,7 +144,7 @@ export default function Home() {
               <p className="eyebrow">02 / THE OPERATING SYSTEM</p>
               <h2>From land to shared benefit.</h2>
             </div>
-            <span className="pill">COOPERATIVE PREVIEW · v0.2</span>
+            <span className="pill">SHARED CONSERVATION SYSTEM · v0.3</span>
           </div>
           <div className="three-grid">
             <article>
@@ -160,25 +160,27 @@ export default function Home() {
               <span className="index">02</span>
               <h3>Cooperative credit pools</h3>
               <p>
-                Model contributions by project and vintage, set ecological
-                reserves, and preserve provenance. Mixed methods and
-                incompatible vintages cannot simply be merged.
+                Record external holdings by registry, project, and vintage,
+                preserving their provenance. Explore unissued contributions
+                separately in the scenario workbench.
               </p>
             </article>
             <article>
               <span className="index">03</span>
               <h3>Member payouts</h3>
               <p>
-                Inspect a proceeds waterfall for stewardship, treasury reserves,
-                and member allocations. Each cent is accounted for under an
-                explicit draft share schedule.
+                Adopt member allocation policies, account for each cent of
+                recorded proceeds, and independently review external payment
+                receipts.
               </p>
             </article>
           </div>
           <p className="release-note">
-            Available now: an editable co-op scenario, exact accounting, draft
-            agreement packet, and open architecture. Shared records, executed
-            easements, registry operations, and actual payouts are not live.
+            Available now: shared co-op workspaces, membership, projects,
+            evidence, governance, and external receipt records. Open agreement
+            workflows connect these records. Legally executed easements,
+            registry operations, and actual payments remain the responsibility
+            of authorized parties.
           </p>
         </section>
         <section id="contribute" className="contribute">
