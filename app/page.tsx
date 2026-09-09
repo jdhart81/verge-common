@@ -36,147 +36,165 @@ export default function Home() {
           <div className="hero-grid">
             <div>
               <h1>
-                Care for a place.
+                Conserve together.
                 <br />
-                Build a <em>commons.</em>
+                Share the <em>returns.</em>
               </h1>
               <p className="intro">
-                The living world is local. So is the work of caring for it.
-                Free, open-source tools to help neighbors turn a shared place
-                into shared action.
+                The open-source cooperative system for EcoHedge projects and
+                larger conservation parcels. Bring land commitments, pooled
+                carbon accounting, and transparent member payouts into one
+                commons.
               </p>
               <div className="actions">
-                <a className="button primary" href="/demo/">
-                  Try the community edition <ArrowRight size={18} />
+                <a className="button primary" href="/coop/">
+                  Explore the co-op workbench <ArrowRight size={18} />
                 </a>
                 <a className="text-link" href={repo}>
                   Explore the source <ArrowUpRight size={17} />
                 </a>
               </div>
               <p className="fine">
-                Early community edition. Free to use, study, change, and share.
+                Working scenario model. No live credit issuance or money
+                movement.
               </p>
             </div>
             <aside className="field-note">
               <div className="note-head">
-                <span>FIELD NOTE / 001</span>
+                <span>THE COOPERATIVE MODEL</span>
                 <Sprout size={28} />
               </div>
               <p className="note-title">
-                A little place.
-                <br />A shared purpose.
+                Many parcels.
+                <br />
+                One governed pool.
               </p>
               <div className="note-row">
                 <MapPin />
                 <div>
-                  <strong>Choose a place</strong>
-                  <span>A garden, a stream, a patch of neighborhood.</span>
+                  <strong>Bring land into the co-op</strong>
+                  <span>
+                    EcoHedge corridors, woodlots, and larger conservation
+                    projects.
+                  </span>
                 </div>
               </div>
               <div className="note-row">
                 <Users />
                 <div>
-                  <strong>Plan one useful action</strong>
-                  <span>Start small. Make it something you can repeat.</span>
+                  <strong>Pool eligible contributions</strong>
+                  <span>
+                    Preserve each project’s evidence, rights, and vintage.
+                  </span>
                 </div>
               </div>
               <div className="note-row">
                 <BookOpen />
                 <div>
-                  <strong>Share what you learn</strong>
-                  <span>Let the next community build on your work.</span>
+                  <strong>Distribute proceeds transparently</strong>
+                  <span>
+                    Member-approved costs, reserves, and exact-cent allocations.
+                  </span>
                 </div>
               </div>
               <div className="note-foot">
-                PLACE → ACTION → LEARNING → REPEAT
+                LAND → AGREEMENT → POOL → PROCEEDS
               </div>
             </aside>
           </div>
         </section>
         <div className="principle-band">
-          <span>Built in the open.</span>
-          <span>Rooted in local care.</span>
-          <span>Made to be shared.</span>
+          <span>Open-source infrastructure.</span>
+          <span>Member-governed conservation.</span>
+          <span>Transparent benefit sharing.</span>
         </div>
         <section id="mission" className="wrap mission">
           <div>
             <p className="eyebrow">01 / WHY WE EXIST</p>
             <h2>
-              The commons starts
+              Conservation at
               <br />
-              where you are.
+              the scale of a landscape.
             </h2>
           </div>
           <div className="mission-copy">
             <p>
-              Healthy places need people who know them, care for them, and keep
-              showing up. Verge Common makes that everyday work easier to
-              organize.
+              An EcoHedge project and a larger conserved parcel can participate
+              in the same cooperative structure. Verge Common is designed to
+              coordinate their agreements, stewardship obligations, evidence,
+              and shares of collective value.
             </p>
             <p>
-              We’re opening the code because communities should be able to
-              understand their tools, adapt them, and carry on without depending
-              on one company.
+              The co-op governs the pool. Landowners retain the rights defined
+              in their agreements; qualified easement holders retain their
+              responsibilities. Verge Common supplies the open infrastructure,
+              without taking a percentage of credit sales.
             </p>
             <p>
-              Our first step is a simple local planner. Our direction is a
-              community network shaped by real stewardship work.
+              Open code and reusable agreement workflows make the model
+              inspectable and adaptable. An easement alone does not create
+              carbon credits: eligible projects still need an accepted method,
+              review, and issuance process.
             </p>
           </div>
         </section>
         <section className="wrap release">
           <div className="section-head">
             <div>
-              <p className="eyebrow">02 / START SMALL</p>
-              <h2>A useful first step.</h2>
+              <p className="eyebrow">02 / THE OPERATING SYSTEM</p>
+              <h2>From land to shared benefit.</h2>
             </div>
-            <span className="pill">COMMUNITY EDITION · v0.1</span>
+            <span className="pill">COOPERATIVE PREVIEW · v0.2</span>
           </div>
           <div className="three-grid">
             <article>
               <span className="index">01</span>
-              <h3>Make a place card</h3>
+              <h3>Conservation commitments</h3>
               <p>
-                Give a place a name and a purpose. Use a general area; keep
-                exact addresses and sensitive habitat locations out.
+                Open enrollment and easement intake workflows capture rights,
+                obligations, counterparties, and review milestones. Legal
+                execution and recording remain separate.
               </p>
             </article>
             <article>
               <span className="index">02</span>
-              <h3>Plan & record an action</h3>
+              <h3>Cooperative credit pools</h3>
               <p>
-                Choose one task, mark it complete, and keep a short note about
-                what you learned.
+                Model contributions by project and vintage, set ecological
+                reserves, and preserve provenance. Mixed methods and
+                incompatible vintages cannot simply be merged.
               </p>
             </article>
             <article>
               <span className="index">03</span>
-              <h3>Carry the work forward</h3>
+              <h3>Member payouts</h3>
               <p>
-                Download your plan or copy an invitation to share yourself.
-                Everything stays in your browser until you choose to share it.
+                Inspect a proceeds waterfall for stewardship, treasury reserves,
+                and member allocations. Each cent is accounted for under an
+                explicit draft share schedule.
               </p>
             </article>
           </div>
           <p className="release-note">
-            This edition stores plans on your device. Shared accounts, live
-            neighborhood discovery, and verified ecological outcomes are future
-            work.
+            Available now: an editable co-op scenario, exact accounting, draft
+            agreement packet, and open architecture. Shared records, executed
+            easements, registry operations, and actual payouts are not live.
           </p>
         </section>
         <section id="contribute" className="contribute">
           <div className="wrap">
             <p className="eyebrow">03 / BUILD WITH US</p>
             <h2>
-              Good ideas should
+              A conservation model
               <br />
-              travel.
+              any community can build on.
             </h2>
             <div className="contribute-bottom">
               <p>
-                Try it with a place you care about. Tell us what helped. Improve
-                a translation, fix a bug, or help make the tools more
-                accessible. You don’t have to write code to contribute.
+                Help build the common infrastructure: landowners, EcoHedge
+                organizers, land trusts, cooperative practitioners, carbon
+                specialists, and developers. Start with the open system design,
+                challenge an assumption, or improve a workflow.
               </p>
               <a
                 className="button light"
@@ -193,7 +211,7 @@ export default function Home() {
           <Sprout />
           verge common
         </a>
-        <span>Open code. Local care.</span>
+        <span>Open code. Cooperative conservation.</span>
         <div>
           <a href={`${repo}/blob/main/LICENSE`}>AGPL-3.0</a>
           <a href={`${repo}/blob/main/PRIVACY.md`}>Privacy</a>

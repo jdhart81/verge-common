@@ -1,20 +1,30 @@
 # Verge Common
 
-**Care for a place. Build a commons.**
+**Open infrastructure for cooperative conservation.**
 
-Verge Common is an open-source project for neighbors who want to care for the places they share. We are releasing the code for the mission: communities should be able to understand, adapt, and carry their tools forward.
+Verge Common is an open-source cooperative conservation system for EcoHedge projects and larger land parcels. We are releasing the code for the mission: communities should be able to understand, adapt, and carry their tools forward.
 
 [Website](https://verge-common-community.jdhart.chatgpt.site) · [Try the planner](https://verge-common-community.jdhart.chatgpt.site/demo/) · [Contribute](CONTRIBUTING.md) · [Roadmap](ROADMAP.md)
 
+## The cooperative system
+
+Verge Common applies the cooperative model to EcoHedge projects and larger conservation parcels: conservation commitments → reviewed evidence → compatible credit pools → settlement → transparent member payouts → continuing monitoring.
+
+[Co-op workbench](https://verge-common-community.jdhart.chatgpt.site/coop/) · [Complete operating model](docs/COOPERATIVE_SYSTEM.md) · [Open agreement workflows](templates/)
+
 ## What works today
 
-- Create one place card with a name, general area, and purpose.
-- Add actions, mark them complete, and record observations.
-- Save on your device using browser storage.
-- Download a JSON copy and copy an invitation to share yourself.
-- Run the website locally or host its static output.
+- Model EcoHedge and larger conservation projects, members, draft shares, and a compatible pool scope.
+- Calculate ecological reserves, proposed sales, co-op budgets, and exact-cent member allocations.
+- Reject oversales, invalid shares, incompatible scopes, unsafe quantities, and missing membership references.
+- Export a scenario packet with modeled allocations and uncompleted agreement review records.
+- Adapt open enrollment, easement review, and charter/payout policy scaffolds.
+- Use the supporting local place/action planner at `/demo/`.
+- Run or self-host the static website without service credentials.
 
-**This is an early, device-local community edition.** It is not a shared neighborhood network. There are no accounts, shared database, live member counts, payments, carbon issuance, or certified ecological claims. Clearing browser storage removes the saved plan. JSON export is a backup; import is not implemented yet.
+**This is a cooperative system prototype, not a live credit or payment platform.** Workbench data lasts for the page session; export before leaving. It has no shared database, executed conservation agreements, registry connection, real cash settlement, or paid member dividends. Matching scenario scope labels do not establish program eligibility. The agreement scaffolds require authorized parties and jurisdiction-specific review; they are not ready-to-sign deeds.
+
+The supporting `/demo/` planner separately saves one plan in browser storage. JSON export is a backup; import is not implemented yet.
 
 ## Run locally
 
@@ -51,9 +61,9 @@ Useful contributions include accessibility improvements, translations, documenta
 
 ## Privacy and scope
 
-Plans stay in browser storage until you copy or download them. The invitation includes the place, general area, purpose, and unfinished actions, but excludes notes. A downloaded JSON file includes notes. Do not enter sensitive parcel locations, personal contact details, or other private information. See [PRIVACY.md](PRIVACY.md) and [SECURITY.md](SECURITY.md).
+Co-op scenarios remain in page memory until exported. The supporting local planner stores its plan in browser storage. The invitation includes the place, general area, purpose, and unfinished actions, but excludes notes. A downloaded JSON file includes notes. Do not enter sensitive parcel locations, personal contact details, or other private information. See [PRIVACY.md](PRIVACY.md) and [SECURITY.md](SECURITY.md).
 
-This repository contains the clean public community edition. It does not include the separate private application, internal research, formal proof candidates, production records, or credentials. The project makes no certification or carbon-credit eligibility claim.
+This repository contains the clean public community edition. It does not include the separate private application, internal research, formal proof candidates, production records, or credentials. The project makes no certification or carbon-credit eligibility claim. The platform takes no percentage of co-op credit sales.
 
 ## License
 

@@ -4,7 +4,10 @@ Thank you for helping communities care for their places.
 
 ## Start with something useful
 
-- Try the planner and describe one confusing step.
+- Review the cooperative system design with landowners, land trusts, EcoHedge organizers, and co-op practitioners.
+- Improve the agreement intake/review scaffolds without presenting drafts as executed instruments.
+- Test quantity accounting, member allocation edge cases, and future custody/settlement controls.
+- Try the workbench and describe one confusing step.
 - Improve keyboard navigation, readability, or screen-reader support.
 - Suggest clearer wording or contribute a translation approach.
 - Add a focused improvement from the roadmap with a small reproducible example.

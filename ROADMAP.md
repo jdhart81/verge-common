@@ -1,22 +1,25 @@
-# Roadmap
+# Cooperative conservation roadmap
 
-## Available in v0.1
+## Available in v0.2
 
-Public project site; device-local place card, action checklist and notes; invitation text; JSON export; static self-hosting; open contribution workflow.
+Mission website, editable EcoHedge/large-parcel co-op scenario, compatible-scope check, exact quantity and money arithmetic, member share schedule, draft packet export, and open agreement/policy workflows. The local stewardship planner remains available.
 
-## Next: improve the small local loop
+## Next: a durable cooperative workspace
 
-- Restore an exported plan with validation and a clear overwrite preview.
-- Test accessibility with community participants and assistive technology.
-- Improve invitations after feedback from real local organizers.
-- Establish a translation structure without duplicating business logic.
+Build shared project/member records, authenticated roles, consent and visibility controls, private document storage, agreement review states, immutable evidence references, and charter proposal/vote records. Require access-control and privacy tests before admitting real records. Select the first pilot jurisdiction, co-op partner, and easement holder before implementing jurisdiction-specific instruments.
 
-The next product milestone is one group completing a useful action and returning for another. We have not established adoption or repeat participation from this release.
+## Then: program and accounting integration
 
-## Later: shared community edition
+Choose an applicable methodology and program with qualified review; connect reviewed contributions to program-authorized issued holdings with serial-range custody and duplicate-claim controls. Keep incompatible pools separate. Implement version-bound allocation records and external settlement reconciliation.
 
-Shared circles and projects require authentication, participant consent, access controls, moderation, deletion/export tools, and a self-hostable persistence layer. We will scope them around observed community needs, not promise dates before testing those needs.
+## Then: authorized member payouts
 
-## Separate decisions
+Add co-op-controlled approvals, payment-provider integration, idempotency, receipt matching, disputes, reversals, and reconciliation. Simulate failures and retries before any authorized live transaction. Keep allocated, instructed, paid and reconciled amounts distinct.
 
-Paid hosting and support are possible sustainability models, not currently offered services. Carbon accounting, issuance, trading, certification, and formal verification are outside this release. None is enabled by completing a task in the planner.
+## Continuing conservation
+
+Track monitoring obligations, disturbances, program responses, stewardship budgets, and member communications. A software release does not establish legal validity, carbon eligibility, or ecological outcomes.
+
+## Adoption milestone
+
+One partner co-op completes a reviewed project intake and validates a draft allocation policy, then returns for a second operating cycle. No partner adoption or paid result is claimed by this release. Open-source growth should follow useful, repeatable conservation work.

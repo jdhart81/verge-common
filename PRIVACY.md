@@ -1,5 +1,7 @@
 # Privacy
 
+The co-op workbench (`/coop/`) keeps scenario data in page memory only. Export includes project/member names, quantities, policy inputs and modeled allocations. It does not upload the packet, execute its agreements, or send payments. Use fictional or non-sensitive inputs; there is no secure document vault in this release.
+
 The community planner stores one plan under `verge-common-plan-v1` in your browser's local storage. It does not send plan contents to an application server and includes no application analytics or advertising trackers.
 
 Anyone using the same browser profile may be able to read the plan. Private browsing, storage limits, or clearing site data may erase it. Download a backup if you need to keep it.
