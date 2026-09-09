@@ -1,0 +1,15 @@
+{
+  "id": "/", "name": "Verge Common", "short_name": "Verge",
+  "description": "Join a local conservation co-op, care for a place, and organize with your community.",
+  "lang": "en", "start_url": "/network/", "scope": "/",
+  "display": "standalone", "background_color": "#f7f9f6", "theme_color": "#17513b",
+  "icons": [
+    {"src": "/icons/app-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any"},
+    {"src": "/icons/app-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any"},
+    {"src": "/icons/maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable"}
+  ],
+  "shortcuts": [
+    {"name": "Find a co-op", "url": "/network/"},
+    {"name": "My co-ops", "url": "/workspace/"}
+  ]
+}

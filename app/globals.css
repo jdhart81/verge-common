@@ -997,3 +997,23 @@ p {
     flex: 1 1 40%;
   }
 }
+
+/* Installable community app */
+.app-start { max-width: 720px; margin: 0 auto; padding: 32px 24px 80px; }
+.app-wordmark { font-weight: 700; color: #17513b; }
+.app-start h1 { font: 600 clamp(2.3rem, 7vw, 4rem)/1.08 Georgia, serif; margin: 32px 0 20px; }
+.app-start section { margin-top: 36px; padding-top: 16px; border-top: 1px solid var(--border); }
+.app-start-actions { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 24px; }
+.app-start-actions a { background: var(--primary); color: white; border-radius: 8px; padding: 14px 20px; font-weight: 700; }
+.app-start-actions a + a { background: var(--muted); color: var(--foreground); }
+.app-start summary { cursor: pointer; padding: 14px 0; font-weight: 700; }
+.app-start details { border-bottom: 1px solid var(--border); }
+.install-note, .connection-note { background: #17513b; color: white; padding: 12px 20px; display: flex; align-items: center; justify-content: center; flex-wrap: wrap; gap: 12px; }
+.install-note button, .connection-note button { border: 1px solid #fff8; border-radius: 6px; padding: 8px 12px; background: transparent; color: white; min-height: 44px; cursor: pointer; }
+.mobile-app-nav { display: none; }
+@media (max-width: 760px) {
+  body { padding-bottom: calc(78px + env(safe-area-inset-bottom)); }
+  .mobile-app-nav { display: flex; position: fixed; z-index: 40; bottom: 0; left: 0; right: 0; padding: 8px 8px calc(8px + env(safe-area-inset-bottom)); background: #fff; border-top: 1px solid var(--border); box-shadow: 0 -4px 18px #142d2410; }
+  .mobile-app-nav a { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 3px; font-size: 14px; min-height: 48px; justify-content: center; }
+  .install-note, .connection-note { position: sticky; bottom: calc(70px + env(safe-area-inset-bottom)); z-index: 39; }
+}

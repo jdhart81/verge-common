@@ -362,6 +362,7 @@ export function NetworkApp({
           verge common
         </a>
         <nav aria-label="Main navigation">
+          <a href="/app/">Get the app</a>
           <a href="/network/">Discover</a>
           <a href="/workspace/" target="_top">
             My co-ops
