@@ -5,6 +5,7 @@ import {
   formatMoney,
   areaToSquareMetres,
 } from '@/lib/international.mjs';
+import { MonitoringBoard } from '@/components/monitoring-board';
 import { CommunityBoard, PublicEvents } from '@/components/community-board';
 import { allocateCents } from '@/lib/network.mjs';
 import { useCallback, useEffect, useRef, useState } from 'react';
@@ -644,6 +645,7 @@ export function NetworkApp({
                   'community',
                   'start',
                   'organizations',
+                  'monitoring',
                   'pooling',
                   'projects',
                   'parcels',
@@ -797,6 +799,16 @@ export function NetworkApp({
                     </p>
                   </aside>
                 </div>
+              </TabsContent>
+              <TabsContent value="monitoring">
+                <MonitoringBoard
+                  key={selected}
+                  state={state}
+                  steward={steward}
+                  busy={busy}
+                  mutate={mutate}
+                  refresh={() => load(selected)}
+                />
               </TabsContent>
               <TabsContent value="pooling">
                 <h2>Bring compatible parcels into one pathway</h2>

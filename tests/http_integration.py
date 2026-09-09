@@ -41,6 +41,16 @@ code,current=call('/api/workspaces',{'id':id,'version':current['version'],'op':'
 assert code==200 and current['state']['events'][0]['goingCount']==1,(code,current)
 code,reloaded=call('/api/workspaces?id='+id)
 assert reloaded['state']['events'][0]['yourResponse']=='going'
+# Monitoring access gates reject unreviewed boundaries and forged provider receipts.
+code,current=call('/api/workspaces',{'id':id,'version':current['version'],'op':'record_parcel','requestId':str(uuid.uuid4()),'payload':{'projectId':project,'name':'Monitoring fixture','landReference':'synthetic','areaSquareMetres':1000,'consentReference':'synthetic consent'}})
+assert code==200,(code,current)
+parcel=current['state']['parcels'][0]['id']
+code,current=call('/api/workspaces',{'id':id,'version':current['version'],'op':'save_boundary','requestId':str(uuid.uuid4()),'payload':{'parcelId':parcel,'geometry':{'type':'Polygon','coordinates':[[[0,0],[0.01,0],[0.01,0.01],[0,0]]]},'consentReference':'synthetic boundary consent','externalSearchAllowed':True}})
+assert code==200,(code,current)
+code,_=call('/api/monitoring',{'id':id,'parcelId':parcel,'start':'2026-08-01','end':'2026-08-31','confirmExternal':True})
+assert code==400,code
+code,_=call('/api/workspaces',{'id':id,'version':current['version'],'op':'record_satellite_search','requestId':str(uuid.uuid4()),'payload':{'parcelId':parcel}})
+assert code==400,code
 # R2 upload, attachment authorization, digest and durable evidence metadata.
 import hashlib
 content=b'Synthetic conservation evidence. No private information.'

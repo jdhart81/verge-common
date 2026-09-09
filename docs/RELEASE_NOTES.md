@@ -48,3 +48,7 @@ Added guided setup, self-reported organization profiles and regional discovery l
 ## 0.5.0 — Participation and moderation
 
 Added the member community board, timed events with private meeting instructions, capacity-aware RSVPs, Unicode-safe calendar downloads, member-only discussion replies, reports, and independent steward review of reported content. Public event summaries respect event/project/co-op visibility. Cancelled events reject further responses. Existing JSON records remain compatible without a schema migration. Local launch remains a trial workflow; production access is still separately controlled.
+
+## 0.6.0 — Parcel monitoring foundation
+
+Added private GeoJSON boundary versions and outlines, independent boundary review, revocable consent for catalogue queries, a live Copernicus Sentinel-2 L2A discovery connector, source receipts, and independently reviewed field observations. New boundary versions require review before further monitoring. No imagery processing, automated alerts, vegetation-change calculation, carbon estimation, or credit issuance is implemented by this connector. Existing database schema remains unchanged.

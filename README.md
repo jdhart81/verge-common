@@ -16,6 +16,9 @@ See [Worldwide adoption](docs/WORLDWIDE.md) for regional setup and production ho
 
 ## What is implemented
 
+- Private versioned GeoJSON boundaries, independent review, explicit external-search consent, Copernicus Sentinel-2 catalogue discovery, and reviewed field observations. See [Monitoring](docs/MONITORING.md).
+
+
 - A member community board with shared events, capacity-aware RSVPs, private calendar downloads, project discussions, and steward moderation.
 
 

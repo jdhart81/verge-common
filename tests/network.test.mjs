@@ -736,3 +736,113 @@ test('discussions remain private and reports require independent steward resolut
     'Private reply',
   );
 });
+
+test('monitoring needs current reviewed boundaries, consent and private parcel access', () => {
+  const f = twoStewards();
+  const projectId = f.run('create_project', {
+    name: 'Test plot',
+    summary: 'Synthetic',
+    region: 'Test',
+    kind: 'restoration',
+  });
+  const parcelId = f.run('record_parcel', {
+    projectId,
+    name: 'Private plot',
+    landReference: 'ref',
+    areaSquareMetres: 1000,
+    consentReference: 'consent',
+  });
+  const geometry = {
+    type: 'Polygon',
+    coordinates: [
+      [
+        [0, 0],
+        [0.01, 0],
+        [0.01, 0.01],
+        [0, 0],
+      ],
+    ],
+  };
+  const boundaryId = f.run('save_boundary', {
+    parcelId,
+    geometry,
+    consentReference: 'Specific monitoring consent',
+    externalSearchAllowed: true,
+  });
+  assert.throws(
+    () =>
+      f.run('review_boundary', {
+        parcelId,
+        id: boundaryId,
+        decision: 'approve',
+      }),
+    /Another steward/,
+  );
+  assert.throws(
+    () =>
+      f.run('record_satellite_search', { parcelId, boundaryId, scenes: [] }),
+    /reviewed/,
+  );
+  f.run(
+    'review_boundary',
+    { parcelId, id: boundaryId, decision: 'approve' },
+    reviewer,
+  );
+  f.run('record_satellite_search', { parcelId, boundaryId, scenes: [] });
+  const observation = f.run('record_observation', {
+    parcelId,
+    observedAt: 50,
+    method: 'Fixed transect',
+    finding: 'Observed 3 trees',
+  });
+  assert.throws(
+    () => f.run('review_observation', { id: observation, decision: 'approve' }),
+    /Another steward/,
+  );
+  f.run(
+    'review_observation',
+    { id: observation, decision: 'approve' },
+    reviewer,
+  );
+  const member = f.run(
+    'request_membership',
+    { name: 'Other member' },
+    stranger,
+  );
+  f.run('member_status', { id: member, status: 'active' });
+  assert.equal(memberView(f.s, stranger.id).state.observations.length, 0);
+  assert.equal(memberView(f.s, stranger.id).state.satelliteSearches.length, 0);
+  assert.equal(publicWorkspace(f.s).parcels, undefined);
+  assert.throws(
+    () =>
+      f.run(
+        'record_observation',
+        { parcelId, observedAt: 50, method: 'Test', finding: 'Test' },
+        stranger,
+      ),
+    /steward/,
+  );
+  f.run('revoke_satellite_consent', { parcelId, id: boundaryId });
+  assert.throws(
+    () =>
+      f.run('record_satellite_search', { parcelId, boundaryId, scenes: [] }),
+    /allow/,
+  );
+  f.run('save_boundary', {
+    parcelId,
+    geometry,
+    consentReference: 'Revised',
+    externalSearchAllowed: true,
+  });
+  assert.throws(
+    () =>
+      f.run('record_observation', {
+        parcelId,
+        observedAt: 50,
+        method: 'Test',
+        finding: 'Test',
+      }),
+    /Review/,
+  );
+  assert.equal(f.s.observations[0].boundaryId, boundaryId);
+});

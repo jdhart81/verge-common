@@ -1,11 +1,12 @@
 # Roadmap
 
-## Built through 0.5.0
+## Built through 0.6.0
 
 - Public conservation discovery and self-reported organization profiles; private co-ops and expiring invitations.
 - Guided setup, country/currency settings, land-unit conversion, and local trial launcher.
 - Community events, capacity-aware RSVPs, calendar downloads, discussions, reports, and steward moderation.
 - Private parcels, consent references, agreement/evidence review, and pooling-assessment snapshots.
+- Reviewed GeoJSON boundary versions, live satellite-scene discovery with consent, source receipts, and field observations.
 - Charter proposals and member voting, exact allocations, and independently reviewed external credit/payment records.
 - Audit history, scoped exports, membership removal, and archival.
 
@@ -47,3 +48,7 @@ Choose a real jurisdiction, legal structure, easement or tenure arrangement, and
 Registry provenance and cross-co-op serial reconciliation; authenticated settlement/payment receipts; governed payment execution; geospatial evidence and monitoring integrations. Select providers only for a real partner's requirements. New financial execution requires explicit authorization and provider controls.
 
 **Exit evidence:** externally reconciled records and demonstrated controls. Reviewed input is distinct from independently authenticated money movement.
+
+## Next monitoring increment
+
+Process selected imagery in a separately deployable worker: cloud masking, repeatable vegetation/change metrics, uncertainty and field-validation links. The website currently discovers catalogue scenes only. Select the first real monitored parcel and methodology before presenting ecological or carbon conclusions. Add area/overlap validation, complex polygons, and antimeridian support before broader geospatial intake.
