@@ -1,6 +1,6 @@
 # Verge Common imagery worker
 
-A separately runnable, open-source worker for paired-date vegetation screening. It consumes a private job exported from the co-op's Monitoring screen and prepared local Sentinel-2 L2A B04 (red), B08 (near infrared), and SCL files for two dates. It does not download imagery, start background jobs, issue credits, or send data to a server.
+A separately runnable, open-source worker for paired-date vegetation screening. It consumes a private job exported from the co-op's Monitoring screen and prepared local Sentinel-2 L2A B04 (red), B08 (near infrared), and SCL files for two dates. The optional CDSE adapter downloads selected source bands and prepares parcel crops. Neither command starts background jobs, issues credits, or uploads results.
 
 ## Run
 
@@ -14,7 +14,25 @@ python -m venv .venv
 
 On Windows use `.venv\Scripts\python.exe` and its corresponding pip. The output must not already exist, avoiding accidental overwrite. Import the resulting JSON under the matching job in Monitoring; a second steward reviews it.
 
-## Prepare inputs
+## Optional authorized download and screening
+
+The new adapter is **experimental: tested with synthetic responses and checked against live public catalog metadata; authenticated band downloads have not yet been validated**.
+
+Export a private job from Monitoring. Obtain your own Copernicus Data Space **OData access token** using the [official authentication instructions](https://documentation.dataspace.copernicus.eu/APIs/Token.html). Make it available as `CDSE_ACCESS_TOKEN` through your local secret manager or a hidden terminal prompt; never paste it into the website, job JSON, source files, or a committed environment file. A Sentinel Hub OAuth client is a different authentication workflow.
+
+With the worker dependencies installed:
+
+```sh
+.venv/bin/python workers/imagery/fetch.py --job /private/path/job.json --output-dir /private/path/new-run --allow-download
+```
+
+Use a new output directory outside the repository. The explicit flag authorizes up to six full-scene bands, each limited to 500 MB (up to 3 GB total, plus crops). Ensure sufficient storage and provider quota. Only scene IDs and ordinary request metadata go to Copernicus; parcel geometry stays on your computer. The local operator must have current authority to process the parcel: an exported job cannot check later membership changes or consent revocation.
+
+The adapter retrieves B04/B08 at 10 m and SCL at 20 m from the exact catalog item for each selected scene. It checks catalog file sizes and SHA-256/SHA3-256 multihashes, preserves raw files and catalog metadata, and crops locally without resampling. Catalog scale/offset and nodata are applied explicitly. Both dates must use the same Sentinel-2 tile and aligned grids; unsupported products fail closed.
+
+On success, import `receipt.json` in Monitoring. `files.json` allows local reprocessing; `retrieval.json` and the saved catalog responses retain source metadata. These are local records, not signed provider attestations, and the website does not authenticate them. Keep the entire folder private. On failure, no successful receipt is written; verified earlier bands may remain. Obtain a fresh token if expired and retry into a new folder. Redirects are refused to prevent credential forwarding; a provider redirect currently needs an adapter update after review. There are no automatic retries or token refreshes.
+
+## Prepare inputs manually
 
 Obtain the actual selected scenes through an authorized imagery provider. Retain their product metadata. Both dates' red and NIR rasters must have identical CRS, transform, dimensions and full parcel coverage. Use trusted, single-band GeoTIFF or JP2 files with explicit nodata. The SCL raster may be coarser; it is aligned with nearest-neighbor resampling. The worker rejects arbitrary VRT inputs and remote paths.
 
@@ -52,6 +70,6 @@ Means are unweighted pixel means, not area-weighted estimates. Terrain, phenolog
 
 ## Reproduction and trust
 
-Run `python workers/imagery/test_processor.py` for synthetic raster tests. Dependencies are pinned, but different native GDAL/PROJ builds can affect numerical reproduction; receipts identify Python package versions and the processor source, not every operating-system component. Preserve the actual inputs and environment for a rigorous audit.
+Run `python workers/imagery/test_processor.py` and `python workers/imagery/test_fetch.py` for synthetic raster and retrieval tests. Dependencies are pinned, but different native GDAL/PROJ builds can affect numerical reproduction; receipts identify Python package versions and the processor source, not every operating-system component. Preserve the actual inputs and environment for a rigorous audit.
 
 The website validates job/geometry/scene binding and internal numeric consistency. It does not execute the worker, verify input-file hashes against provider files, or attest the worker's identity. Imported receipts are explicitly computer-reported and require independent human review. Never treat import success or review status as registry certification.

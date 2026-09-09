@@ -38,3 +38,4 @@ jobs:
           cache-dependency-path: workers/imagery/requirements.txt
       - run: pip install -r workers/imagery/requirements.txt
       - run: python workers/imagery/test_processor.py
+      - run: python workers/imagery/test_fetch.py

@@ -56,3 +56,7 @@ Added private GeoJSON boundary versions and outlines, independent boundary revie
 ## 0.7.0 — Reproducible imagery screening
 
 Added immutable two-scene processing jobs, private job export, an independently runnable Python NDVI worker, input/source fingerprints, conservative SCL masking, paired-pixel comparisons, insufficient-coverage handling, validated result imports, and independent steward review notes. Added synthetic raster tests and a separate CI job. Prepared imagery is still required; no provider download, background processing, carbon quantification, or market action is enabled.
+
+## After 0.7.0 — Experimental authorized imagery retrieval
+
+Added an operator-run CDSE OData adapter for exact selected bands, catalog checksum/size verification, local parcel cropping, explicit radiometry, and automatic screening-receipt generation. Tokens remain in the operator environment. Downloads are bounded and require an explicit flag. Synthetic end-to-end and failure tests run in CI. Authenticated provider downloads remain unvalidated pending operator credentials; the hosted application and access settings are unchanged.
