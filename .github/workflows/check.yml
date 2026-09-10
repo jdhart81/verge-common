@@ -39,3 +39,11 @@ jobs:
       - run: pip install -r workers/imagery/requirements.txt
       - run: python workers/imagery/test_processor.py
       - run: python workers/imagery/test_fetch.py
+
+  ios:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: swift test --package-path ios
+      - name: Compile iPhone and iPad app without signing
+        run: xcodebuild -quiet -project ios/VergeCommon.xcodeproj -scheme VergeCommon -destination 'generic/platform=iOS Simulator' -derivedDataPath /tmp/verge-ios CODE_SIGNING_ALLOWED=NO build

@@ -1,4 +1,5 @@
 'use client';
+import { FieldDraftImport } from '@/components/field-draft-import';
 import { AnalysisPanel } from '@/components/analysis-panel';
 import { useState } from 'react';
 import { Input } from '@/components/ui/input';
@@ -457,6 +458,7 @@ export function MonitoringBoard({
             </p>
             <h3 className="mt-8">Record a field visit</h3>
             <Form
+              key={parcel.id}
               submit="Save observation for review"
               disabled={disabled || boundary?.status !== 'reviewed'}
               save={(v) =>
@@ -467,6 +469,7 @@ export function MonitoringBoard({
                 })
               }
             >
+              <FieldDraftImport />
               <label>
                 Observation date
                 <Input type="date" name="date" required />

@@ -42,3 +42,11 @@ next-env.d.ts
 __pycache__/
 *.pyc
 .venv/
+
+# Apple local build and account state
+.build/
+DerivedData/
+xcuserdata/
+*.xcuserstate
+*.ipa
+*.xcarchive/

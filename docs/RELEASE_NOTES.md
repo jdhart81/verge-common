@@ -60,3 +60,7 @@ Added immutable two-scene processing jobs, private job export, an independently 
 ## After 0.7.0 — Experimental authorized imagery retrieval
 
 Added an operator-run CDSE OData adapter for exact selected bands, catalog checksum/size verification, local parcel cropping, explicit radiometry, and automatic screening-receipt generation. Tokens remain in the operator environment. Downloads are bounded and require an explicit flag. Synthetic end-to-end and failure tests run in CI. Authenticated provider downloads remain unvalidated pending operator credentials; the hosted application and access settings are unchanged.
+
+## Native field-journal release candidate
+
+Added an iOS 17+ SwiftUI field journal, protected atomic local saves, JSON export, delete confirmation and browser links to the community. Added an explicit preview-and-fill field-draft importer to Monitoring. Existing server permissions and independent steward review remain in force. Native build/tests and website validation are separate from physical-device acceptance, signing and TestFlight distribution. No production deployment is included in this candidate.
