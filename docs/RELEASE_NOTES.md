@@ -68,3 +68,7 @@ Added an iOS 17+ SwiftUI field journal, protected atomic local saves, JSON expor
 ## Native journal reliability candidate
 
 Added full-journal backup/import, conflict-safe merging and explicit reload after transient access failures. Moved persistence into a testable repository that updates visible state only after successful atomic writes. Reads are bounded before JSON decoding. Added disk/reopen and injected write-failure tests. This increment remains an unsigned candidate, with no website deployment or TestFlight upload.
+
+## Native public community discovery candidate
+
+Added a native Discover tab with public co-op/project/update/event views backed by the current network API, restricted-access handling and a bounded anonymous client. The network list accepts a validated optional page size for small mobile requests. Added cross-language public-projection contract and native HTTP request tests. Documented the current repository as the shared service and the private application as legacy/reference. Native sign-in, posting, membership and sync are not yet connected. No production deployment or TestFlight upload is included.

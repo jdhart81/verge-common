@@ -98,3 +98,7 @@ The repository contains the clean public system. Separate private research, proo
 ## License
 
 Original code and original workflow templates: GNU AGPL v3.0 only. See [LICENSE](LICENSE), [NOTICE](NOTICE), and [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md). Dependency code retains its own licenses. Forks are welcome; do not imply endorsement through the Verge Common name.
+
+## Shared service and native app
+
+The website and native client use this repository's co-op service. See [architecture and legacy reconciliation](docs/ARCHITECTURE.md) and [iPhone/iPad build status](ios/README.md). Native public discovery is implemented; authenticated participation remains a browser flow. Current native candidates are not yet distributed through TestFlight.

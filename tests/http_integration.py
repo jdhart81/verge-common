@@ -14,6 +14,9 @@ def call(path,data=None,origin=base):
   raw=e.read()
   try:return e.code,json.loads(raw)
   except json.JSONDecodeError:return e.code,{'error':raw.decode(errors='replace')}
+for bad_limit in ['0','31','1.5','bad']:
+ code,_=call('/api/network?limit='+bad_limit);assert code==400,code
+code,page=call('/api/network?limit=1');assert code==200 and len(page['coops'])<=1
 id=str(uuid.uuid4());code,result=call('/api/workspaces',{'op':'create','requestId':id,'payload':{'name':'HTTP integration fixture','region':'Synthetic test region','summary':'Private automated development test','displayName':'Development tester'}})
 assert code==201,(code,result)
 code,result=call('/api/workspaces?id='+id);assert code==200,(code,result);assert result['version']==0

@@ -1,0 +1,44 @@
+{
+  "coops": [
+    {
+      "id": "fixture-coop",
+      "name": "Fixture river co-op",
+      "region": "Synthetic region",
+      "country": "",
+      "summary": "Test data only",
+      "projects": [
+        {
+          "id": "project",
+          "name": "River care",
+          "summary": "Synthetic public project",
+          "region": "Synthetic region",
+          "kind": "restoration",
+          "status": "active"
+        }
+      ],
+      "events": [
+        {
+          "id": "event",
+          "projectId": "project",
+          "title": "Fixture walk",
+          "summary": "Test event",
+          "startsAt": 1000,
+          "endsAt": 2000,
+          "timeZone": "UTC",
+          "status": "scheduled"
+        }
+      ],
+      "organization": null,
+      "updates": [
+        {
+          "id": "update",
+          "projectId": "project",
+          "text": "Fixture field visit 🌱",
+          "createdAt": 1000
+        }
+      ],
+      "memberCount": 1
+    }
+  ],
+  "next": null
+}

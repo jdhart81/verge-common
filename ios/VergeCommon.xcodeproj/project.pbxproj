@@ -1,11 +1,11 @@
 // !$*UTF8*$!
 {archiveVersion = 1; classes = {}; objectVersion = 56; objects = {
 000000000000000000000001 = {isa = PBXProject; mainGroup = 000000000000000000000002; productRefGroup = 000000000000000000000003; targets = (000000000000000000000004); buildConfigurationList = 00000000000000000000000A; compatibilityVersion = "Xcode 14.0"; developmentRegion = en; knownRegions = (en, Base); projectDirPath = ""; projectRoot = ""; attributes = { LastUpgradeCheck = 1660; };};
-000000000000000000000002 = {isa = PBXGroup; children = (000000000000000000000014,000000000000000000000015,000000000000000000000016,000000000000000000000003); sourceTree = "<group>";};
+000000000000000000000002 = {isa = PBXGroup; children = (000000000000000000000028,000000000000000000000014,000000000000000000000015,000000000000000000000016,000000000000000000000003); sourceTree = "<group>";};
 000000000000000000000003 = {isa = PBXGroup; name = Products; children = (000000000000000000000005); sourceTree = "<group>";};
 000000000000000000000004 = {isa = PBXNativeTarget; name = VergeCommon; productName = VergeCommon; productReference = 000000000000000000000005; productType = "com.apple.product-type.application"; buildConfigurationList = 00000000000000000000000B; buildPhases = (000000000000000000000006,000000000000000000000007,000000000000000000000008); buildRules = (); dependencies = ();};
 000000000000000000000005 = {isa = PBXFileReference; explicitFileType = wrapper.application; path = VergeCommon.app; sourceTree = BUILT_PRODUCTS_DIR;};
-000000000000000000000006 = {isa = PBXSourcesBuildPhase; buildActionMask = 2147483647; files = (00000000000000000000001E,00000000000000000000001F); runOnlyForDeploymentPostprocessing = 0;};
+000000000000000000000006 = {isa = PBXSourcesBuildPhase; buildActionMask = 2147483647; files = (000000000000000000000029,00000000000000000000001E,00000000000000000000001F); runOnlyForDeploymentPostprocessing = 0;};
 000000000000000000000007 = {isa = PBXFrameworksBuildPhase; buildActionMask = 2147483647; files = (); runOnlyForDeploymentPostprocessing = 0;};
 000000000000000000000008 = {isa = PBXResourcesBuildPhase; buildActionMask = 2147483647; files = (000000000000000000000020); runOnlyForDeploymentPostprocessing = 0;};
 00000000000000000000000A = {isa = XCConfigurationList; buildConfigurations = (00000000000000000000000C,00000000000000000000000D); defaultConfigurationIsVisible = 0; defaultConfigurationName = Release;};
@@ -20,4 +20,6 @@
 00000000000000000000001E = {isa = PBXBuildFile; fileRef = 000000000000000000000014;};
 00000000000000000000001F = {isa = PBXBuildFile; fileRef = 000000000000000000000015;};
 000000000000000000000020 = {isa = PBXBuildFile; fileRef = 000000000000000000000016;};
+000000000000000000000028 = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "VergeCommon/CommunityAPI.swift"; sourceTree = "<group>";};
+000000000000000000000029 = {isa = PBXBuildFile; fileRef = 000000000000000000000028;};
 }; rootObject = 000000000000000000000001; }

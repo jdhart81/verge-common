@@ -50,6 +50,7 @@ struct JournalHome: View {
     @State private var exportName = "verge-field-draft"
     var body: some View {
         TabView {
+            CommunityDiscovery().tabItem { Label("Discover", systemImage: "globe") }
             NavigationStack {
                 List {
                     Section {
@@ -90,8 +91,8 @@ struct JournalHome: View {
             NavigationStack {
                 List {
                     Section("Your community") {
-                        Link("Discover conservation co-ops", destination: URL(string: "https://verge-common-community.jdhart.chatgpt.site/network/")!)
-                        Link("Open my co-op workspace", destination: URL(string: "https://verge-common-community.jdhart.chatgpt.site/workspace/")!)
+                        Link("Discover conservation co-ops", destination: CommunityService.page("network/"))
+                        Link("Open my co-op workspace", destination: CommunityService.page("workspace/"))
                         Text("Opens your browser. Sign-in and the site’s access rules apply. The hosted pilot currently has restricted access.").font(.subheadline).foregroundStyle(.secondary)
                     }
                     Section("Submit a field draft") {
@@ -157,5 +158,91 @@ struct DraftEditor: View {
                 }
                 .interactiveDismissDisabled()
         }
+    }
+}
+
+@MainActor final class CommunityModel: ObservableObject {
+    @Published var coops: [PublicCoop] = []
+    @Published var loading = false
+    @Published var message: String?
+    @Published var loaded = false
+    func refresh() async {
+        guard !loading else { return }
+        loading = true; message = nil
+        defer { loading = false }
+        do { coops = try await CommunityClient().recent().coops; loaded = true }
+        catch {
+            coops = []; loaded = false
+            message = (error as? CommunityError)?.localizedDescription ?? "Couldn’t load communities. Check your connection and try again."
+        }
+    }
+}
+struct CommunityDiscovery: View {
+    @StateObject private var model = CommunityModel()
+    var body: some View {
+        NavigationStack {
+            List {
+                Section {
+                    Text("Find people caring for a place. Only information a co-op has made public appears here.").foregroundStyle(.secondary)
+                    Link("Open my co-ops in the browser", destination: CommunityService.page("workspace/"))
+                }
+                if model.loading { ProgressView("Loading communities…") }
+                if let message = model.message {
+                    Section("Unable to load communities") {
+                        Text(message)
+                        Button("Try again") { Task { await model.refresh() } }
+                        Link("Check access on the website", destination: CommunityService.page("network/"))
+                    }
+                }
+                if model.loaded && model.coops.isEmpty { ContentUnavailableView("No public co-ops yet", systemImage: "person.3", description: Text("Private co-ops are not listed. Open the website to start a co-op or use your invitation.")) }
+                ForEach(model.coops) { coop in
+                    NavigationLink {
+                        CommunityDetail(coop: coop)
+                    } label: {
+                        VStack(alignment: .leading, spacing: 6) {
+                            Text(coop.name).font(.headline)
+                            Text(coop.region).font(.subheadline).foregroundStyle(.secondary)
+                            Text(coop.summary).lineLimit(3)
+                            Text("\(coop.memberCount) members · \(coop.projects.count) public projects").font(.caption).foregroundStyle(.secondary)
+                        }.padding(.vertical, 6)
+                    }
+                }
+                if model.loaded {
+                    Section { Text("Recently updated public co-ops. Details reflect the last refresh.").font(.subheadline).foregroundStyle(.secondary)
+                        Link("Browse the full network", destination: CommunityService.page("network/")) }
+                }
+            }
+            .navigationTitle("Discover")
+            .refreshable { await model.refresh() }
+            .task { if !model.loaded { await model.refresh() } }
+        }
+    }
+}
+struct CommunityDetail: View {
+    let coop: PublicCoop
+    var body: some View {
+        List {
+            Section { Text(coop.summary); Text([coop.region, coop.country].filter { !$0.isEmpty }.joined(separator: " · ")).foregroundStyle(.secondary)
+                Link("Join or participate on the website", destination: CommunityService.page("network/", id: coop.id))
+                Text("Membership, posting and RSVPs currently use the website’s sign-in and permissions.").font(.subheadline).foregroundStyle(.secondary) }
+            Section("Public projects") {
+                if coop.projects.isEmpty { Text("No public projects shared yet.").foregroundStyle(.secondary) }
+                ForEach(coop.projects) { project in VStack(alignment: .leading) { Text(project.name).font(.headline); Text(project.summary); Text(project.status).font(.caption).foregroundStyle(.secondary) } }
+            }
+            Section("Community updates") {
+                if coop.updates.isEmpty { Text("No public updates shared yet.").foregroundStyle(.secondary) }
+                ForEach(coop.updates.sorted { $0.createdAt > $1.createdAt }) { update in
+                    VStack(alignment: .leading) { Text(update.text); Text(Date(timeIntervalSince1970: update.createdAt / 1000), style: .date).font(.caption).foregroundStyle(.secondary) }
+                }
+            }
+            Section("Events") {
+                if coop.events.isEmpty { Text("No public events shared yet.").foregroundStyle(.secondary) }
+                ForEach(coop.events.sorted { $0.startsAt < $1.startsAt }) { event in
+                    VStack(alignment: .leading) { Text(event.title).font(.headline); Text(event.summary)
+                        Text(Date(timeIntervalSince1970: event.startsAt / 1000), format: .dateTime).font(.subheadline)
+                        Text("Time shown in your device’s time zone · \(event.status)").font(.caption).foregroundStyle(.secondary) }
+                }
+            }
+        }.navigationTitle(coop.name)
     }
 }

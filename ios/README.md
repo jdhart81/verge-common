@@ -1,6 +1,6 @@
 # Verge Common for iPhone and iPad
 
-Native SwiftUI field-journal companion, targeting iOS 17+. The hosted co-op network remains a web application. This is an unsigned development candidate, not a TestFlight or App Store release.
+Native SwiftUI conservation client, targeting iOS 17+, with public community discovery and a local field journal. The hosted co-op network remains a web application. This is an unsigned development candidate, not a TestFlight or App Store release.
 
 ## Build
 
@@ -15,6 +15,9 @@ For a physical device or archive, select your own developer team in Signing & Ca
 
 ## What works
 
+- Native recent-co-op discovery, public project summaries, community updates and event summaries from the existing `/api/network` service.
+- Pull-to-refresh, bounded responses, offline/error/access-restricted states, and browser handoff for joining or participating. No native authenticated social mutations yet.
+
 - Native creation/editing of place, calendar date, method, findings and optional HTTPS reference.
 - Atomic journal saves with complete file protection; invalid or unreadable journals are preserved and further writes are blocked.
 - Up to 1,000 drafts / 10 MB of encoded journal data; no automatic deletion or sync.
@@ -26,7 +29,7 @@ For a physical device or archive, select your own developer team in Signing & Ca
 
 Drafts are held in app storage and may be included in device backups according to device settings. Exports leave that protected storage and follow the user's chosen destination. This version requests no location, camera, tracking or notification access and has no analytics SDK. This is not a complete App Store privacy disclosure: inventory the final website/auth services and native build before submission.
 
-The native app currently points to the private Sites pilot. Independent operators must change the two explicit community URLs in `VergeCommonApp.swift` to their own HTTPS deployment and test that deployment's identity flow.
+The native app currently points to the private Sites pilot. Independent operators must change `CommunityService.origin` in `CommunityAPI.swift` to their own HTTPS deployment and test that deployment's identity flow.
 
 ## Before TestFlight
 
@@ -38,3 +41,5 @@ The native app currently points to the private Sites pilot. Independent operator
 - Complete App Store Connect metadata and TestFlight distribution only after release authorization. Membership activation alone does not create an app record or upload a build.
 
 Core tests validate schema, dates, text limits, exports, real disk save/edit/delete across repository reopens, backup restoration, repeated imports, conflict rollback, corrupt-file preservation, and simulated out-of-space failures. Compiling for a simulator or device does not prove a successful interactive device session.
+
+Native discovery tests include a shared synthetic fixture checked against the backend public projection and an intercepted URLSession request. No synthetic communities are seeded into the product. Access to the private hosted pilot is not established by these tests. See [the shared-service decision](../docs/ARCHITECTURE.md).
