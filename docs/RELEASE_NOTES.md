@@ -64,3 +64,7 @@ Added an operator-run CDSE OData adapter for exact selected bands, catalog check
 ## Native field-journal release candidate
 
 Added an iOS 17+ SwiftUI field journal, protected atomic local saves, JSON export, delete confirmation and browser links to the community. Added an explicit preview-and-fill field-draft importer to Monitoring. Existing server permissions and independent steward review remain in force. Native build/tests and website validation are separate from physical-device acceptance, signing and TestFlight distribution. No production deployment is included in this candidate.
+
+## Native journal reliability candidate
+
+Added full-journal backup/import, conflict-safe merging and explicit reload after transient access failures. Moved persistence into a testable repository that updates visible state only after successful atomic writes. Reads are bounded before JSON decoding. Added disk/reopen and injected write-failure tests. This increment remains an unsigned candidate, with no website deployment or TestFlight upload.

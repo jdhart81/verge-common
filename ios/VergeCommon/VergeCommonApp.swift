@@ -4,27 +4,29 @@ import UniformTypeIdentifiers
 @MainActor final class JournalStore: ObservableObject {
     @Published private(set) var drafts: [FieldDraft] = []
     @Published var error: String?
-    private var writable = true
-    private var file: URL?
-    init() {
+    private var repository: JournalRepository?
+    init() { reload() }
+    func reload() {
         do {
             let directory = try FileManager.default.url(for: .applicationSupportDirectory, in: .userDomainMask, appropriateFor: nil, create: true)
-            file = directory.appendingPathComponent("field-journal.json")
-            if let file, FileManager.default.fileExists(atPath: file.path) { drafts = try JournalFile.read(Data(contentsOf: file)) }
-        } catch { writable = false; self.error = "Your saved journal could not be opened. It has not been replaced. \(error.localizedDescription)" }
+            repository = try JournalRepository(file: directory.appendingPathComponent("field-journal.json"))
+            drafts = repository!.drafts; error = nil
+        } catch {
+            repository = nil
+            self.error = "Your saved journal could not be opened. It has not been replaced. Unlock your device and try Reload journal. \(error.localizedDescription)"
+        }
     }
-    func save(_ draft: FieldDraft) throws {
-        var next = drafts
-        if let index = next.firstIndex(where: { $0.id == draft.id }) { next[index] = try draft.validated() }
-        else { next.insert(try draft.validated(), at: 0) }
-        try persist(next)
+    private func ready() throws -> JournalRepository {
+        guard let repository else { throw DraftError.unsupported }; return repository
     }
-    func remove(_ draft: FieldDraft) throws { try persist(drafts.filter { $0.id != draft.id }) }
-    private func persist(_ next: [FieldDraft]) throws {
-        guard writable, let file else { throw DraftError.unsupported }
-        let data = try JournalFile(drafts: next).data()
-        try data.write(to: file, options: [.atomic, .completeFileProtection])
-        drafts = next
+    func save(_ draft: FieldDraft) throws { let repo = try ready(); try repo.save(draft); drafts = repo.drafts }
+    func remove(_ draft: FieldDraft) throws { let repo = try ready(); try repo.remove(draft.id); drafts = repo.drafts }
+    func backup() throws -> Data { try ready().backup() }
+    func restore(_ file: URL) throws -> Int {
+        let repo = try ready()
+        let count = try repo.merge(JournalRepository.readFile(file))
+        drafts = repo.drafts
+        return count
     }
 }
 struct DraftDocument: FileDocument {
@@ -44,6 +46,8 @@ struct JournalHome: View {
     @State private var removing: FieldDraft?
     @State private var export = DraftDocument()
     @State private var exporting = false
+    @State private var importing = false
+    @State private var exportName = "verge-field-draft"
     var body: some View {
         TabView {
             NavigationStack {
@@ -67,7 +71,7 @@ struct JournalHome: View {
                         .swipeActions(edge: .trailing, allowsFullSwipe: false) {
                             Button("Delete", role: .destructive) { removing = draft }
                             Button("Export") {
-                                do { export = DraftDocument(data: try FieldExport(draft).data()); exporting = true }
+                                do { export = DraftDocument(data: try FieldExport(draft).data()); exportName = "verge-field-draft"; exporting = true }
                                 catch { store.error = error.localizedDescription }
                             }.tint(.blue)
                         }
@@ -76,9 +80,6 @@ struct JournalHome: View {
                 .navigationTitle("Field journal")
                 .toolbar { Button { editor = FieldDraft(place: "", date: Self.today, method: "", finding: "") } label: { Label("Add observation", systemImage: "plus") } }
                 .sheet(item: $editor) { draft in DraftEditor(draft: draft) }
-                .fileExporter(isPresented: $exporting, document: export, contentType: .json, defaultFilename: "verge-field-draft") { result in
-                    if case .failure(let error) = result { store.error = error.localizedDescription }
-                }
                 .confirmationDialog("Delete this local draft? Export a copy first if you need to keep it.", isPresented: Binding(get: { removing != nil }, set: { if !$0 { removing = nil } }), titleVisibility: .visible) {
                     Button("Delete draft", role: .destructive) {
                         if let draft = removing { do { try store.remove(draft) } catch { store.error = error.localizedDescription } }
@@ -99,6 +100,15 @@ struct JournalHome: View {
                         Text("3. Import the draft, check its details, then save the observation for steward review.")
                         Text("Exporting does not submit an observation or verify a conservation outcome.").foregroundStyle(.secondary)
                     }
+                    Section("Journal backup") {
+                        Button("Export all drafts") {
+                            do { export = DraftDocument(data: try store.backup()); exportName = "verge-journal-backup"; exporting = true }
+                            catch { store.error = error.localizedDescription }
+                        }
+                        Button("Import journal backup") { importing = true }
+                        Button("Reload journal") { store.reload() }
+                        Text("Import adds missing notes and skips identical copies. Conflicting edits cancel the import. Store backups privately; they contain all your field notes.").font(.subheadline).foregroundStyle(.secondary)
+                    }
                     Section("Your records") {
                         Text("Drafts stay in this app’s storage until you export or delete them. Your device backup settings may include this storage. Removing the app may remove its drafts. Exported copies are controlled by the destination you choose.")
                         Text("This version does not collect location, photographs, analytics or advertising identifiers. There is no automatic upload or sync.")
@@ -106,6 +116,18 @@ struct JournalHome: View {
                     }
                 }.navigationTitle("Community")
             }.tabItem { Label("Community", systemImage: "person.3") }
+        }
+                .fileExporter(isPresented: $exporting, document: export, contentType: .json, defaultFilename: exportName) { result in
+                    if case .failure(let error) = result { store.error = error.localizedDescription }
+                }
+        .fileImporter(isPresented: $importing, allowedContentTypes: [.json]) { result in
+            do {
+                let url = try result.get()
+                let access = url.startAccessingSecurityScopedResource()
+                defer { if access { url.stopAccessingSecurityScopedResource() } }
+                let count = try store.restore(url)
+                store.error = "Imported \(count) new draft(s). Existing notes were preserved."
+            } catch { store.error = error.localizedDescription }
         }
         .alert("Journal", isPresented: Binding(get: { store.error != nil }, set: { if !$0 { store.error = nil } })) { Button("OK") { store.error = nil } } message: { Text(store.error ?? "") }
     }

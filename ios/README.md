@@ -18,7 +18,9 @@ For a physical device or archive, select your own developer team in Signing & Ca
 - Native creation/editing of place, calendar date, method, findings and optional HTTPS reference.
 - Atomic journal saves with complete file protection; invalid or unreadable journals are preserved and further writes are blocked.
 - Up to 1,000 drafts / 10 MB of encoded journal data; no automatic deletion or sync.
-- Native JSON file export and confirmation before deleting local drafts.
+- Native single-draft JSON export, full-journal backup/import, and confirmation before deleting local drafts.
+- Backup imports add missing drafts, skip identical copies, and reject the entire import when an existing ID has conflicting edits.
+- Reload control for retrying after transient file-access errors; corrupt files are never silently reset.
 - Browser links to co-op discovery/workspace. No cookies, passwords or tokens are copied into the native app.
 - Website Monitoring imports one version-1 draft, displays its place/date, then lets the member populate the existing observation form. Import does not submit, approve, attach evidence, assign a parcel, or authenticate a source. The member chooses the parcel and submits through normal access/review rules.
 
@@ -35,4 +37,4 @@ The native app currently points to the private Sites pilot. Independent operator
 - Review moderation, account deletion, privacy/support URLs, authentication requirements, encryption/export questions, and App Review access for the final app scope against Apple's current guidance.
 - Complete App Store Connect metadata and TestFlight distribution only after release authorization. Membership activation alone does not create an app record or upload a build.
 
-Core tests validate schema, dates, text limits, exports and corrupt journal rejection. Compiling for a simulator or device does not prove a successful interactive device session.
+Core tests validate schema, dates, text limits, exports, real disk save/edit/delete across repository reopens, backup restoration, repeated imports, conflict rollback, corrupt-file preservation, and simulated out-of-space failures. Compiling for a simulator or device does not prove a successful interactive device session.
