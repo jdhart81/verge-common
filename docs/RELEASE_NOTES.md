@@ -1,3 +1,9 @@
+# Local candidate — interactive parcel mapping (September 14, 2026)
+
+Added MapLibre/OpenFreeMap boundary drawing, draggable corners, coordinate editing, undo/redo, bounded GeoJSON import/export, historical boundary reuse and integration with the existing private review workflow. Basemap loading is opt-in, with recovery for unavailable maps. Fixed the rendering-worker packaging required by the current build tool. See [mapping implementation and validation](MAPPING_EDITOR.md). This is a local candidate; no hosted deployment is included.
+
+---
+
 # v0.3 — shared conservation network and co-op operating records
 
 Adds D1-backed shared workspaces and R2 private files; sign-in and role checks; membership, discovery, projects, actions, private land/consent records, agreement and evidence review, governance, external authority/holding/settlement/retirement records, exact allocations, payment receipt review, audit history, export, removal and archival.

@@ -7,6 +7,7 @@
 - Community events, capacity-aware RSVPs, calendar downloads, discussions, reports, and steward moderation.
 - Private parcels, consent references, agreement/evidence review, and pooling-assessment snapshots.
 - Reviewed GeoJSON boundary versions, live satellite-scene discovery with consent, source receipts, and field observations.
+- Local mapping candidate: optional MapLibre/OpenFreeMap basemap, boundary drawing and corner editing, undo/redo, bounded GeoJSON imports/exports, and reuse of historical geometry through the existing review workflow.
 - Charter proposals and member voting, exact allocations, and independently reviewed external credit/payment records.
 - Audit history, scoped exports, membership removal, and archival.
 

@@ -1,7 +1,9 @@
 'use client';
 import { FieldDraftImport } from '@/components/field-draft-import';
 import { AnalysisPanel } from '@/components/analysis-panel';
-import { useState } from 'react';
+import { BoundaryEditor } from '@/components/boundary-editor';
+import { downloadBoundary } from '@/lib/boundary-editor.mjs';
+import { useId, useState } from 'react';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
@@ -110,8 +112,10 @@ export function MonitoringBoard({
   mutate: Save;
   refresh: () => Promise<void>;
 }) {
+  const parcelSelectId = useId();
   const [selected, setSelected] = useState(''),
     [geometry, setGeometry] = useState(''),
+    [editorRevision, setEditorRevision] = useState(0),
     [allow, setAllow] = useState(false),
     [confirm, setConfirm] = useState(false),
     [fileError, setFileError] = useState('');
@@ -129,15 +133,17 @@ export function MonitoringBoard({
         Review a boundary, find satellite scenes, and record what you observe on
         the ground.
       </p>
-      <label>
-        Private parcel
+      <div>
+        <label htmlFor={parcelSelectId}>Private parcel</label>
         <NativeSelect
+          id={parcelSelectId}
           value={selected}
           onChange={(e) => {
             setSelected(e.target.value);
             setGeometry('');
             setAllow(false);
             setConfirm(false);
+            setFileError('');
           }}
         >
           <NativeSelectOption value="">Choose a parcel</NativeSelectOption>
@@ -147,17 +153,20 @@ export function MonitoringBoard({
             </NativeSelectOption>
           ))}
         </NativeSelect>
-      </label>
+      </div>
       {!state.parcels.length && (
         <p className="empty">Add a parcel in the Parcels section first.</p>
       )}
       {parcel && (
-        <div className="network-columns mt-6">
+        <div
+          className="network-columns monitoring-columns mt-6"
+          key={parcel.id}
+        >
           <section>
             <h3>Boundary history</h3>
             {!(parcel.boundaries ?? []).length && (
               <p className="empty">
-                Upload your parcel’s GeoJSON boundary to begin.
+                Draw or import your parcel’s boundary to begin.
               </p>
             )}
             {[...(parcel.boundaries ?? [])].reverse().map((b: Item) => (
@@ -169,6 +178,34 @@ export function MonitoringBoard({
                   · {b.status}
                 </p>
                 <Outline geometry={b.geometry} />
+                <div className="flex flex-wrap gap-2 mt-3">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    disabled={disabled}
+                    onClick={() => {
+                      setGeometry(JSON.stringify(b.geometry, null, 2));
+                      setEditorRevision((n) => n + 1);
+                      setAllow(false);
+                      setFileError('');
+                    }}
+                  >
+                    Use as new draft
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => {
+                      try {
+                        downloadBoundary(JSON.stringify(b.geometry));
+                      } catch (e) {
+                        setFileError((e as Error).message);
+                      }
+                    }}
+                  >
+                    Download boundary
+                  </Button>
+                </div>
                 <p>Consent reference: {b.consentReference}</p>
                 <p>
                   External scene searches:{' '}
@@ -335,55 +372,32 @@ export function MonitoringBoard({
           </section>
           <aside className="panel">
             <h3>Add a boundary version</h3>
-            <label>
-              Upload GeoJSON
-              <Input
-                type="file"
-                accept=".geojson,.json,application/geo+json,application/json"
-                onChange={async (e) => {
-                  setFileError('');
-                  const file = e.target.files?.[0];
-                  if (!file) return;
-                  if (file.size > 30000) {
-                    setFileError('Use a boundary file under 30 KB.');
-                    return;
-                  }
-                  const text = await file.text();
-                  try {
-                    validateBoundary(JSON.parse(text));
-                    setGeometry(text);
-                  } catch (e) {
-                    setFileError((e as Error).message);
-                  }
-                }}
-              />
-            </label>
-            <Form
-              submit="Save boundary for review"
+            <BoundaryEditor
+              key={editorRevision}
+              value={geometry}
+              onChange={setGeometry}
               disabled={disabled}
-              save={(v) =>
-                mutate('save_boundary', {
+            />
+            <Form
+              key={`boundary-${editorRevision}`}
+              submit="Save boundary for review"
+              disabled={disabled || !preview}
+              save={async (v) => {
+                const saved = await mutate('save_boundary', {
                   parcelId: parcel.id,
-                  geometry: JSON.parse(geometry),
+                  geometry: validateBoundary(JSON.parse(geometry)).geometry,
                   consentReference: v.consentReference,
                   externalSearchAllowed: allow,
-                })
-              }
+                });
+                if (saved) {
+                  setGeometry('');
+                  setAllow(false);
+                  setConfirm(false);
+                  setEditorRevision((n) => n + 1);
+                }
+                return saved;
+              }}
             >
-              <label>
-                GeoJSON Polygon or Feature
-                <Textarea
-                  value={geometry}
-                  onChange={(e) => setGeometry(e.target.value)}
-                  required
-                  maxLength={30000}
-                  rows={7}
-                />
-              </label>
-              <p className="small">
-                WGS84 longitude/latitude; one polygon, no holes, up to 200
-                corners. New versions need independent review.
-              </p>
               {preview && <Outline geometry={preview} />}
               <label>
                 Landholder’s boundary and monitoring consent reference
