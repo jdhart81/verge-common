@@ -14,6 +14,16 @@ Thank you for helping communities care for their places.
 
 Open an issue before a large change so we can agree on scope. An issue is public: do not include private locations, personal details, credentials, or participant records.
 
+## Three small starting tasks
+
+These are suggested contributions, not assigned or completed work. Check existing issues first, then propose a focused change with the [contribution proposal form](https://github.com/jdhart81/verge-common/issues/new?template=contribution.yml).
+
+1. **First-run walkthrough:** follow the README from a fresh clone using synthetic data. Report your OS, Node version, the first confusing step, and a proposed wording fix. Done when another newcomer can follow the revised step.
+2. **Keyboard and mobile review:** try the local planner and boundary editor. Report the route, steps, expected behavior, and observed barrier without personal or location data. Done when the barrier is fixed and the same interaction is checked again.
+3. **Conservation workflow review:** read the monitoring guide and identify one missing consent, uncertainty, or field-evidence requirement. Propose a documented example without claiming certification. Done when the maintainer and a relevant practitioner can review the rationale.
+
+See [community conduct](CODE_OF_CONDUCT.md). A first contribution can be a clear issue or documentation improvement; code is optional.
+
 ## Development
 
 1. Fork the repository and create a branch.

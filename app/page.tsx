@@ -1,3 +1,4 @@
+import Link from 'next/link';
 import {
   ArrowUpRight,
   ArrowRight,
@@ -15,13 +16,13 @@ export default function Home() {
         Skip to content
       </a>
       <header className="nav">
-        <a className="brand" href="/">
+        <Link className="brand" href="/">
           <Sprout aria-hidden="true" />
           verge common<span className="brand-dot">●</span>
-        </a>
+        </Link>
         <nav aria-label="Main navigation">
-          <a href="/network/">Projects</a>
-          <a href="/workspace/">My co-ops</a>
+          <Link href="/network/">Projects</Link>
+          <Link href="/workspace/">My co-ops</Link>
           <a className="nav-repo" href={repo}>
             <Code2 size={18} />
             Source <ArrowUpRight size={16} />
@@ -36,43 +37,43 @@ export default function Home() {
           <div className="hero-grid">
             <div>
               <h1>
-                Conserve together.
+                What if conservation
                 <br />
-                Share the <em>returns.</em>
+                were <em>open source?</em>
               </h1>
               <p className="intro">
-                The open-source cooperative system for EcoHedge projects and
-                larger conservation parcels. Bring land commitments, pooled
-                carbon accounting, and transparent member payouts into one
-                commons.
+                Enter VergeCommon. Open tools for people caring for the places
+                they share. Organize a conservation project, document the work,
+                and make decisions together. Help build tools any community can
+                inspect, adapt, and improve.
               </p>
               <div className="actions">
-                <a className="button primary" href="/network/">
-                  Explore conservation projects <ArrowRight size={18} />
+                <a className="button primary" href={repo}>
+                  Build with us on GitHub <ArrowRight size={18} />
                 </a>
-                <a className="text-link" href={repo}>
-                  Explore the source <ArrowUpRight size={17} />
-                </a>
+                <Link className="text-link" href="/demo/">
+                  Try the local planner <ArrowUpRight size={17} />
+                </Link>
               </div>
               <p className="fine">
-                Start a co-op, invite your community, and turn shared care into
-                action.
+                Early contributor preview · AGPL-3.0-only. The planner stores
+                drafts on your device. Hosted community access is currently restricted.
               </p>
             </div>
             <aside className="field-note">
               <div className="note-head">
-                <span>THE COOPERATIVE MODEL</span>
+                <span>THE COMMON GROUND</span>
                 <Sprout size={28} />
               </div>
               <p className="note-title">
-                Many parcels.
+                Local knowledge.
                 <br />
-                One governed pool.
+                Shared tools.
               </p>
               <div className="note-row">
                 <MapPin />
                 <div>
-                  <strong>Bring land into the co-op</strong>
+                  <strong>Start with a place</strong>
                   <span>
                     EcoHedge corridors, woodlots, and larger conservation
                     projects.
@@ -82,23 +83,23 @@ export default function Home() {
               <div className="note-row">
                 <Users />
                 <div>
-                  <strong>Pool eligible contributions</strong>
+                  <strong>Organize the work</strong>
                   <span>
-                    Preserve each project’s evidence, rights, and vintage.
+                    Plan activities, invite members, and keep a record of what happened.
                   </span>
                 </div>
               </div>
               <div className="note-row">
                 <BookOpen />
                 <div>
-                  <strong>Distribute proceeds transparently</strong>
+                  <strong>Make decisions together</strong>
                   <span>
-                    Member-approved costs, reserves, and exact-cent allocations.
+                    Propose policies, vote, and inspect the shared record.
                   </span>
                 </div>
               </div>
               <div className="note-foot">
-                LAND → AGREEMENT → POOL → PROCEEDS
+                PLACE → PEOPLE → ACTION → EVIDENCE
               </div>
             </aside>
           </div>
@@ -119,59 +120,59 @@ export default function Home() {
           </div>
           <div className="mission-copy">
             <p>
-              An EcoHedge project and a larger conserved parcel can participate
-              in the same cooperative structure. Verge Common is designed to
-              coordinate their agreements, stewardship obligations, evidence,
-              and shares of collective value.
+              A hedgerow, a woodlot, or a larger landscape: conservation starts
+              with people who know and care for a place. They need practical
+              ways to organize, learn from each other, and keep evidence of
+              their work.
             </p>
             <p>
-              The co-op governs the pool. Landowners retain the rights defined
-              in their agreements; qualified easement holders retain their
-              responsibilities. Verge Common supplies the open infrastructure,
-              without taking a percentage of credit sales.
+              VergeCommon brings projects, community activities, private field
+              records, and cooperative decisions into one workspace. Open
+              source lets communities inspect the code, adapt the workflows,
+              and contribute improvements back.
             </p>
             <p>
-              Open code and reusable agreement workflows make the model
-              inspectable and adaptable. An easement alone does not create
-              carbon credits: eligible projects still need an accepted method,
-              review, and issuance process.
+              Open code does not mean open private data. Exact locations,
+              agreements, and field evidence have access controls. Public
+              discovery uses only explicitly shared summaries and general
+              regions. Environmental outcomes still need independent evidence.
             </p>
           </div>
         </section>
         <section className="wrap release">
           <div className="section-head">
             <div>
-              <p className="eyebrow">02 / THE OPERATING SYSTEM</p>
-              <h2>From land to shared benefit.</h2>
+              <p className="eyebrow">02 / WHAT YOU CAN BUILD ON</p>
+              <h2>Organize. Document. Decide.</h2>
             </div>
-            <span className="pill">SHARED CONSERVATION SYSTEM · v0.3</span>
+            <span className="pill">EARLY CONTRIBUTOR PREVIEW</span>
           </div>
           <div className="three-grid">
             <article>
               <span className="index">01</span>
-              <h3>Conservation commitments</h3>
+              <h3>Community action</h3>
               <p>
-                Open enrollment and easement intake workflows capture rights,
-                obligations, counterparties, and review milestones. Legal
-                execution and recording remain separate.
+                Create a co-op, organize projects and events, invite members,
+                and track shared conservation actions. Start small and learn
+                from one useful activity.
               </p>
             </article>
             <article>
               <span className="index">02</span>
-              <h3>Cooperative credit pools</h3>
+              <h3>Private evidence</h3>
               <p>
-                Record external holdings by registry, project, and vintage,
-                preserving their provenance. Explore unissued contributions
-                separately in the scenario workbench.
+                Draw project boundaries, record field observations, and submit
+                supporting files for review. Mapping and satellite screening
+                support investigation; they do not certify ecological outcomes.
               </p>
             </article>
             <article>
               <span className="index">03</span>
-              <h3>Member payouts</h3>
+              <h3>Shared decisions</h3>
               <p>
-                Adopt member allocation policies, account for each cent of
-                recorded proceeds, and independently review external payment
-                receipts.
+                Propose a charter, vote on allocation policies, and review
+                externally documented financial records. The software records
+                decisions and receipts; it does not send payments.
               </p>
             </article>
           </div>
@@ -193,10 +194,11 @@ export default function Home() {
             </h2>
             <div className="contribute-bottom">
               <p>
-                Help build the common infrastructure: landowners, EcoHedge
-                organizers, land trusts, cooperative practitioners, carbon
-                specialists, and developers. Start with the open system design,
-                challenge an assumption, or improve a workflow.
+                You do not need to write code. Test a workflow, improve a field
+                guide, review accessibility, or help a local group describe
+                what it needs. Developers can help turn that knowledge into
+                shared tools. Our first milestone: one community completing
+                useful work and returning to do it again.
               </p>
               <a
                 className="button light"
@@ -209,10 +211,10 @@ export default function Home() {
         </section>
       </main>
       <footer className="wrap footer">
-        <a className="brand" href="/">
+        <Link className="brand" href="/">
           <Sprout />
           verge common
-        </a>
+        </Link>
         <span>Open code. Cooperative conservation.</span>
         <div>
           <a href={`${repo}/blob/main/LICENSE`}>AGPL-3.0</a>
