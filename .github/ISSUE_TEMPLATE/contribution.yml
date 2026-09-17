@@ -1,0 +1,36 @@
+name: Contribution proposal
+description: Propose a focused improvement to conservation workflows, documentation, design, or code.
+title: "[Contribution]: "
+body:
+  - type: markdown
+    attributes:
+      value: "Use synthetic examples. Do not include private locations, participant records, credentials, or security vulnerabilities. See SECURITY.md for vulnerability reporting."
+  - type: textarea
+    id: problem
+    attributes:
+      label: Who needs this, and what is difficult today?
+      description: Describe a concrete task or barrier. Non-code contributions are welcome.
+    validations:
+      required: true
+  - type: textarea
+    id: change
+    attributes:
+      label: What small improvement do you propose?
+      description: Include the page or document involved and what is outside this change.
+    validations:
+      required: true
+  - type: textarea
+    id: validation
+    attributes:
+      label: How will we know it helped?
+      description: Give a reproducible example, walkthrough, or acceptance check using synthetic data.
+    validations:
+      required: true
+  - type: dropdown
+    id: involvement
+    attributes:
+      label: How would you like to help?
+      options:
+        - I can describe or review the need
+        - I can test or improve documentation
+        - I would like to implement a change

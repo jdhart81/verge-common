@@ -5,6 +5,7 @@ permissions:
 jobs:
   check:
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -13,6 +14,8 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm test
+      - name: Launch page lint
+        run: npx oxlint app/page.tsx app/layout.tsx
       - run: npm run typecheck
       - run: npm run build
       - run: npm run db:migrate:local
@@ -25,10 +28,12 @@ jobs:
             if curl -fsS http://localhost:3000/api/network > /dev/null; then break; fi
             sleep 1
           done
+          curl -fsS http://localhost:3000/api/network > /dev/null || { cat /tmp/verge-dev.log; exit 1; }
           python3 tests/http_integration.py
 
   imagery:
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -42,6 +47,7 @@ jobs:
 
   ios:
     runs-on: macos-latest
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
       - run: swift test --package-path ios

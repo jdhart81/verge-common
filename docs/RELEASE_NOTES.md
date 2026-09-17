@@ -1,3 +1,27 @@
+# Launch branch preparation — September 17, 2026
+
+The launch branch includes the previously local private parcel mapping commit plus contributor onboarding and mission-led homepage updates. GitHub repository visibility was verified public. Private vulnerability reporting is now enabled and SECURITY.md links directly to it. CI now checks launch-page lint, applies job timeouts, and fails explicitly when the integration server cannot start.
+
+Local validation: 53 tests, type checking, targeted homepage/layout lint, and the production build passed on Node 24.19.0. Existing desktop/mobile browser checks are recorded below. GitHub CI is the release gate for clean installation, HTTP integration, imagery tests, Swift tests, and unsigned simulator compilation of the complete branch. Repository-wide lint has pre-existing debt and is not claimed clean. Public hosted access, independent security review, confidential conduct contact, and real pilot evidence remain separate open items.
+
+---
+
+# Local launch candidate — open-source conservation (September 16, 2026)
+
+Reframed the homepage, metadata, and README around “What if conservation could be an open-source project? Enter VergeCommon.” Added paths for non-code contributors, three bounded starting tasks, a contribution issue form, community conduct guidance, and an announcement draft with separate contributor-preview and hosted-pilot gates. Updated homepage internal links to use the framework navigation component.
+
+Validation on Node 24.19.0: all 53 domain tests passed, TypeScript checking passed, production build passed, and lint passed for the two changed application files. Local database migration completed with no pending migrations. Browser inspection verified the homepage at desktop and 390px mobile widths and the planner entry link. `git diff --check` passed. The default shell's Node 18 is unsupported; use Node 22.13+ as documented.
+
+Scope: this was a launch-copy and contributor-onboarding change. Full repository lint, HTTP integration, native builds, imagery processing, independent security review, and multi-person pilot acceptance were not revalidated in this preparation. Production access and repository settings were not queried. No push, deployment, release, access change, or announcement was performed. Remaining publication and pilot gates are tracked in [LAUNCH.md](LAUNCH.md).
+
+---
+
+# Local candidate — interactive parcel mapping (September 14, 2026)
+
+Added MapLibre/OpenFreeMap boundary drawing, draggable corners, coordinate editing, undo/redo, bounded GeoJSON import/export, historical boundary reuse and integration with the existing private review workflow. Basemap loading is opt-in, with recovery for unavailable maps. Fixed the rendering-worker packaging required by the current build tool. See [mapping implementation and validation](MAPPING_EDITOR.md). This is a local candidate; no hosted deployment is included.
+
+---
+
 # v0.3 — shared conservation network and co-op operating records
 
 Adds D1-backed shared workspaces and R2 private files; sign-in and role checks; membership, discovery, projects, actions, private land/consent records, agreement and evidence review, governance, external authority/holding/settlement/retirement records, exact allocations, payment receipt review, audit history, export, removal and archival.

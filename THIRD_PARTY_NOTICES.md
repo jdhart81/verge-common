@@ -51,6 +51,7 @@ SOFTWARE.
 - embla-carousel-react: MIT
 - input-otp: MIT
 - lucide-react: ISC
+- maplibre-gl: BSD-3-Clause
 - oxfmt: MIT
 - oxlint: MIT
 - oxlint-tsgolint: MIT
@@ -70,6 +71,10 @@ SOFTWARE.
 - wrangler: MIT OR Apache-2.0
 
 Full license texts for installed dependencies are included in their respective packages.
+
+## Optional boundary basemap
+
+The boundary editor uses MapLibre GL JS 6.7.0 with [OpenFreeMap's Liberty style](https://openfreemap.org/quick_start/). OpenFreeMap/OpenMapTiles and OpenStreetMap data attribution is displayed by the map's attribution control and must remain visible. OpenStreetMap data is distributed under the ODbL; see [OpenStreetMap copyright](https://www.openstreetmap.org/copyright). The hosted map service is external to this repository. Users opt in before it loads.
 
 ## Optional imagery worker
 

@@ -16,4 +16,4 @@ The initial aggregate limits and per-co-op checks are not a large-scale anti-abu
 
 ## Reporting
 
-Use GitHub private vulnerability reporting if enabled. Otherwise open an issue requesting a private contact without disclosing sensitive details. Do not post secrets, exploit details, exact private locations, or participant records in public issues. The current main branch is maintained without a guaranteed response time.
+Use [GitHub private vulnerability reporting](https://github.com/jdhart81/verge-common/security/advisories/new), enabled for this repository. Reports go privately to repository maintainers. If GitHub reporting is unavailable, request a private contact in an issue without disclosing the vulnerability. Do not post secrets, exploit details, exact private locations, or participant records in public issues. The current main branch is maintained without a guaranteed response time.

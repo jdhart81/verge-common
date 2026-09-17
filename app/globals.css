@@ -1017,3 +1017,9 @@ p {
   .mobile-app-nav a { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 3px; font-size: 14px; min-height: 48px; justify-content: center; }
   .install-note, .connection-note { position: sticky; bottom: calc(70px + env(safe-area-inset-bottom)); z-index: 39; }
 }
+
+@media (min-width: 901px) {
+  .network-columns.monitoring-columns {
+    grid-template-columns: minmax(0, 1fr) minmax(360px, 1.5fr);
+  }
+}

@@ -1,8 +1,25 @@
-# Verge Common
+# VergeCommon
 
-**Open infrastructure for cooperative conservation.**
+## What if conservation could be an open-source project?
 
-A conservation network and shared co-op workspace for EcoHedge projects and larger land parcels. Communities can organize projects, manage private conservation records, vote on allocation policies, and account for externally documented credit holdings and proceeds.
+**Enter VergeCommon: open tools for people caring for the places they share.**
+
+Organize a local conservation project, document the work, and make decisions together. From hedgerows and woodlots to larger landscapes, communities should be able to inspect, adapt, and improve the tools they depend on.
+
+**Early contributor preview.** This is an invitation to build and test with us. Real partner adoption and verified environmental impact have not yet been demonstrated.
+
+## Find your first contribution
+
+| You bring | Start here |
+| --- | --- |
+| Local conservation experience | Walk through one activity with synthetic records and report the first confusing step. |
+| Field or research experience | Review the [monitoring workflow](docs/MONITORING.md) and identify missing evidence or uncertainty. |
+| Design or accessibility skills | Try the planner with a keyboard or narrow screen; report a reproducible barrier. |
+| Development skills | Run the project locally and choose a bounded task from [the contributor guide](CONTRIBUTING.md). |
+
+[Contribution guide](CONTRIBUTING.md) · [Roadmap](ROADMAP.md) · [Pilot checklist](docs/PILOT.md) · [Launch kit and release gates](docs/LAUNCH.md)
+
+## Explore the project
 
 [Website](https://verge-common-community.jdhart.chatgpt.site) · [Conservation network](https://verge-common-community.jdhart.chatgpt.site/network/) · [Member workspace](https://verge-common-community.jdhart.chatgpt.site/workspace/) · [Contribute](CONTRIBUTING.md)
 
