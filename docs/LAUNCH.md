@@ -42,9 +42,9 @@ Suggested topics: `conservation`, `open-source`, `community`, `cooperatives`, `s
 - [x] Existing AGPL-3.0-only license and third-party notices linked.
 - [x] Contribution guidance, bounded starting tasks, conduct policy, and contribution issue form.
 - [x] Document local setup and the production authentication boundary.
-- [x] Push the full implementation candidate (`2b73c2d`) on `build/coop-launch-readiness`; [PR #2](https://github.com/jdhart81/verge-common/pull/2) remains under review.
-- [x] Complete local validation and [GitHub web, imagery and iOS checks](https://github.com/jdhart81/verge-common/actions/runs/35454137711). See [feature acceptance](FEATURE_ACCEPTANCE.md) for scope.
-- [x] Deploy the shared application and pass the live HTTPS three-account acceptance checks. See the [deployment receipt](DEPLOYMENT_2026-09-19.md).
+- [x] Push the full implementation candidate (`5aa1a5f`) on `build/coop-launch-readiness`; [PR #2](https://github.com/jdhart81/verge-common/pull/2) remains under review.
+- [x] Complete local validation and [GitHub web, deployment-container, imagery and iOS checks](https://github.com/jdhart81/verge-common/actions/runs/35462710257). See [feature acceptance](FEATURE_ACCEPTANCE.md) and the [current beta receipt](BETA_RELEASE_2026-09-19.md) for scope.
+- [x] Deploy the shared application and pass live HTTPS co-op acceptance plus the native account lifecycle. All four synthetic accounts were deleted. See the [current beta receipt](BETA_RELEASE_2026-09-19.md).
 - [ ] Complete final source review and obtain approval before merging the launch branch into `main`.
 - [ ] Check contributor links, issue forms and license rendering on the final merged revision.
 - [x] Enable and verify GitHub private vulnerability reporting; link its destination in SECURITY.md.
@@ -55,7 +55,7 @@ The draft is not posted. GitHub is public and private vulnerability reporting is
 
 ## Remaining pilot gates
 
-The live acceptance runner verified three independent accounts, membership approval, private files, request retries/conflicts, scoped native tokens and actual MCP reads/writes. The operator guide includes moderation, incident response, account closure and abuse controls. Daily local backups are active. Staging and production snapshots passed isolated database/file restore checks, and an initial matching production archive was copied offhost. The [deployment receipt](DEPLOYMENT_2026-09-19.md) records the recovery results.
+The live acceptance runner verified independent accounts, membership approval, private files, request retries/conflicts, native registration/recovery/deletion, scoped tokens and actual MCP reads/writes. The operator guide includes moderation, incident response, associated-data deletion and abuse controls. Daily server backups are active, and the current snapshots passed isolated database/file restore checks. Earlier offhost copies are historical; the new encrypted hourly transfer is paused pending explicit production-data transfer approval. The [current beta receipt](BETA_RELEASE_2026-09-19.md) and [operations guide](OPERATIONS_BETA.md) record the distinction and deletion-ledger recovery requirement.
 
 These requirements remain separate from deployment:
 
@@ -63,7 +63,7 @@ These requirements remain separate from deployment:
 - Configure recurring encrypted offsite backups and recovery-key custody; a local schedule or one copied archive is insufficient for continuing offsite recovery.
 - Assign real pilot stewards and an incident/conduct contact; rehearse the documented procedures with them.
 - Complete [pilot acceptance](PILOT.md), including mobile and accessibility checks with real participants.
-- Test the native app on physical devices, configure Apple signing and authorize TestFlight/App Store distribution. The unsigned simulator build and native tests pass in CI; no distributed mobile release is claimed.
+- Confirm the Apple seller, resolve the local Xcode license, test the native app on physical devices and configure signing before TestFlight/App Store distribution. Authenticated App Store Connect access is verified; 44 Swift tests and unsigned simulator compilation pass in CI. No distributed mobile release is claimed. See the [Apple release review](APPLE_RELEASE.md).
 - Confirm nonprofit participation, local consent, land rights and the suitability of the selected legal/ecological methodology with qualified reviewers.
 
 Authenticated native participation is implemented in source against the live service. Ecological certification, registry issuance/transfers, sales and payment execution remain external actions. See [architecture](ARCHITECTURE.md), [security](../SECURITY.md), and [roadmap](../ROADMAP.md).
