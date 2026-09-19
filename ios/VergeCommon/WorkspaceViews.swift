@@ -1,0 +1,299 @@
+import SwiftUI
+
+@MainActor final class DeviceAccount: ObservableObject {
+    @Published private(set) var connected = false
+    @Published private(set) var workspaces: [WorkspaceSummary] = []
+    @Published var loading = false
+    @Published var message: String?
+    private var token: String?
+    private let tokenStore: DeviceTokenStore
+    @Published private(set) var sessionID = UUID()
+    init(tokenStore: DeviceTokenStore = KeychainDeviceTokenStore()) {
+        self.tokenStore = tokenStore
+        do { token = try tokenStore.load(); connected = token != nil }
+        catch { message = error.localizedDescription }
+    }
+    func client() throws -> WorkspaceClient {
+        guard let token else { throw WorkspaceError.unauthorized }
+        return WorkspaceClient(token: token)
+    }
+    func connect(_ input: String) async {
+        guard !loading else { return }
+        loading = true; message = nil
+        let current = sessionID
+        defer { loading = false }
+        do {
+            let credential = try DeviceCredential.validate(input)
+            let list = try await WorkspaceClient(token: credential).list()
+            guard current == sessionID else { return }
+            try tokenStore.save(credential)
+            token = credential; sessionID = UUID(); connected = true; workspaces = list
+        } catch { if current == sessionID { message = error.localizedDescription } }
+    }
+    func refresh() async {
+        guard !loading, connected else { return }
+        loading = true; message = nil
+        let current = sessionID
+        defer { loading = false }
+        do {
+            let list = try await client().list()
+            guard current == sessionID else { return }
+            workspaces = list
+        } catch {
+            guard current == sessionID else { return }
+            workspaces = []; message = error.localizedDescription
+        }
+    }
+    func disconnect() {
+        sessionID = UUID()
+        token = nil; connected = false; workspaces = []; message = nil
+        do { try tokenStore.remove() }
+        catch { message = "This session is disconnected, but the saved token could not be removed. Unlock the device, tap Remove saved token again, and revoke it on the website. No journal drafts were removed." }
+    }
+}
+
+struct MyCoops: View {
+    @EnvironmentObject var account: DeviceAccount
+    @State private var pastedToken = ""
+    var body: some View {
+        NavigationStack {
+            List {
+                Section("Device access") {
+                    if account.connected {
+                        Text("This device is connected with your personal app token.")
+                        Button("Disconnect this device", role: .destructive) { pastedToken = ""; account.disconnect() }
+                        Text("Disconnect removes the saved token here. Revoke it on your website account to invalidate every copy. Your local journal is preserved.").font(.caption).foregroundStyle(.secondary)
+                    } else {
+                        Text("Sign in on the website and create a personal token with app:write access to participate, or app:read to browse your co-ops.")
+                        Link("Open account and create a token", destination: CommunityService.page("account"))
+                        SecureField("Paste personal device token", text: $pastedToken).textInputAutocapitalization(.never).autocorrectionDisabled()
+                        Button("Connect this device") { Task { let input = pastedToken; pastedToken = ""; await account.connect(input) } }
+                            .disabled(pastedToken.isEmpty || account.loading)
+                        Button("Remove saved token", role: .destructive) { pastedToken = ""; account.disconnect() }
+                        Text("The token is stored in this device’s protected keychain. Your password is entered only on the website.").font(.caption).foregroundStyle(.secondary)
+                    }
+                    Link("Manage or revoke device access", destination: CommunityService.page("account"))
+                }
+                if account.loading { ProgressView("Connecting…") }
+                if let message = account.message { Section { Text(message).foregroundStyle(.red) } }
+                if account.connected {
+                    Section("Your co-ops") {
+                        if account.workspaces.isEmpty && !account.loading {
+                            Text("No co-ops to show. Start one or accept an invitation on the website.").foregroundStyle(.secondary)
+                        }
+                        ForEach(account.workspaces) { workspace in
+                            NavigationLink {
+                                PrivateWorkspace(id: workspace.id)
+                            } label: {
+                                VStack(alignment: .leading) {
+                                    Text(workspace.name).font(.headline)
+                                    Text(workspace.region).font(.subheadline).foregroundStyle(.secondary)
+                                    Text(workspace.visibility).font(.caption).foregroundStyle(.secondary)
+                                }
+                            }
+                        }
+                        Button("Refresh co-ops") { Task { await account.refresh() } }.disabled(account.loading)
+                        Link("Create or join a co-op", destination: CommunityService.page("workspace/"))
+                    }
+                }
+            }.navigationTitle("My co-ops")
+                .refreshable { await account.refresh() }
+                .task { await account.refresh() }
+        }.id(account.sessionID)
+    }
+}
+
+struct PrivateWorkspace: View {
+    @EnvironmentObject var account: DeviceAccount
+    let id: String
+    @State private var workspace: WorkspaceView?
+    @State private var loading = false
+    @State private var message: String?
+    @State private var composing = false
+    @State private var submittingDraft = false
+    var body: some View {
+        List {
+            if loading { ProgressView("Loading co-op…") }
+            if let message { Section { Text(message).foregroundStyle(.red) } }
+            if let workspace, account.connected {
+                Section {
+                    Text(workspace.state.summary)
+                    Text("Your role: \(workspace.role)").font(.caption).foregroundStyle(.secondary)
+                    Link("Open complete workspace", destination: CommunityService.page("workspace/", id: id))
+                }
+                if workspace.state.visibility != "archived" {
+                    Section("Participate") {
+                        Button("Post an update to members") { composing = true }.disabled(workspace.state.projects.isEmpty)
+                        Button("Submit a field journal draft") { submittingDraft = true }
+                        Text("Submitted observations need steward review. Nothing is uploaded automatically.").font(.caption).foregroundStyle(.secondary)
+                    }
+                }
+                Section("Projects") {
+                    ForEach(workspace.state.projects) { project in
+                        VStack(alignment: .leading) { Text(project.name).font(.headline); Text(project.summary); Text(project.status).font(.caption).foregroundStyle(.secondary) }
+                    }
+                }
+                Section("Member updates") {
+                    if workspace.state.updates.filter({ !$0.hidden }).isEmpty { Text("No updates yet.").foregroundStyle(.secondary) }
+                    ForEach(workspace.state.updates.filter { !$0.hidden }.sorted { $0.createdAt > $1.createdAt }) { update in
+                        VStack(alignment: .leading, spacing: 5) { Text(update.text); Text(update.author).font(.caption).foregroundStyle(.secondary); Text(Date(timeIntervalSince1970: update.createdAt / 1000), style: .date).font(.caption).foregroundStyle(.secondary) }
+                    }
+                }
+                Section("Tasks") {
+                    ForEach(workspace.state.tasks) { task in
+                        VStack(alignment: .leading) { Text(task.title); Text(task.status).font(.caption).foregroundStyle(.secondary) }
+                    }
+                    Text("Manage tasks, invitations, reviews and financial records in the full website workspace.").font(.caption).foregroundStyle(.secondary)
+                }
+                Section("Observation review") {
+                    if workspace.state.observations.isEmpty { Text("No observations available to you yet.").foregroundStyle(.secondary) }
+                    ForEach(workspace.state.observations) { observation in
+                        VStack(alignment: .leading) { Text(observation.finding); Text(observation.status).font(.caption).foregroundStyle(.secondary) }
+                    }
+                }
+            }
+            Button("Refresh workspace") { Task { await refresh() } }.disabled(loading)
+        }.navigationTitle(workspace?.state.name ?? "Co-op")
+            .task { await refresh() }.refreshable { await refresh() }
+            .onChange(of: account.connected) { _, connected in if !connected { workspace = nil; composing = false; submittingDraft = false } }
+            .sheet(isPresented: $composing) {
+                if let workspace { MemberPostComposer(workspace: workspace) { self.workspace = $0 } }
+            }
+            .sheet(isPresented: $submittingDraft) {
+                if let workspace { FieldSubmission(workspace: workspace) { self.workspace = $0 } }
+            }
+    }
+    private func refresh() async {
+        guard !loading else { return }
+        loading = true; message = nil
+        let current = account.sessionID
+        defer { loading = false }
+        do {
+            let latest = try await account.client().detail(id)
+            guard account.connected, account.sessionID == current else { return }
+            workspace = latest
+        } catch { workspace = nil; message = error.localizedDescription }
+    }
+}
+
+struct MemberPostComposer: View {
+    @EnvironmentObject var account: DeviceAccount
+    @Environment(\.dismiss) private var dismiss
+    @State var workspace: WorkspaceView
+    var saved: (WorkspaceView) -> Void
+    @State private var projectId = ""
+    @State private var text = ""
+    @State private var pending: WorkspaceCommand?
+    @State private var sending = false
+    @State private var message: String?
+    @State private var conflict = false
+    var body: some View {
+        NavigationStack {
+            Form {
+                Section("Share with co-op members") {
+                    Picker("Project", selection: $projectId) {
+                        Text("Choose a project").tag("")
+                        ForEach(workspace.state.projects) { Text($0.name).tag($0.id) }
+                    }.disabled(pending != nil)
+                    TextField("Your update", text: $text, axis: .vertical).lineLimit(5...12).disabled(pending != nil)
+                    Text("Up to 2,000 characters. This update is shared with members; public publishing uses the website.").font(.caption)
+                }
+                if let message { Section { Text(message).foregroundStyle(.red) } }
+                if conflict {
+                    Button("Refresh before confirming again") { Task { await resolveConflict() } }.disabled(sending)
+                } else {
+                    Button(pending == nil ? "Post to members" : "Retry the same update") { Task { await submit() } }
+                        .disabled(sending || projectId.isEmpty || text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || text.utf16.count > 2000)
+                }
+                if sending { ProgressView("Saving…") }
+                if pending != nil { Text("This request is retained for a safe retry. Closing this form after a connection failure may leave an update already saved on the server; check your co-op before composing it again.").font(.caption) }
+            }.navigationTitle("Member update")
+                .toolbar { ToolbarItem(placement: .cancellationAction) { Button("Close") { dismiss() }.disabled(sending) } }
+                .interactiveDismissDisabled(sending)
+        }
+    }
+    private func submit() async {
+        sending = true; message = nil
+        defer { sending = false }
+        if pending == nil { pending = WorkspaceCommand(id: workspace.state.id, version: workspace.version, op: "post_update", payload: ["projectId": .text(projectId), "text": .text(text), "visibility": .text("members")]) }
+        do { let updated = try await account.client().submit(pending!); saved(updated); dismiss() }
+        catch WorkspaceError.conflict { conflict = true; message = WorkspaceError.conflict.localizedDescription }
+        catch { message = error.localizedDescription }
+    }
+    private func resolveConflict() async {
+        sending = true; defer { sending = false }
+        do { workspace = try await account.client().detail(workspace.state.id); pending?.version = workspace.version; conflict = false; message = "The workspace is refreshed. Check your project and update, then confirm again." }
+        catch { message = error.localizedDescription }
+    }
+}
+
+struct FieldSubmission: View {
+    @EnvironmentObject var account: DeviceAccount
+    @EnvironmentObject var journal: JournalStore
+    @Environment(\.dismiss) private var dismiss
+    @State var workspace: WorkspaceView
+    var saved: (WorkspaceView) -> Void
+    @State private var draftId = ""
+    @State private var parcelId = ""
+    @State private var pending: WorkspaceCommand?
+    @State private var sending = false
+    @State private var message: String?
+    @State private var conflict = false
+    @State private var submitted = false
+    private var draft: FieldDraft? { journal.drafts.first { $0.id.uuidString == draftId } }
+    var body: some View {
+        NavigationStack {
+            Form {
+                if submitted {
+                    Section("Submitted for review") { Text("The observation is saved in this co-op for steward review. Your local journal draft is preserved. Submission does not verify a conservation outcome."); Button("Done") { dismiss() } }
+                } else {
+                    Section("Choose the records") {
+                        Picker("Local field draft", selection: $draftId) {
+                            Text("Choose a draft").tag("")
+                            ForEach(journal.drafts) { Text("\($0.place) · \($0.date)").tag($0.id.uuidString) }
+                        }.disabled(pending != nil)
+                        Picker("Co-op parcel", selection: $parcelId) {
+                            Text("Choose a reviewed parcel").tag("")
+                            ForEach(workspace.state.parcels.filter(\.acceptsObservation)) { Text($0.name).tag($0.id) }
+                        }.disabled(pending != nil)
+                        Text("Only your accessible parcels with a reviewed current boundary are listed. A steward can review boundaries on the website.").font(.caption)
+                    }
+                    if let draft {
+                        Section("Review before sending") { Text("Place: \(draft.place)"); Text("Date: \(draft.date)"); Text(draft.method); Text(draft.finding); if !draft.reference.isEmpty { Text(draft.reference) }
+                            Text("The selected parcel associates this observation with land. Check that it matches your visit. Sending uploads the date, method, finding and reference to your co-op.").font(.caption) }
+                    }
+                    if let message { Section { Text(message).foregroundStyle(.red) } }
+                    if conflict {
+                        Button("Refresh before confirming again") { Task { await resolveConflict() } }.disabled(sending)
+                    } else {
+                        Button(pending == nil ? "Submit observation for steward review" : "Retry the same submission") { Task { await submit() } }.disabled(sending || draft == nil || parcelId.isEmpty)
+                    }
+                    if sending { ProgressView("Submitting…") }
+                    Text("Your draft remains on this device. A repeat of the exact same note for this parcel and boundary is checked against the original submission, even after restarting the app. Edit the note only when you intend a new observation.").font(.caption).foregroundStyle(.secondary)
+                }
+            }.navigationTitle("Submit field draft")
+                .toolbar { ToolbarItem(placement: .cancellationAction) { Button("Close") { dismiss() }.disabled(sending) } }
+                .interactiveDismissDisabled(sending)
+        }
+    }
+    private func submit() async {
+        sending = true; message = nil
+        defer { sending = false }
+        do {
+            if pending == nil {
+                guard let draft, let parcel = workspace.state.parcels.first(where: { $0.id == parcelId }) else { throw WorkspaceError.invalid }
+                pending = try WorkspaceCommand.observation(draft, workspace: workspace, parcel: parcel)
+            }
+            let updated = try await account.client().submit(pending!); saved(updated); submitted = true
+        } catch WorkspaceError.conflict { conflict = true; message = WorkspaceError.conflict.localizedDescription }
+        catch { message = error.localizedDescription }
+    }
+    private func resolveConflict() async {
+        sending = true; defer { sending = false }
+        do {
+            workspace = try await account.client().detail(workspace.state.id)
+            // Revalidate the current parcel boundary and fields before a fresh confirmation.
+            pending = nil; conflict = false; message = "The workspace is refreshed. Review the selected parcel and draft before submitting again."
+        } catch { message = error.localizedDescription }
+    }
+}

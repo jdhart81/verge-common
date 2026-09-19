@@ -38,7 +38,8 @@ struct DraftDocument: FileDocument {
 }
 @main struct VergeCommonApp: App {
     @StateObject private var store = JournalStore()
-    var body: some Scene { WindowGroup { JournalHome().environmentObject(store).tint(Color(red: 0.09, green: 0.32, blue: 0.23)) } }
+    @StateObject private var account = DeviceAccount()
+    var body: some Scene { WindowGroup { JournalHome().environmentObject(store).environmentObject(account).tint(Color(red: 0.09, green: 0.32, blue: 0.23)) } }
 }
 struct JournalHome: View {
     @EnvironmentObject var store: JournalStore
@@ -51,10 +52,11 @@ struct JournalHome: View {
     var body: some View {
         TabView {
             CommunityDiscovery().tabItem { Label("Discover", systemImage: "globe") }
+            MyCoops().tabItem { Label("My co-ops", systemImage: "person.3") }
             NavigationStack {
                 List {
                     Section {
-                        Text("Keep field observations on this device, even without a connection. Export a draft when you’re ready for your co-op to review it.")
+                        Text("Keep field observations on this device, even without a connection. Submit a draft from My co-ops or export it for review when you’re ready.")
                             .font(.subheadline).foregroundStyle(.secondary)
                     }
                     if store.drafts.isEmpty {
@@ -66,7 +68,7 @@ struct JournalHome: View {
                                 Text(draft.place).font(.headline).foregroundStyle(.primary)
                                 Text(draft.date).font(.subheadline).foregroundStyle(.secondary)
                                 Text(draft.finding).lineLimit(2).foregroundStyle(.secondary)
-                                Text("Saved on this device • Not submitted").font(.caption).foregroundStyle(.secondary)
+                                Text("Local draft • Check co-op for submission status").font(.caption).foregroundStyle(.secondary)
                             }.padding(.vertical, 5)
                         }
                         .swipeActions(edge: .trailing, allowsFullSwipe: false) {
@@ -93,9 +95,11 @@ struct JournalHome: View {
                     Section("Your community") {
                         Link("Discover conservation co-ops", destination: CommunityService.page("network/"))
                         Link("Open my co-op workspace", destination: CommunityService.page("workspace/"))
-                        Text("Opens your browser. Sign-in and the site’s access rules apply. The hosted pilot currently has restricted access.").font(.subheadline).foregroundStyle(.secondary)
+                        Text("Opens your browser. Sign-in and the site’s access rules apply. Connect a personal device token in My co-ops for native participation.").font(.subheadline).foregroundStyle(.secondary)
                     }
                     Section("Submit a field draft") {
+                        Text("In My co-ops, open a co-op and choose Submit a field journal draft. Select the draft and reviewed parcel, check the details, then explicitly submit for steward review.")
+                        Text("You can also use the manual export workflow:").font(.subheadline)
                         Text("1. Swipe a journal entry and choose Export. Save the JSON file somewhere private.")
                         Text("2. Open your co-op’s Monitoring page in the browser and select the correct parcel.")
                         Text("3. Import the draft, check its details, then save the observation for steward review.")
@@ -112,11 +116,11 @@ struct JournalHome: View {
                     }
                     Section("Your records") {
                         Text("Drafts stay in this app’s storage until you export or delete them. Your device backup settings may include this storage. Removing the app may remove its drafts. Exported copies are controlled by the destination you choose.")
-                        Text("This version does not collect location, photographs, analytics or advertising identifiers. There is no automatic upload or sync.")
+                        Text("This version does not collect location, photographs, analytics or advertising identifiers. It uploads member posts or selected draft details only when you submit them. There is no automatic journal upload or sync.")
                         Link("Open-source project", destination: URL(string: "https://github.com/jdhart81/verge-common")!)
                     }
                 }.navigationTitle("Community")
-            }.tabItem { Label("Community", systemImage: "person.3") }
+            }.tabItem { Label("Journal tools", systemImage: "gearshape") }
         }
                 .fileExporter(isPresented: $exporting, document: export, contentType: .json, defaultFilename: exportName) { result in
                     if case .failure(let error) = result { store.error = error.localizedDescription }
@@ -224,7 +228,7 @@ struct CommunityDetail: View {
         List {
             Section { Text(coop.summary); Text([coop.region, coop.country].filter { !$0.isEmpty }.joined(separator: " · ")).foregroundStyle(.secondary)
                 Link("Join or participate on the website", destination: CommunityService.page("network/", id: coop.id))
-                Text("Membership, posting and RSVPs currently use the website’s sign-in and permissions.").font(.subheadline).foregroundStyle(.secondary) }
+                Text("Join on the website, then connect your device in My co-ops to post member updates and submit field observations. Membership, public publishing and RSVPs use the website’s sign-in and permissions.").font(.subheadline).foregroundStyle(.secondary) }
             Section("Public projects") {
                 if coop.projects.isEmpty { Text("No public projects shared yet.").foregroundStyle(.secondary) }
                 ForEach(coop.projects) { project in VStack(alignment: .leading) { Text(project.name).font(.headline); Text(project.summary); Text(project.status).font(.caption).foregroundStyle(.secondary) } }

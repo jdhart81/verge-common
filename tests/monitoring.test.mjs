@@ -17,7 +17,7 @@ const polygon = {
     ],
   ],
 };
-test('boundaries accept closed WGS84 polygons and reject ambiguous geometry', () => {
+await test('boundaries accept closed WGS84 polygons and reject ambiguous geometry', () => {
   assert.deepEqual(validateBoundary(polygon).bbox, [36.8, -1.3, 36.81, -1.29]);
   assert.throws(
     () =>
@@ -74,7 +74,7 @@ test('boundaries accept closed WGS84 polygons and reject ambiguous geometry', ()
     /area/,
   );
 });
-test('catalogue requests and metadata are bounded and normalized', () => {
+await test('catalogue requests and metadata are bounded and normalized', () => {
   assert.equal(
     searchWindow('2026-08-01', '2026-08-31'),
     '2026-08-01T00:00:00Z/2026-08-31T23:59:59Z',

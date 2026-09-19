@@ -2,7 +2,7 @@ import Foundation
 
 // One deployment for native API requests and browser handoffs. Self-hosters change this URL.
 enum CommunityService {
-    static let origin = URL(string: "https://verge-common-community.jdhart.chatgpt.site")!
+    static let origin = URL(string: "https://vergecommon.com")!
     static func page(_ path: String, id: String? = nil) -> URL {
         var url = URLComponents(url: origin.appendingPathComponent(path), resolvingAgainstBaseURL: false)!
         if let id { url.queryItems = [URLQueryItem(name: "id", value: id)] }
@@ -50,7 +50,7 @@ enum CommunityError: Error, LocalizedError {
     case restricted, unavailable, invalid, oversized
     var errorDescription: String? {
         switch self {
-        case .restricted: return "This community service requires access. The hosted pilot is currently private. Open the website to check your access; native sign-in is not connected yet."
+        case .restricted: return "This community service requires access. Open the website to check availability, or connect your device in My co-ops."
         case .unavailable: return "The community service is unavailable. Try again later."
         case .invalid: return "The service did not return a supported community response."
         case .oversized: return "The community response is too large. Open the website to browse it."

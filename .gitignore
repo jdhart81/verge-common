@@ -54,3 +54,7 @@ xcuserdata/
 # Public droplet build artifacts
 /dist-public/
 /dist-public-render.mjs
+
+# Self-hosted private runtime state
+/.verge-data/
+/self-hosted/backups/

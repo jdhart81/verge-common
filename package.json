@@ -17,12 +17,17 @@
     "db:migrate:local": "wrangler d1 migrations apply site-creator-d1 --local --config wrangler.local.json",
     "launch": "node scripts/launch.mjs",
     "mcp": "node mcp/stdio.mjs",
-    "build:public": "node public-site/build.mjs"
+    "build:public": "node public-site/build.mjs",
+    "build:selfhost": "VERGE_SELF_HOSTED=1 vinext build",
+    "start:selfhost": "node self-hosted/server.mjs",
+    "backup:selfhost": "node self-hosted/backup.mjs"
   },
   "dependencies": {
     "@base-ui/react": "1.7.0",
     "@modelcontextprotocol/sdk": "1.30.0",
     "@shadcn/react": "0.3.0",
+    "@turf/area": "7.4.0",
+    "@turf/intersect": "7.4.0",
     "class-variance-authority": "0.7.1",
     "clsx": "2.1.1",
     "cmdk": "1.1.1",

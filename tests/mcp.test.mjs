@@ -7,7 +7,7 @@ import { StdioClientTransport } from '@modelcontextprotocol/sdk/client/stdio.js'
 import { createServer, fetchPublic, serviceOrigin } from '../mcp/server.mjs';
 import { exampleCooperative } from '../lib/cooperative.mjs';
 
-test('MCP initializes, discovers tools, validates schemas, and computes draft-only payouts', async () => {
+await test('MCP initializes, discovers tools, validates schemas, and computes draft-only payouts', async () => {
   const server = createServer();
   const client = new Client({ name: 'test', version: '1' });
   const [a, b] = InMemoryTransport.createLinkedPair();
@@ -44,7 +44,7 @@ test('MCP initializes, discovers tools, validates schemas, and computes draft-on
   }
 });
 
-test('MCP public discovery sends no credentials and rejects unavailable, HTML and oversized responses', async () => {
+await test('MCP public discovery sends no credentials and rejects unavailable, HTML and oversized responses', async () => {
   let seen;
   const result = await fetchPublic(
     'https://example.org',
@@ -98,7 +98,7 @@ test('MCP public discovery sends no credentials and rejects unavailable, HTML an
   assert.equal(serviceOrigin('http://127.0.0.1:3000'), 'http://127.0.0.1:3000');
 });
 
-test('packaged stdio entrypoint completes an actual agent handshake', async () => {
+await test('packaged stdio entrypoint completes an actual agent handshake', async () => {
   const client = new Client({ name: 'stdio-test', version: '1' });
   const transport = new StdioClientTransport({
     command: process.execPath,

@@ -1,5 +1,6 @@
 'use client';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, useSyncExternalStore } from 'react';
+import Link from 'next/link';
 import { ArrowLeft, Sprout, Download, Copy, Plus, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -20,30 +21,44 @@ type Plan = {
   notes: string;
   tasks: { id: string; title: string; done: boolean }[];
 };
+const subscribeHydration = () => () => {};
+function storedPlan() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    return { plan: raw ? parsePlan(JSON.parse(raw)) : emptyPlan(), error: '' };
+  } catch {
+    return {
+      plan: emptyPlan(),
+      error:
+        'The saved plan could not be loaded. You can start a new plan; download a backup before closing this page.',
+    };
+  }
+}
 export default function Demo() {
-  const [plan, setPlan] = useState<Plan>(emptyPlan());
-  const [draft, setDraft] = useState({ name: '', area: '', purpose: '' });
+  const ready = useSyncExternalStore(
+    subscribeHydration,
+    () => true,
+    () => false,
+  );
+  return <Planner ready={ready} key={String(ready)} />;
+}
+function Planner({ ready }: { ready: boolean }) {
+  const [initial] = useState(() =>
+    ready ? storedPlan() : { plan: emptyPlan(), error: '' },
+  );
+  const [plan, setPlan] = useState<Plan>(initial.plan);
+  const [draft, setDraft] = useState({
+    name: initial.plan.name,
+    area: initial.plan.area,
+    purpose: initial.plan.purpose,
+  });
   const [task, setTask] = useState('');
-  const [ready, setReady] = useState(false);
-  const [status, setStatus] = useState('');
+  const [status, setStatus] = useState(initial.error);
   const [copyFallback, setCopyFallback] = useState('');
   const current = useRef(plan);
-  current.current = plan;
   useEffect(() => {
-    try {
-      const raw = localStorage.getItem(STORAGE_KEY);
-      if (raw) {
-        const saved = parsePlan(JSON.parse(raw));
-        setPlan(saved);
-        setDraft(saved);
-      }
-    } catch {
-      setStatus(
-        'The saved plan could not be loaded. You can start a new plan; download a backup before closing this page.',
-      );
-    }
-    setReady(true);
-  }, []);
+    current.current = plan;
+  }, [plan]);
   function commit(next: Plan, message: string) {
     setPlan(next);
     current.current = next;
@@ -100,7 +115,7 @@ export default function Demo() {
     }
     return () => lifecycle.abort();
   }, []);
-  function savePlace(e: React.FormEvent) {
+  function savePlace(e: React.SubmitEvent<HTMLFormElement>) {
     e.preventDefault();
     if (!draft.name.trim()) return;
     commit(
@@ -113,7 +128,7 @@ export default function Demo() {
       'Place card saved on this device.',
     );
   }
-  function newTask(e: React.FormEvent) {
+  function newTask(e: React.SubmitEvent<HTMLFormElement>) {
     e.preventDefault();
     try {
       commit(
@@ -156,14 +171,14 @@ export default function Demo() {
         Skip to planner
       </a>
       <header className="nav">
-        <a className="brand" href="/">
+        <Link className="brand" href="/">
           <Sprout />
           verge common
-        </a>
-        <a className="text-link" href="/">
+        </Link>
+        <Link className="text-link" href="/">
           <ArrowLeft size={16} />
           About the project
-        </a>
+        </Link>
       </header>
       <main id="main" className="wrap planner">
         <p className="eyebrow">COMMUNITY EDITION / LOCAL PLANNER</p>
@@ -351,9 +366,9 @@ export default function Demo() {
                 </p>
               </div>
             )}
-            <p className="status" role="status" aria-live="polite">
+            <output className="status" aria-live="polite">
               {status}
-            </p>
+            </output>
           </section>
         </div>
         <p className="small mt-8">

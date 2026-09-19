@@ -12,6 +12,17 @@ import {
 } from '@/server/workspaces';
 import { isSteward } from '@/lib/network.mjs';
 import { searchWindow, sceneSummaries } from '@/lib/monitoring.mjs';
+type MonitoredParcel = {
+  id: string;
+  createdBy: string;
+  boundaries?: {
+    id: string;
+    status: string;
+    externalSearchAllowed: boolean;
+    bbox: [number, number, number, number];
+  }[];
+};
+type SatelliteSearch = { parcelId: string; createdAt: number };
 export const dynamic = 'force-dynamic';
 export async function POST(request: Request) {
   try {
@@ -21,7 +32,8 @@ export async function POST(request: Request) {
     const { row, state } = await load(input.id);
     if (!membership(state, user.id))
       throw new DomainError('Membership is required.', 403);
-    const parcel = state.parcels.find((p: any) => p.id === input.parcelId);
+    const parcels: MonitoredParcel[] = state.parcels;
+    const parcel = parcels.find((p) => p.id === input.parcelId);
     if (!parcel || (parcel.createdBy !== user.id && !isSteward(state, user.id)))
       throw new DomainError('Parcel not found.', 404);
     const boundary = parcel.boundaries?.at(-1);
@@ -44,9 +56,8 @@ export async function POST(request: Request) {
     } catch (e) {
       throw new DomainError((e as Error).message);
     }
-    const last = (state.satelliteSearches ?? [])
-      .filter((s: any) => s.parcelId === parcel.id)
-      .at(-1);
+    const searches: SatelliteSearch[] = state.satelliteSearches ?? [];
+    const last = searches.filter((s) => s.parcelId === parcel.id).at(-1);
     if (last && Date.now() - last.createdAt < 60000)
       throw new DomainError(
         'Wait one minute before searching this parcel again.',

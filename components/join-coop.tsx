@@ -1,23 +1,27 @@
 'use client';
-import { useState, useEffect, useRef } from 'react';
+import { ControlLabel } from '@/components/ui/label';
+import { useState, useSyncExternalStore, useRef } from 'react';
+import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+function subscribeInvitation(onChange: () => void) {
+  window.addEventListener('hashchange', onChange);
+  return () => window.removeEventListener('hashchange', onChange);
+}
+const readInvitation = () => location.hash.slice(1);
+const serverInvitation = () => '';
 export function JoinCoop({ signedIn }: { signedIn: boolean }) {
-  const [invite, setInvite] = useState(''),
-    [name, setName] = useState(''),
+  const invite = useSyncExternalStore(subscribeInvitation, readInvitation, serverInvitation);
+  const [name, setName] = useState(''),
     [message, setMessage] = useState(''),
     [busy, setBusy] = useState(false),
     [done, setDone] = useState(false);
   const requestId = useRef('');
-  useEffect(() => {
-    setInvite(location.hash.slice(1));
-    requestId.current = crypto.randomUUID();
-  }, []);
   return (
     <main className="wrap network">
-      <a className="brand" href="/network/">
+      <Link className="brand" href="/network/">
         verge common
-      </a>
+      </Link>
       <section className="panel mt-8">
         <p className="eyebrow">A PLACE FOR YOU</p>
         <h1>Join a conservation co-op</h1>
@@ -28,13 +32,13 @@ export function JoinCoop({ signedIn }: { signedIn: boolean }) {
         </p>
         {!signedIn ? (
           <>
-            <a
+            <Link
               className="button primary"
               target="_top"
               href="/signin-with-chatgpt?return_to=/join/"
             >
               Sign in
-            </a>
+            </Link>
             <p>
               After signing in, reopen your original invitation link to
               continue.
@@ -42,17 +46,19 @@ export function JoinCoop({ signedIn }: { signedIn: boolean }) {
           </>
         ) : done ? (
           <>
-            <p role="status">
+            <output>
               Your request is saved. A steward can now approve it.
-            </p>
-            <a className="button primary" href="/workspace/">
+            </output>
+            <Link className="button primary" href="/workspace/">
               My co-ops
-            </a>
+            </Link>
           </>
         ) : (
           <form
             onSubmit={async (e) => {
               e.preventDefault();
+              if (busy) return;
+              requestId.current ||= crypto.randomUUID();
               setBusy(true);
               setMessage('');
               try {
@@ -68,8 +74,8 @@ export function JoinCoop({ signedIn }: { signedIn: boolean }) {
                     requestId: requestId.current,
                   }),
                 });
-                const v: any = await r.json();
-                if (!r.ok) throw new Error(v.error);
+                const v: { error?: string } = await r.json();
+                if (!r.ok) throw new Error(v.error ?? 'The invitation could not be accepted.');
                 history.replaceState(null, '', '/join/');
                 setDone(true);
               } catch (e) {
@@ -79,7 +85,7 @@ export function JoinCoop({ signedIn }: { signedIn: boolean }) {
               }
             }}
           >
-            <label>
+            <ControlLabel>
               Your member name
               <Input
                 value={name}
@@ -87,7 +93,7 @@ export function JoinCoop({ signedIn }: { signedIn: boolean }) {
                 required
                 onChange={(e) => setName(e.target.value)}
               />
-            </label>
+            </ControlLabel>
             <Button className="mt-4" disabled={busy || !invite}>
               {busy ? 'Saving…' : 'Request to join'}
             </Button>

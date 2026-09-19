@@ -5,6 +5,8 @@ import {
   parcelSnapshot,
   assessmentIsCurrent,
   projectReadiness,
+  consentLandSnapshot,
+  agreementCoverageSnapshot,
 } from '../lib/readiness.mjs';
 function fixture() {
   const s = newWorkspace(
@@ -20,14 +22,40 @@ function fixture() {
   );
   s.projects = [{ id: 'p' }];
   s.members.push({ userId: 'two', status: 'active' });
-  s.parcels = ['a', 'b'].map((id) => ({
+  s.parcels = ['a', 'b'].map((id, i) => ({
     id,
     projectId: 'p',
     status: 'reviewed',
     areaSquareMetres: 10000,
     consentReference: `consent-${id}`,
-    boundaries: [{ id: `boundary-${id}`, status: 'reviewed' }],
+    landReference: `land-${id}`,
+    boundaries: [
+      {
+        id: `boundary-${id}`,
+        status: 'reviewed',
+        geometry: {
+          type: 'Polygon',
+          coordinates: [
+            [
+              [i, 0],
+              [i + 0.0009, 0],
+              [i + 0.0009, 0.0009],
+              [i, 0.0009],
+              [i, 0],
+            ],
+          ],
+        },
+      },
+    ],
   }));
+  for (const parcel of s.parcels)
+    parcel.consents = [
+      {
+        id: `consent-${parcel.id}`,
+        status: 'reviewed',
+        landSnapshot: consentLandSnapshot(parcel),
+      },
+    ];
   s.partnerships = [{ projectId: 'p', status: 'reviewed' }];
   s.authority = { status: 'reviewed' };
   s.charters = [{ id: 'charter' }];
@@ -35,19 +63,22 @@ function fixture() {
     projectId: 'p',
     kind,
     status: 'execution_recorded',
+    parcelIds: ['a', 'b'],
+    parcelSnapshot: agreementCoverageSnapshot(s, 'p', ['a', 'b']),
   }));
   s.assessments = [
     {
       projectId: 'p',
       status: 'reviewed',
       parcelSnapshot: parcelSnapshot(s, 'p'),
+      areaMethod: 'turf-geodesic-v1',
       areaSquareMetres: 20000,
       minimumSquareMetres: 10000,
     },
   ];
   return s;
 }
-test('prepared records remain subject to external review and never imply payment readiness', () => {
+await test('prepared records remain subject to external review and never imply payment readiness', () => {
   const s = fixture();
   const r = projectReadiness(s, 'p');
   assert.equal(r.status, 'records_prepared_for_external_review');
@@ -59,7 +90,7 @@ test('prepared records remain subject to external review and never imply payment
   s.partnerships[0].status = 'revoked';
   assert.equal(projectReadiness(s, 'p').status, 'preparation_incomplete');
 });
-test('new boundary versions, changed consent and new assessments invalidate current preparation', () => {
+await test('new boundary versions, changed consent and new assessments invalidate current preparation', () => {
   for (const change of [
     (s) => s.parcels[0].boundaries.push({ id: 'new', status: 'submitted' }),
     (s) => {
@@ -81,7 +112,7 @@ test('new boundary versions, changed consent and new assessments invalidate curr
     false,
   );
 });
-test('legacy and empty records cannot appear prepared; snapshot order is deterministic', () => {
+await test('legacy and empty records cannot appear prepared; snapshot order is deterministic', () => {
   const s = fixture();
   const before = parcelSnapshot(s, 'p');
   s.parcels.reverse();

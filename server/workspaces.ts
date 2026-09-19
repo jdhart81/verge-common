@@ -106,7 +106,7 @@ export async function command(
     );
   const next = applyCommand(state, user, input, Date.now(), input.requestId);
   const event = next.audit.at(-1)!;
-  const { audit, ...data } = next;
+  const { audit: _audit, ...data } = next;
   event.requestHash = requestHash;
   event.previousHash = state.audit.at(-1)?.hash ?? '';
   event.stateHash = await hash(JSON.stringify(data));

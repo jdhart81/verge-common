@@ -1,6 +1,6 @@
 # Privacy and visibility
 
-The shared conservation system stores co-op records in the hosting service's D1 database and files in private R2 storage. It uses the authenticated Site user ID for access control. Members choose their display names; the application does not persist their sign-in email addresses.
+The self-hosted conservation system stores co-op records in a private SQLite database and evidence files on the dedicated server. Accounts use a chosen username, display name, salted password hash and a hashed recovery code. Email addresses are not required. Browser sessions and optional device/agent tokens are stored as hashes with expiry and revocation. The alternate Sites build uses its trusted identity gateway with D1/R2 storage.
 
 ## Public information
 
@@ -37,3 +37,7 @@ Parcel boundary geometry, satellite search history, and field observations are r
 Downloaded imagery jobs contain private parcel geometry and selected scene identifiers. Share them only with authorized processors. Worker receipts retain source-file fingerprints, radiometric settings, canonical geometry, and measurements but omit local source-file paths. Only the parcel's submitting member and stewards can access jobs/results. Imported receipts are not automatically published or sent to a registry.
 
 The optional boundary basemap contacts OpenFreeMap only after you choose **Load background map**. The provider receives your IP address and map tile requests that reveal the viewed area. Boundary overlays are drawn locally and are not uploaded to the map provider. Turning off the map stops future map requests; it does not erase previous requests. Device location is requested only when you select the map's location control. Basemap loading and satellite catalogue consent are separate choices. Unsaved drafts are kept in page memory, not browser storage; switching parcels, leaving Monitoring, or reloading loses them. GeoJSON downloads contain private coordinates and must be handled accordingly.
+
+## Self-hosted accounts and recovery
+
+The account page lets you export records available to you, revoke device or agent tokens, change your password, or permanently close your login. Closing an account revokes access and removes its authentication records; shared co-op history remains with the co-op. Transfer stewardship before closing an owner account. Recovery codes are shown once and rotated after use. Account actions retain an internal security event with user ID and timestamp, without passwords, recovery codes or tokens. Rate-limit keys are hashed and expire. Operators control backup retention and must process any shared-record deletion requests according to their applicable responsibilities.

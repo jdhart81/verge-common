@@ -35,7 +35,7 @@ const receipt = {
   signal: 'decrease_for_review',
   maskClasses: [4, 5, 6],
 };
-test('imagery imports bind geometry, scene order and internally consistent metrics', () => {
+await test('imagery imports bind geometry, scene order and internally consistent metrics', () => {
   assert.equal(validateAnalysis(receipt, job).signal, 'decrease_for_review');
   for (const change of [
     { geometryCanonical: 'changed' },
@@ -48,7 +48,7 @@ test('imagery imports bind geometry, scene order and internally consistent metri
   ])
     assert.throws(() => validateAnalysis({ ...receipt, ...change }, job));
 });
-test('insufficient coverage cannot retain a numerical conclusion', () => {
+await test('insufficient coverage cannot retain a numerical conclusion', () => {
   const sparse = {
     ...receipt,
     pairedPixels: 0,
