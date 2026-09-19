@@ -1,6 +1,6 @@
 # Beta readiness candidate — 19 September 2026
 
-This candidate follows the [deployed launch build](LAUNCH_BUILD_2026-09-19.md). It is a software readiness record, not an Apple distribution receipt or evidence of a real community pilot. The website and agent service already operate as an early technical beta; this new candidate must pass the isolated deployment-image check below before switching production.
+This candidate follows the [deployed launch build](LAUNCH_BUILD_2026-09-19.md). It is a software readiness record, not an Apple distribution receipt or evidence of a real community pilot. The website and agent service already operate as an early technical beta; **the new web candidate is ready for a controlled deployment**, with the usual predeployment backup and post-switch HTTPS acceptance still required. Production was not switched in this readiness task. A broader public invitation and Apple distribution retain the gates below.
 
 ## Completed in this candidate
 
@@ -22,7 +22,21 @@ Logs are local verification artifacts under `/tmp/vergecommon-readiness-*`, `/tm
 
 ## Deployment candidate receipt
 
-The coordinator will record the exact source commit, image digest, same-image isolated HTTP/backup/restore result and CI run here. A green health route alone is insufficient. Production was read-only checked while preparing this candidate: image `vergecommon:20260919-launch-build`, digest `sha256:192b1525a2d8abd41f8e152f242e807f1d0216f14f276518f79a7af88d883236`, healthy; daily local backup timer active; 27 GB free. These observations are point-in-time checks.
+The committed implementation is `7e92a242a18cc154110159eb3a7acd04023f5331` on `build/coop-launch-readiness`; [PR #2](https://github.com/jdhart81/verge-common/pull/2) remains open. [CI run 35472521330](https://github.com/jdhart81/verge-common/actions/runs/35472521330) passed all four jobs (web, actual deployment container, imagery and iOS) for that commit.
+
+| Receipt | Result |
+| --- | --- |
+| Staged source | `/opt/vergecommon/releases/20260919-beta-ready-7e92a24` on the dedicated VergeCommon host |
+| Image | `vergecommon:20260919-beta-ready-7e92a24` |
+| Image identity | `sha256:1cf89d7923cbca8bda057c2e2eb76bf87295e6f3cbdeee7830399b212934a7ef` |
+| Isolation | Same production container restrictions; loopback-only port 3131; fresh temporary synthetic data and backups; stopped after acceptance |
+| Same-image acceptance | Full four-account and native-account HTTP checks pass; synthetic workspace `42eb0bc8-5ad8-4f44-b2b5-47b017255fc9`; all five synthetic login accounts closed |
+| Same-image regressions | 73 upload, partner, capacity, erasure, storage and gateway tests pass |
+| Staging backup | `/backups/2026-09-19T22-11-48-982Z-GJofWJ`; database SHA-256 `489ae661a9da8bf7cb4bb10fb4bdc74e3916bae0b7feb5319aa02cc2063e6d17`; all three migrations; five committed deletions |
+| Restore result | Passed at `2026-09-19T22:11:49.312Z`; integrity/hash verified; zero remaining accounts/files after acceptance cleanup; production unchanged |
+| Final compiled browser check | A fresh synthetic database confirms the project/website context, disabled re-invitation on an archived capacity-limited co-op and new native-evidence privacy copy |
+
+The upload regression separately tests backups containing live evidence bytes and current-ledger erasure replay; the post-cleanup HTTP fixture correctly has no remaining evidence files. Final documentation commits do not alter these executable image bytes. A green health route alone is insufficient. Production was read-only checked while preparing this candidate: image `vergecommon:20260919-launch-build`, digest `sha256:192b1525a2d8abd41f8e152f242e807f1d0216f14f276518f79a7af88d883236`, healthy; daily local backup timer active; 27 GB free. These observations are point-in-time checks.
 
 Migration `0002` is new and additive. Release from a fresh source build after a verified on-server backup. Keep previous source/image for diagnosis, but do not roll back to an executable that ignores upload tombstones, evidence cleanup or current safety/erasure controls. Use a compatible forward fix or keep writes closed. Do not restore a stale deletion ledger. Earlier disposable development databases using pre-release versions of `0002` are not migration inputs.
 
@@ -30,7 +44,7 @@ Migration `0002` is new and additive. Release from a fresh source build after a 
 
 | Milestone | Remaining requirement |
 | --- | --- |
-| Controlled web deployment | Record the exact isolated image result and CI; then switch with a verified predeployment snapshot and repeat canonical HTTPS acceptance. Main-branch merge remains at the existing owner approval gate. |
+| Controlled web deployment | **Ready:** the exact image and CI passed. Switch with a verified predeployment snapshot and repeat canonical HTTPS acceptance. Main-branch merge remains at the existing owner approval gate. |
 | Broader public beta invitation | Consenting community pilot, named operator and backup responder, tested response coverage and external alert delivery. The software does not supply real participation or human staffing. |
 | Recovery readiness | Recurring encrypted transfer of production database, evidence and latest committed deletion ledger to the proposed Mac backup destination remains paused pending exact owner authorization. Independent recovery-key custody, retention choice and offsite restore rehearsal remain. No transfer or scheduler activation is performed by this candidate. |
 | Apple beta / App Store | Choose Viridis LLC organization seller versus the currently observed individual team; register the bundle/app record and signing; qualify physical iPhone/iPad behavior and accessibility; complete collection/privacy declarations, final manifest/archive review, screenshots and review access; then sign, validate and upload. Unsigned tests are not Apple distribution. |
