@@ -2,6 +2,16 @@
 
 The updated website is live at **https://vergecommon.com/**. Native account access, associated-data deletion, safety controls and the approved support contact are implemented and tested. Apple distribution and optional Stripe contributions are **not launched**. Recurring encrypted offhost backup transfer is **paused pending explicit approval**; on-server daily backups remain active.
 
+## Latest homepage update — living habitat
+
+The owner-requested SVG update is deployed from **`d44051b3d3c913a1e67967df66e6f36ea7b9600d`**. Trees grow from anchored roots, hedgerows and wildflowers bloom around property edges, birds cross the parcels, butterflies flutter and a rabbit moves its ears. Staggered 22–26 second plant cycles hide their resets. The visible pause/play button is removed. Reduced-motion and no-JavaScript visitors receive a mature static scene; offscreen animation pauses internally. Stable SVG identifiers remove the observed server/client hydration mismatch.
+
+Full lint/typecheck, self-hosted and static-preview builds passed. [GitHub run 35464323267](https://github.com/jdhart81/verge-common/actions/runs/35464323267) passed all four jobs. Desktop and 390px browser inspection confirmed the composition without horizontal overflow; browser style checks confirmed infinite running loops, no motion button and offscreen pausing. The exact isolated Linux image passed homepage, wildlife markup, public route and MCP-discovery smoke checks. Its initial health probe used the production hostname against the loopback staging origin; the corrected staging-origin probe passed. The production health check passed unchanged.
+
+Current image: **`vergecommon:20260919-living-landscape`**, identifier **`sha256:5ce4345722944130838a38b2212faf6732c497a41e036c76d87fa4a6fb87a189`**. Source: `/opt/vergecommon/releases/20260919-living-landscape`. The previous erasure-compatible beta image is retained stopped as `vergecommon-landscape-rollback-5aa1a5f`; data/evidence mounts and server restrictions are preserved. The live HTTPS page was reloaded and visibly checked, with infinite running animation, no motion control and no browser errors.
+
+Pre-update on-server backup: `/backups/2026-09-19T19-21-07-107Z-aLf2ry`; database SHA-256 `aa117fb1acf493eff7e03f0132c8bdb0a04e89fc546fc8f171a0bc8cc6a589ea`. Its isolated restore passed with four historical synthetic workspaces, three evidence files and zero accounts; four committed deletions were preserved. No production backup was copied offhost by this update. The account/data lifecycle evidence below remains for the unchanged backend.
+
 ## Released changes
 
 - Native registration, sign-in and recovery now use a normal account form. Recovery codes are acknowledged once; expiring participation tokens are stored in Keychain. Sign-out revokes the token, including advanced read-only tokens. No browser token-paste step is required.
@@ -25,9 +35,9 @@ After deployment, canonical HTTPS acceptance passed with fixture **`147d78b4-75d
 
 Live health, privacy/support content, the published email and MCP discovery returned successfully. A browser refresh confirmed the deployed support contact.
 
-## Deployment and recovery
+## Initial beta deployment and recovery
 
-The dedicated VergeCommon droplet runs `vergecommon-app` from image **`vergecommon:20260919-beta-launch`**, image identifier **`sha256:8f7c2816aea0bc9b7574ace115724d7ae5c52ef8773273ef0adc901f39e25a6d`**. Source is `/opt/vergecommon/releases/20260919-beta-launch`. Durable data/evidence mounts, private Docker network and Caddy HTTPS are retained. The previous container is stopped as `vergecommon-preprivacy-rollback-5aa1a5f`.
+The initial beta deployment ran `vergecommon-app` from image **`vergecommon:20260919-beta-launch`**, image identifier **`sha256:8f7c2816aea0bc9b7574ace115724d7ae5c52ef8773273ef0adc901f39e25a6d`**. Source is `/opt/vergecommon/releases/20260919-beta-launch`. Durable data/evidence mounts, private Docker network and Caddy HTTPS were retained. The pre-privacy container is stopped as `vergecommon-preprivacy-rollback-5aa1a5f`. The homepage-only image above supersedes this running image without changing the backend.
 
 **Do not restart an older executable lacking deletion replay after deletions have occurred.** Recovery requires an erasure-capable release and the latest independently preserved committed ledger before reopening. Use a compatible forward fix or keep service closed while repairing; a blind image/data rollback can resurrect records.
 

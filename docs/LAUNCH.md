@@ -42,8 +42,8 @@ Suggested topics: `conservation`, `open-source`, `community`, `cooperatives`, `s
 - [x] Existing AGPL-3.0-only license and third-party notices linked.
 - [x] Contribution guidance, bounded starting tasks, conduct policy, and contribution issue form.
 - [x] Document local setup and the production authentication boundary.
-- [x] Push the full implementation candidate (`5aa1a5f`) on `build/coop-launch-readiness`; [PR #2](https://github.com/jdhart81/verge-common/pull/2) remains under review.
-- [x] Complete local validation and [GitHub web, deployment-container, imagery and iOS checks](https://github.com/jdhart81/verge-common/actions/runs/35462710257). See [feature acceptance](FEATURE_ACCEPTANCE.md) and the [current beta receipt](BETA_RELEASE_2026-09-19.md) for scope.
+- [x] Push the full implementation candidate and living-landscape update (`d44051b`) on `build/coop-launch-readiness`; [PR #2](https://github.com/jdhart81/verge-common/pull/2) remains under review.
+- [x] Complete local validation and [GitHub web, deployment-container, imagery and iOS checks](https://github.com/jdhart81/verge-common/actions/runs/35464323267). See [feature acceptance](FEATURE_ACCEPTANCE.md) and the [current beta receipt](BETA_RELEASE_2026-09-19.md) for scope.
 - [x] Deploy the shared application and pass live HTTPS co-op acceptance plus the native account lifecycle. All four synthetic accounts were deleted. See the [current beta receipt](BETA_RELEASE_2026-09-19.md).
 - [ ] Complete final source review and obtain approval before merging the launch branch into `main`.
 - [ ] Check contributor links, issue forms and license rendering on the final merged revision.
