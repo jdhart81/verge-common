@@ -50,3 +50,7 @@ xcuserdata/
 *.xcuserstate
 *.ipa
 *.xcarchive/
+
+# Public droplet build artifacts
+/dist-public/
+/dist-public-render.mjs

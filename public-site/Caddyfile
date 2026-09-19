@@ -1,0 +1,16 @@
+www.vergecommon.com {
+    redir https://vergecommon.com{uri} permanent
+}
+vergecommon.com {
+    root * /srv/site
+    encode zstd gzip
+    header {
+        X-Content-Type-Options nosniff
+        Referrer-Policy strict-origin-when-cross-origin
+        X-Frame-Options DENY
+        Permissions-Policy "camera=(), microphone=(), geolocation=()"
+    }
+    @private path /api/* /workspace* /network* /join* /signin* /signout* /callback*
+    respond @private 404
+    file_server
+}

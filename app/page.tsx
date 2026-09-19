@@ -9,7 +9,7 @@ import {
   BookOpen,
 } from 'lucide-react';
 const repo = 'https://github.com/jdhart81/verge-common';
-export default function Home() {
+export default function Home({ publicPreview = false }: { publicPreview?: boolean } = {}) {
   return (
     <>
       <a className="skip" href="#main">
@@ -21,8 +21,8 @@ export default function Home() {
           verge common<span className="brand-dot">●</span>
         </Link>
         <nav aria-label="Main navigation">
-          <Link href="/network/">Projects</Link>
-          <Link href="/workspace/">My co-ops</Link>
+          <Link href={publicPreview ? "/demo/" : "/network/"}>{publicPreview ? "Plan a project" : "Projects"}</Link>
+          <Link href={publicPreview ? "#contribute" : "/workspace/"}>{publicPreview ? "Contribute" : "My co-ops"}</Link>
           <a className="nav-repo" href={repo}>
             <Code2 size={18} />
             Source <ArrowUpRight size={16} />
@@ -57,7 +57,7 @@ export default function Home() {
               </div>
               <p className="fine">
                 Early contributor preview · AGPL-3.0-only. The planner stores
-                drafts on your device. Hosted community access is currently restricted.
+                drafts on your device. {publicPreview ? 'Shared community accounts are being prepared and are not available on this site yet.' : 'Hosted community access is currently restricted.'}
               </p>
             </div>
             <aside className="field-note">
@@ -177,7 +177,7 @@ export default function Home() {
             </article>
           </div>
           <p className="release-note">
-            Available now: shared co-op workspaces, membership, projects,
+            {publicPreview ? 'Implemented in the open-source application; shared hosting is still being prepared:' : 'Available now:'} shared co-op workspaces, membership, projects,
             evidence, governance, and external receipt records. Open agreement
             workflows connect these records. Legally executed easements,
             registry operations, and actual payments remain the responsibility
