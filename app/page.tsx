@@ -95,7 +95,7 @@ export default function Home({
                 <span aria-hidden="true" />{' '}
                 {publicPreview
                   ? 'Contributor preview · Plans stay in this browser.'
-                  : 'Early community pilot · Built with people who care for a place.'}
+                  : 'Public beta · Help shape tools for community conservation.'}
               </p>
             </div>
             <ConservationLandscape />
@@ -309,7 +309,7 @@ export default function Home({
               <p>
                 {publicPreview
                   ? 'This preview includes a local planner. The open-source application also includes'
-                  : 'The early pilot includes'}{' '}
+                  : 'The public beta includes'}{' '}
                 accounts, co-ops, invitations, project discussions, activities,
                 land and evidence records, and cooperative decisions. You can
                 also connect compatible agents with limited permissions.{' '}
@@ -321,8 +321,43 @@ export default function Home({
                 </a>
               </p>
             </details>
+            {!publicPreview && (
+              <details>
+                <summary>
+                  What should I expect from the public beta?
+                  <Plus size={20} aria-hidden="true" />
+                </summary>
+                <p>
+                  The website beta is free to use. Start with a small project,
+                  keep copies of important records, and share feedback as the
+                  tools develop. Features may change. Use nonsensitive examples
+                  while getting familiar with your co-op’s permissions.{' '}
+                  <Link href="/support/">Find help and reporting options.</Link>
+                </p>
+              </details>
+            )}
           </div>
         </section>
+        {!publicPreview && (
+          <section
+            className="wrap home-funding"
+            aria-labelledby="funding-title"
+          >
+            <div>
+              <p className="eyebrow">CARE FOR THE TOOLS, TOO</p>
+              <h2 id="funding-title">Help the commons grow.</h2>
+              <p>
+                VergeCommon is a Viridis LLC project. Field knowledge, code,
+                feedback and optional project contributions help sustain the
+                tools we share.
+              </p>
+            </div>
+            <Link className="button home-funding-link" href="/support-project/">
+              Support the project
+              <ArrowRight size={18} aria-hidden="true" />
+            </Link>
+          </section>
+        )}
         <section
           id="contribute"
           className="home-invitation"
@@ -367,7 +402,20 @@ export default function Home({
         <span>Open code. Cooperative conservation.</span>
         <div>
           <a href={docs + '/LICENSE'}>AGPL-3.0</a>
-          <a href={docs + '/PRIVACY.md'}>Privacy</a>
+          <a
+            href={
+              publicPreview ? 'https://vergecommon.com/privacy/' : '/privacy/'
+            }
+          >
+            Privacy
+          </a>
+          <a
+            href={
+              publicPreview ? 'https://vergecommon.com/support/' : '/support/'
+            }
+          >
+            Get help
+          </a>
           <a href={sourceRepo}>
             Source
             <ArrowUpRight size={14} aria-hidden="true" />

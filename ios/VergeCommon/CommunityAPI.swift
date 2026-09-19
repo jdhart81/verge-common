@@ -3,9 +3,16 @@ import Foundation
 // One deployment for native API requests and browser handoffs. Self-hosters change this URL.
 enum CommunityService {
     static let origin = URL(string: "https://vergecommon.com")!
-    static func page(_ path: String, id: String? = nil) -> URL {
+    static func page(_ path: String, id: String? = nil, fragment: String? = nil) -> URL {
         var url = URLComponents(url: origin.appendingPathComponent(path), resolvingAgainstBaseURL: false)!
         if let id { url.queryItems = [URLQueryItem(name: "id", value: id)] }
+        url.fragment = fragment
+        return url.url!
+    }
+    // Browser co-op selection uses `coop`; API record requests use `id`.
+    static func coopPage(_ path: String, id: String) -> URL {
+        var url = URLComponents(url: page(path), resolvingAgainstBaseURL: false)!
+        url.queryItems = [URLQueryItem(name: "coop", value: id)]
         return url.url!
     }
 }

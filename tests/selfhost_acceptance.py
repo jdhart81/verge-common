@@ -87,8 +87,30 @@ assert any(t['title']=='Synthetic agent action' for t in state(a)['state']['task
 code,result=rpc('tools/call',{'name':'apply_coop_command','arguments':{'id':id,'version':state(a)['version'],'requestId':str(uuid.uuid4()),'command':{'op':'record_payment','payload':{}}}})
 assert code==200 and result['result'].get('isError'),(code,result)
 assert anonymous.call('/a%70i/workspaces',{},headers={'Authorization':'Bearer '+agent_token})[0]==403
-code,current=command(a,'archive',{});assert code==200,(code,current)
+# Personal blocking applies to real API reads and mutations, not just the UI.
+code,current=command(a,'post_update',{'projectId':project,'text':'Synthetic block fixture','visibility':'members'});assert code==200,(code,current)
+blocked_update=current['state']['updates'][-1]['id']
+founder=next(m for m in current['state']['members'] if m.get('isYou'))
+code,current=command(b,'block_member',{'id':founder['id']});assert code==200,(code,current)
+assert all(u['id']!=blocked_update for u in current['state']['updates'])
+assert command(b,'post_comment',{'updateId':blocked_update,'text':'Must be denied'})[0]==403
+assert state(a)['state']['blocks']==[]
+for c,expected_blocks in [(a,[]),(b,[{'memberId':founder['id'],'name':founder['name']}])]:
+ code,exported=c.call('/account/export');assert code==200,(code,exported)
+ exported_state=next(w['state'] for w in exported['workspaces'] if w.get('state',{}).get('id')==id)
+ assert exported_state['blocks']==expected_blocks
+ assert all(not {'requestHash','stateHash','commitmentNonce'} & event.keys() for event in exported_state['audit'])
+code,current=command(b,'unblock_member',{'id':founder['id']});assert code==200,(code,current)
+assert any(u['id']==blocked_update for u in current['state']['updates'])
+# Founder transfer must persist both the shared state and relational owner ID.
+code,_=command(a,'member_role',{'id':member['id'],'role':'steward'});assert code==200,code
+code,current=command(a,'transfer_stewardship',{'id':member['id'],'confirmation':'TRANSFER'});assert code==200,(code,current)
+assert not current['isOwner'] and state(b)['isOwner']
+assert a.call('/api/workspaces',{'op':'create','requestId':id,'payload':{}})[0]==409
+assert b.call('/api/workspaces',{'op':'create','requestId':id,'payload':{}})[0]==200
+assert command(a,'archive',{})[0]==403
+code,current=command(b,'archive',{});assert code==200,(code,current)
 # Preserve archived synthetic co-op receipt, remove synthetic login accounts.
 for c in [a,b,eve]:
  code,_=c.call('/auth/close',{'password':c.password,'confirmation':'CLOSE'},form=True);assert code==200,code
-print(json.dumps({'status':'passed','workspace':id,'checks':['distinct mission homepage and app route','three independent accounts','forged identity denied','private invitation and membership','member post','idempotency and conflict','outsider denial','CSRF rejection','evidence upload/hash/private download','native read scope and token revocation','real hosted MCP handshake/read/write','agent financial denial','encoded scope bypass denied','archive','account closure']}))
+print(json.dumps({'status':'passed','workspace':id,'checks':['distinct mission homepage and app route','three independent accounts','forged identity denied','private invitation and membership','member post','idempotency and conflict','outsider denial','CSRF rejection','evidence upload/hash/private download','native read scope and token revocation','real hosted MCP handshake/read/write','agent financial denial','encoded scope bypass denied','private blocking and interaction denial','persisted founder transfer and authority change','archive','account closure']}))

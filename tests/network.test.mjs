@@ -51,6 +51,171 @@ function twoStewards() {
   f.run('member_role', { id: memberId, role: 'steward' });
   return f;
 }
+await test('founder responsibility transfers only after confirmation to an active steward and preserves historical records', () => {
+  const f = twoStewards();
+  const target = f.s.members.find((m) => m.userId === reviewer.id);
+  const founder = f.s.members.find((m) => m.userId === owner.id);
+  const before = structuredClone(f.s);
+  assert.throws(
+    () =>
+      f.run(
+        'transfer_stewardship',
+        { id: target.id, confirmation: 'TRANSFER' },
+        reviewer,
+      ),
+    /Only the founding/,
+  );
+  assert.throws(
+    () => f.run('transfer_stewardship', { id: target.id }),
+    /Confirm/,
+  );
+  assert.throws(
+    () =>
+      f.run('transfer_stewardship', {
+        id: founder.id,
+        confirmation: 'TRANSFER',
+      }),
+    /another active/,
+  );
+  f.run('member_role', { id: target.id, role: 'member' });
+  assert.throws(
+    () =>
+      f.run('transfer_stewardship', {
+        id: target.id,
+        confirmation: 'TRANSFER',
+      }),
+    /another active/,
+  );
+  f.run('member_role', { id: target.id, role: 'steward' });
+  f.run('transfer_stewardship', { id: target.id, confirmation: 'TRANSFER' });
+  assert.equal(f.s.ownerId, reviewer.id);
+  assert.equal(memberView(f.s, owner.id).isOwner, false);
+  assert.equal(memberView(f.s, reviewer.id).isOwner, true);
+  assert.equal(f.s.members.find((m) => m.userId === owner.id).role, 'steward');
+  assert.deepEqual(f.s.parcels, before.parcels);
+  assert.deepEqual(f.s.allocations, before.allocations);
+  assert.throws(
+    () => f.run('member_role', { id: target.id, role: 'member' }),
+    /Only the founding/,
+  );
+  f.run('leave');
+  assert.equal(
+    f.s.members.find((m) => m.userId === owner.id).status,
+    'removed',
+  );
+  f.run('archive', {}, reviewer);
+  assert.equal(f.s.visibility, 'archived');
+});
+
+await test('member blocking hides both directions of social participation without leaking block lists or changing governance', () => {
+  const f = twoStewards();
+  const participant = { id: 'participant' };
+  const target = f.s.members.find((m) => m.userId === reviewer.id);
+  const id = f.run('request_membership', { name: 'Participant' }, participant);
+  f.run('member_status', { id, status: 'active' });
+  const projectId = f.run('create_project', {
+    name: 'Test place',
+    region: 'Test region',
+    summary: 'Synthetic only',
+    kind: 'ecohedge',
+  });
+  const updateId = f.run(
+    'post_update',
+    { projectId, text: 'Steward update', visibility: 'members' },
+    reviewer,
+  );
+  const ownUpdate = f.run(
+    'post_update',
+    { projectId, text: 'Participant update', visibility: 'members' },
+    participant,
+  );
+  f.run(
+    'post_comment',
+    { updateId: ownUpdate, text: 'Steward reply' },
+    reviewer,
+  );
+  const eventId = f.run(
+    'create_event',
+    {
+      projectId,
+      title: 'Test activity',
+      summary: 'Synthetic only',
+      meetingDetails: 'Private test',
+      startsAt: 10000,
+      endsAt: 20000,
+      timeZone: 'UTC',
+      visibility: 'members',
+      capacity: 0,
+    },
+    reviewer,
+  );
+  f.run('block_member', { id: target.id }, participant);
+  f.run('block_member', { id: target.id }, participant);
+  Object.assign(f.s.audit.at(-1), {
+    requestHash: 'private-command-digest',
+    stateHash: 'private-state-digest',
+    commitmentNonce: 'private-audit-salt',
+    hash: 'shareable-receipt',
+  });
+  assert.equal(f.s.blocks.length, 1);
+  const visible = memberView(f.s, participant.id).state;
+  assert.deepEqual(visible.blocks, [
+    { memberId: target.id, name: target.name },
+  ]);
+  assert.deepEqual(
+    visible.updates.map((u) => u.id),
+    [ownUpdate],
+  );
+  assert.equal(visible.comments.length, 0);
+  assert.equal(visible.events.length, 0);
+  assert.equal(visible.members.length, 3);
+  assert.equal(visible.projects.length, 1);
+  const moderator = memberView(f.s, reviewer.id).state;
+  assert.deepEqual(moderator.blocks, []);
+  for (const projection of [visible, moderator]) {
+    assert.equal(projection.audit.at(-1).requestHash, undefined);
+    assert.equal(projection.audit.at(-1).stateHash, undefined);
+    assert.equal(projection.audit.at(-1).commitmentNonce, undefined);
+    assert.equal(projection.audit.at(-1).hash, 'shareable-receipt');
+  }
+  assert.equal(f.s.audit.at(-1).commitmentNonce, 'private-audit-salt');
+  assert.equal(
+    moderator.updates.find((u) => u.id === ownUpdate).authorMemberId,
+    id,
+  );
+  assert.equal(moderator.updates.find((u) => u.id === ownUpdate).blocked, true);
+  assert.equal(publicWorkspace(f.s).blocks, undefined);
+  assert.throws(
+    () =>
+      f.run('post_comment', { updateId, text: 'Blocked reply' }, participant),
+    /unavailable/,
+  );
+  assert.throws(
+    () =>
+      f.run(
+        'post_comment',
+        { updateId: ownUpdate, text: 'Blocked reply' },
+        reviewer,
+      ),
+    /unavailable/,
+  );
+  assert.throws(
+    () => f.run('event_rsvp', { id: eventId, response: 'going' }, participant),
+    /unavailable/,
+  );
+  assert.throws(() => f.run('block_member', { id }, participant), /yourself/);
+  assert.throws(
+    () => f.run('block_member', { id: target.id }, stranger),
+    /membership/,
+  );
+  // A different member cannot undo another member's block.
+  f.run('unblock_member', { id }, reviewer);
+  assert.equal(f.s.blocks.length, 1);
+  f.run('unblock_member', { id: target.id }, participant);
+  assert.equal(memberView(f.s, participant.id).state.updates.length, 2);
+  f.run('post_comment', { updateId, text: 'Unblocked reply' }, participant);
+  f.run('event_rsvp', { id: eventId, response: 'going' }, participant);
+});
 function reviewBoundaryAndConsent(
   f,
   parcelId,

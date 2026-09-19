@@ -41,7 +41,10 @@ final class CommunityClientTests: XCTestCase {
         XCTAssertNil(request.value(forHTTPHeaderField:"Authorization")); XCTAssertNil(request.value(forHTTPHeaderField:"Cookie"))
     }
     func testCoopLinksEncodeIdentifiers() {
-        let url = CommunityService.page("network/",id:"a&next=evil")
+        let url = CommunityService.coopPage("network/",id:"a&next=evil")
         XCTAssertEqual(URLComponents(url:url,resolvingAgainstBaseURL:false)?.queryItems?.count,1)
+        XCTAssertEqual(URLComponents(url:url,resolvingAgainstBaseURL:false)?.queryItems?.first, URLQueryItem(name: "coop", value: "a&next=evil"))
+        XCTAssertEqual(CommunityService.coopPage("workspace/", id: "coop-a").absoluteString, "https://vergecommon.com/workspace/?coop=coop-a")
+        XCTAssertEqual(CommunityService.page("api/workspaces", id: "coop-a").absoluteString, "https://vergecommon.com/api/workspaces?id=coop-a")
     }
 }

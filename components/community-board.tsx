@@ -12,26 +12,62 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { eventCalendar } from '@/lib/calendar.mjs';
 type CommunityProject = { id: string; name: string; status: string };
 export type CommunityEvent = {
-  id: string; title: string; summary: string; startsAt: number; endsAt: number;
-  timeZone: string; status: string; projectId?: string; createdAt?: number;
-  hidden?: boolean; visibility?: string; meetingDetails?: string; cancelReason?: string;
-  capacity?: number; goingCount?: number; yourResponse?: string; isOrganizer?: boolean;
+  id: string;
+  title: string;
+  summary: string;
+  startsAt: number;
+  endsAt: number;
+  timeZone: string;
+  status: string;
+  projectId?: string;
+  createdAt?: number;
+  hidden?: boolean;
+  blocked?: boolean;
+  visibility?: string;
+  meetingDetails?: string;
+  cancelReason?: string;
+  capacity?: number;
+  goingCount?: number;
+  yourResponse?: string;
+  isOrganizer?: boolean;
   attendees?: { name: string; response: string }[];
 };
 type CommunityUpdate = {
-  id: string; projectId: string; hidden: boolean; visibility: string;
-  author: string; createdAt: number; text: string;
+  id: string;
+  projectId: string;
+  hidden: boolean;
+  visibility: string;
+  author: string;
+  createdAt: number;
+  text: string;
+  blocked?: boolean;
 };
 type CommunityComment = {
-  id: string; updateId: string; author: string; text: string; hidden: boolean; isYou: boolean;
+  id: string;
+  updateId: string;
+  author: string;
+  text: string;
+  hidden: boolean;
+  isYou: boolean;
+  blocked?: boolean;
 };
 type CommunityReport = {
-  id: string; targetId: string; kind: string; status: string; reason: string; note?: string;
+  id: string;
+  targetId: string;
+  kind: string;
+  status: string;
+  reason: string;
+  note?: string;
 };
 export type CommunityState = {
-  visibility: string; members: { status: string }[]; tasks: { status: string }[];
-  projects: CommunityProject[]; updates: CommunityUpdate[];
-  events?: CommunityEvent[]; comments?: CommunityComment[]; reports?: CommunityReport[];
+  visibility: string;
+  members: { status: string }[];
+  tasks: { status: string }[];
+  projects: CommunityProject[];
+  updates: CommunityUpdate[];
+  events?: CommunityEvent[];
+  comments?: CommunityComment[];
+  reports?: CommunityReport[];
 };
 type Save = (op: string, payload: Record<string, unknown>) => Promise<boolean>;
 function subscribeClock(onChange: () => void) {
@@ -186,7 +222,11 @@ export function CommunityBoard({
   busy: boolean;
   mutate: Save;
 }) {
-  const zone = useSyncExternalStore(subscribeTimeZone, timeZoneSnapshot, serverTimeZone);
+  const zone = useSyncExternalStore(
+    subscribeTimeZone,
+    timeZoneSnapshot,
+    serverTimeZone,
+  );
   const now = useSyncExternalStore(subscribeClock, clockSnapshot, serverClock);
   const [showPast, setShowPast] = useState(false),
     [notice, setNotice] = useState('');
@@ -195,7 +235,7 @@ export function CommunityBoard({
     comments: CommunityComment[] = state.comments ?? [],
     reports: CommunityReport[] = state.reports ?? [];
   const visibleEvents = events
-    .filter((e) => showPast || e.endsAt >= now)
+    .filter((e) => !e.blocked && (showPast || e.endsAt >= now))
     .sort((a, b) => a.startsAt - b.startsAt);
   async function act(op: string, payload: Record<string, unknown>) {
     try {
@@ -226,34 +266,27 @@ export function CommunityBoard({
       </p>
       <div className="network-meta">
         <span>
-          {
-            state.members.filter((m) => m.status === 'active')
-              .length
-          }{' '}
-          active memberships
+          {state.members.filter((m) => m.status === 'active').length} active
+          memberships
         </span>
         <span>
           {
             events.filter(
               (e) =>
-                e.status === 'scheduled' && !e.hidden && e.endsAt > now,
+                e.status === 'scheduled' &&
+                !e.hidden &&
+                !e.blocked &&
+                e.endsAt > now,
             ).length
           }{' '}
           upcoming events
         </span>
         <span>
-          {
-            state.tasks.filter((t) => t.status === 'completed')
-              .length
-          }{' '}
-          actions marked complete
+          {state.tasks.filter((t) => t.status === 'completed').length} actions
+          marked complete
         </span>
       </div>
-      {notice && (
-        <output className="notice mt-4">
-          {notice}
-        </output>
-      )}
+      {notice && <output className="notice mt-4">{notice}</output>}
       <Tabs defaultValue="events" className="mt-6">
         <TabsList>
           <TabsTrigger value="events">Events</TabsTrigger>
@@ -311,32 +344,28 @@ export function CommunityBoard({
                     response:{' '}
                     {e.yourResponse?.replace('_', ' ') || 'Not yet responded'}
                   </p>
-                  {e.status === 'scheduled' &&
-                    !e.hidden &&
-                    e.endsAt > now && (
-                      <div className="button-row">
-                        {[
-                          ['going', 'I’m going'],
-                          ['interested', 'Interested'],
-                          ['not_going', 'Can’t attend'],
-                        ].map(([response, title]) => (
-                          <Button
-                            key={response}
-                            disabled={disabled}
-                            variant={
-                              e.yourResponse === response
-                                ? 'default'
-                                : 'outline'
-                            }
-                            onClick={() =>
-                              act('event_rsvp', { id: e.id, response })
-                            }
-                          >
-                            {title}
-                          </Button>
-                        ))}
-                      </div>
-                    )}
+                  {e.status === 'scheduled' && !e.hidden && e.endsAt > now && (
+                    <div className="button-row">
+                      {[
+                        ['going', 'I’m going'],
+                        ['interested', 'Interested'],
+                        ['not_going', 'Can’t attend'],
+                      ].map(([response, title]) => (
+                        <Button
+                          key={response}
+                          disabled={disabled}
+                          variant={
+                            e.yourResponse === response ? 'default' : 'outline'
+                          }
+                          onClick={() =>
+                            act('event_rsvp', { id: e.id, response })
+                          }
+                        >
+                          {title}
+                        </Button>
+                      ))}
+                    </div>
+                  )}
                   <Button
                     className="mt-4"
                     variant="outline"
@@ -452,81 +481,80 @@ export function CommunityBoard({
         <TabsContent value="discussion">
           <div className="network-columns">
             <section>
-              {![...state.updates].length && (
+              {!state.updates.some((u) => !u.blocked) && (
                 <p className="empty">
                   Share the first project update or question.
                 </p>
               )}
-              {[...state.updates].reverse().map((u) => (
-                <article className="network-card" key={u.id}>
-                  <p className="eyebrow">
-                    {
-                      state.projects.find(
-                        (p) => p.id === u.projectId,
-                      )?.name
-                    }{' '}
-                    · {u.hidden ? 'Hidden' : u.visibility}
-                  </p>
-                  <h3>{u.author}</h3>
-                  <p className="small">
-                    {new Date(u.createdAt).toLocaleString()}
-                  </p>
-                  <p className="whitespace-pre-wrap">{u.text}</p>
-                  {comments
-                    .filter((c) => c.updateId === u.id)
-                    .map((c) => (
-                      <div className="panel mt-4" key={c.id}>
-                        <strong>{c.author}</strong>
-                        <p className="whitespace-pre-wrap">
-                          {c.hidden ? '[Hidden comment]' : c.text}
-                        </p>
-                        {!c.hidden && (
-                          <>
-                            {(c.isYou || steward) && (
-                              <Button
-                                variant="outline"
+              {state.updates
+                .filter((u) => !u.blocked)
+                .reverse()
+                .map((u) => (
+                  <article className="network-card" key={u.id}>
+                    <p className="eyebrow">
+                      {state.projects.find((p) => p.id === u.projectId)?.name} ·{' '}
+                      {u.hidden ? 'Hidden' : u.visibility}
+                    </p>
+                    <h3>{u.author}</h3>
+                    <p className="small">
+                      {new Date(u.createdAt).toLocaleString()}
+                    </p>
+                    <p className="whitespace-pre-wrap">{u.text}</p>
+                    {comments
+                      .filter((c) => c.updateId === u.id && !c.blocked)
+                      .map((c) => (
+                        <div className="panel mt-4" key={c.id}>
+                          <strong>{c.author}</strong>
+                          <p className="whitespace-pre-wrap">
+                            {c.hidden ? '[Hidden comment]' : c.text}
+                          </p>
+                          {!c.hidden && (
+                            <>
+                              {(c.isYou || steward) && (
+                                <Button
+                                  variant="outline"
+                                  disabled={disabled}
+                                  onClick={() =>
+                                    act('remove_comment', { id: c.id })
+                                  }
+                                >
+                                  Hide comment
+                                </Button>
+                              )}
+                              <Report
+                                kind="comment"
+                                targetId={c.id}
+                                save={mutate}
                                 disabled={disabled}
-                                onClick={() =>
-                                  act('remove_comment', { id: c.id })
-                                }
-                              >
-                                Hide comment
-                              </Button>
-                            )}
-                            <Report
-                              kind="comment"
-                              targetId={c.id}
-                              save={mutate}
-                              disabled={disabled}
-                            />
-                          </>
-                        )}
-                      </div>
-                    ))}
-                  {!u.hidden && (
-                    <>
-                      <Form
-                        disabled={disabled}
-                        submit="Reply to group"
-                        save={(v) =>
-                          mutate('post_comment', { ...v, updateId: u.id })
-                        }
-                      >
-                        <ControlLabel>
-                          Member-only reply
-                          <Textarea name="text" maxLength={2000} required />
-                        </ControlLabel>
-                      </Form>
-                      <Report
-                        kind="update"
-                        targetId={u.id}
-                        save={mutate}
-                        disabled={disabled}
-                      />
-                    </>
-                  )}
-                </article>
-              ))}
+                              />
+                            </>
+                          )}
+                        </div>
+                      ))}
+                    {!u.hidden && (
+                      <>
+                        <Form
+                          disabled={disabled}
+                          submit="Reply to group"
+                          save={(v) =>
+                            mutate('post_comment', { ...v, updateId: u.id })
+                          }
+                        >
+                          <ControlLabel>
+                            Member-only reply
+                            <Textarea name="text" maxLength={2000} required />
+                          </ControlLabel>
+                        </Form>
+                        <Report
+                          kind="update"
+                          targetId={u.id}
+                          save={mutate}
+                          disabled={disabled}
+                        />
+                      </>
+                    )}
+                  </article>
+                ))}
             </section>
             <aside className="panel">
               <h3>Share an update</h3>

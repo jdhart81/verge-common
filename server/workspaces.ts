@@ -110,13 +110,17 @@ export async function command(
   event.requestHash = requestHash;
   event.previousHash = state.audit.at(-1)?.hash ?? '';
   event.stateHash = await hash(JSON.stringify(data));
+  // Keep a private salt in the persisted receipt so a member cannot enumerate
+  // low-entropy private payloads (for example a block target) from its hash.
+  event.commitmentNonce = crypto.randomUUID();
   event.hash = await hash(JSON.stringify(event));
   const result = await getD1()
     .prepare(
-      'UPDATE workspaces SET state_json = ?, name = ?, region = ?, summary = ?, visibility = ?, updated_at = ?, version = version + 1 WHERE id = ? AND version = ? RETURNING version',
+      'UPDATE workspaces SET state_json = ?, owner_id = ?, name = ?, region = ?, summary = ?, visibility = ?, updated_at = ?, version = version + 1 WHERE id = ? AND version = ? RETURNING version',
     )
     .bind(
       JSON.stringify(next),
+      next.ownerId,
       next.name,
       next.region,
       next.summary,

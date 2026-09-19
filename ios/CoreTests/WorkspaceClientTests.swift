@@ -26,6 +26,64 @@ final class WorkspaceClientTests: XCTestCase {
         return configuration
     }
     func workspace() throws -> WorkspaceView { try WorkspaceClient.decode(WorkspaceView.self, data: Data(detailJSON.utf8), status: 200, mimeType: "application/json") }
+    func safetyWorkspace() throws -> WorkspaceView {
+        var object = try XCTUnwrap(JSONSerialization.jsonObject(with: Data(detailJSON.utf8)) as? [String: Any])
+        var state = try XCTUnwrap(object["state"] as? [String: Any])
+        let updates: [[String: Any]] = [
+            ["id": "legacy", "text": "Visible update", "author": "Alex", "createdAt": 1, "hidden": false],
+            ["id": "blocked", "text": "Steward moderation record", "author": "Blair", "createdAt": 3, "hidden": false, "blocked": true],
+            ["id": "hidden", "text": "Hidden moderation record", "author": "Alex", "createdAt": 2, "hidden": true, "blocked": false],
+        ]
+        let members: [[String: Any]] = [
+            ["id": "member-self", "name": "You", "status": "active", "isYou": true],
+            ["id": "member-alex", "name": "Alex", "status": "active", "isYou": false],
+            ["id": "member-blair", "name": "Blair", "status": "active", "isYou": false],
+            ["id": "member-pending", "name": "Pending", "status": "pending", "isYou": false],
+        ]
+        state["blocks"] = [
+            ["memberId": "member-blair", "name": "Blair"],
+            ["memberId": "member-former", "name": "Former member"],
+        ]
+        state["updates"] = updates
+        state["members"] = members
+        object["state"] = state
+        return try WorkspaceClient.decode(WorkspaceView.self, data: JSONSerialization.data(withJSONObject: object), status: 200, mimeType: "application/json")
+    }
+    func testBlockedAndHiddenUpdatesStayOutOfNativeFeedIncludingStewardPayloads() throws {
+        let state = try safetyWorkspace().state
+        XCTAssertEqual(state.updates.count, 3)
+        XCTAssertEqual(state.visibleUpdates.map(\.id), ["legacy"])
+        XCTAssertEqual(state.blockableMembers.map(\.id), ["member-alex"])
+        let legacy = try workspace().state
+        XCTAssertNil(legacy.members)
+        XCTAssertNil(legacy.blocks)
+        XCTAssertTrue(legacy.blockableMembers.isEmpty)
+    }
+    func testSafetyCommandsUseMembershipIDsAndValidateTargets() throws {
+        let workspace = try safetyWorkspace()
+        let block = try WorkspaceCommand.memberBlock("member-alex", blocked: true, workspace: workspace)
+        XCTAssertEqual(block.op, "block_member")
+        XCTAssertEqual(block.payload, ["id": .text("member-alex")])
+        XCTAssertEqual(block.version, workspace.version)
+        let client = WorkspaceClient(token: token)
+        XCTAssertEqual(try client.request(method: "POST", command: block).httpBody, try client.request(method: "POST", command: block).httpBody)
+        let unblock = try WorkspaceCommand.memberBlock("member-former", blocked: false, workspace: workspace)
+        XCTAssertEqual(unblock.op, "unblock_member")
+        XCTAssertEqual(unblock.payload["id"], .text("member-former"))
+        XCTAssertThrowsError(try WorkspaceCommand.memberBlock("member-self", blocked: true, workspace: workspace))
+        XCTAssertThrowsError(try WorkspaceCommand.memberBlock("member-pending", blocked: true, workspace: workspace))
+        XCTAssertThrowsError(try WorkspaceCommand.memberBlock("unknown", blocked: true, workspace: workspace))
+        XCTAssertThrowsError(try WorkspaceCommand.memberBlock("member-alex", blocked: false, workspace: workspace))
+        let report = try WorkspaceCommand.reportUpdate("legacy", reason: "  Contains personal details  ", workspace: workspace)
+        XCTAssertEqual(report.op, "report_content")
+        XCTAssertEqual(report.payload, ["kind": .text("update"), "targetId": .text("legacy"), "reason": .text("Contains personal details")])
+        XCTAssertThrowsError(try WorkspaceCommand.reportUpdate("blocked", reason: "Concern", workspace: workspace))
+        XCTAssertThrowsError(try WorkspaceCommand.reportUpdate("legacy", reason: " \n ", workspace: workspace))
+        XCTAssertThrowsError(try WorkspaceCommand.reportUpdate("legacy", reason: String(repeating: "a", count: 2001), workspace: workspace))
+    }
+    func testAccountClosureLinkUsesCanonicalOriginAndDirectFragment() {
+        XCTAssertEqual(CommunityService.page("account", fragment: "close-account").absoluteString, "https://vergecommon.com/account#close-account")
+    }
     func testAuthenticatedListUsesCanonicalHTTPSAndNoCookie() async throws {
         WorkspaceStub.status = 200
         WorkspaceStub.data = Data("{\"workspaces\":[{\"id\":\"coop-a\",\"name\":\"Test\",\"region\":\"Vermont\",\"visibility\":\"private\",\"version\":3}]}".utf8)

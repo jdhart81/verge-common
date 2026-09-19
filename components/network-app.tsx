@@ -178,6 +178,7 @@ type Workspace = Omit<CommunityState, 'projects' | 'members' | 'tasks'> &
       used: boolean;
       expiresAt: number;
     }[];
+    blocks?: { memberId: string; name: string }[];
     agreements: Agreement[];
     proposals: (ReviewRecord & {
       title: string;
@@ -1513,23 +1514,25 @@ export function NetworkApp({
                       </article>
                     ))}
                     <h2 className="mt-8">Co-op updates</h2>
-                    {state.updates.map((u) => (
-                      <article className="network-card" key={u.id}>
-                        <p className="small">
-                          {u.author} · {date(u.createdAt)} ·{' '}
-                          {u.hidden ? 'hidden' : u.visibility}
-                        </p>
-                        <p>{u.text}</p>
-                        {steward && !u.hidden && (
-                          <Button
-                            variant="outline"
-                            onClick={() => quick('hide_update', { id: u.id })}
-                          >
-                            Hide update
-                          </Button>
-                        )}
-                      </article>
-                    ))}
+                    {state.updates
+                      .filter((u) => !u.blocked)
+                      .map((u) => (
+                        <article className="network-card" key={u.id}>
+                          <p className="small">
+                            {u.author} · {date(u.createdAt)} ·{' '}
+                            {u.hidden ? 'hidden' : u.visibility}
+                          </p>
+                          <p>{u.text}</p>
+                          {steward && !u.hidden && (
+                            <Button
+                              variant="outline"
+                              onClick={() => quick('hide_update', { id: u.id })}
+                            >
+                              Hide update
+                            </Button>
+                          )}
+                        </article>
+                      ))}
                   </section>
                   <aside>
                     <div className="panel">
@@ -1928,6 +1931,14 @@ export function NetworkApp({
                     Invite people by sharing the public co-op link. No
                     invitations are sent automatically.
                   </p>
+                  <p className="small">
+                    Blocking hides your updates, replies and events from each
+                    other inside this co-op, and prevents replies or event
+                    responses between you. Public pages and shared governance
+                    records remain visible. Stewards retain moderation access.
+                    Report harmful content before blocking so stewards can
+                    review it.
+                  </p>
                   {state.members.map((m) => (
                     <div className="member-row" key={m.id}>
                       <div>
@@ -1940,6 +1951,24 @@ export function NetworkApp({
                         </span>
                       </div>
                       <div className="button-row">
+                        {!m.isYou && m.status === 'active' && (
+                          <Button
+                            variant="outline"
+                            disabled={busy || state.visibility === 'archived'}
+                            onClick={() =>
+                              quick(
+                                state.blocks?.some((b) => b.memberId === m.id)
+                                  ? 'unblock_member'
+                                  : 'block_member',
+                                { id: m.id },
+                              )
+                            }
+                          >
+                            {state.blocks?.some((b) => b.memberId === m.id)
+                              ? 'Unblock member'
+                              : 'Block member'}
+                          </Button>
+                        )}
                         {steward && m.status === 'pending' && (
                           <>
                             <Button
@@ -1998,9 +2027,45 @@ export function NetworkApp({
                             }
                           />
                         )}
+                        {data.isOwner &&
+                          !m.isYou &&
+                          m.status === 'active' &&
+                          m.role === 'steward' && (
+                            <ConfirmAction
+                              title={`Transfer responsibility to ${m.name}?`}
+                              description="Confirm this steward has agreed to take over. They will control steward appointments and co-op archival. You remain a steward but cannot reverse the transfer yourself. Land rights, legal authority and financial records do not change."
+                              label="Transfer responsibility"
+                              disabled={busy || state.visibility === 'archived'}
+                              onConfirm={() =>
+                                quick('transfer_stewardship', {
+                                  id: m.id,
+                                  confirmation: 'TRANSFER',
+                                })
+                              }
+                            />
+                          )}
                       </div>
                     </div>
                   ))}
+                  {!!state.blocks?.length && (
+                    <details className="mt-5">
+                      <summary>Members you have blocked</summary>
+                      {state.blocks.map((b) => (
+                        <div className="network-meta" key={b.memberId}>
+                          <span>{b.name}</span>
+                          <Button
+                            variant="outline"
+                            disabled={busy || state.visibility === 'archived'}
+                            onClick={() =>
+                              quick('unblock_member', { id: b.memberId })
+                            }
+                          >
+                            Unblock member
+                          </Button>
+                        </div>
+                      ))}
+                    </details>
+                  )}
                   <p className="notice mt-5">
                     Evidence and financial records need a different steward to
                     review them. Appoint a trusted second steward before

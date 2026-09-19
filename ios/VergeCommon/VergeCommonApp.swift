@@ -116,10 +116,13 @@ struct JournalHome: View {
                     }
                     Section("Your records") {
                         Text("Drafts stay in this app’s storage until you export or delete them. Your device backup settings may include this storage. Removing the app may remove its drafts. Exported copies are controlled by the destination you choose.")
-                        Text("This version does not collect location, photographs, analytics or advertising identifiers. It uploads member posts or selected draft details only when you submit them. There is no automatic journal upload or sync.")
+                        Text("This version does not collect device location, photographs, analytics or advertising identifiers. It sends member posts, safety reports, block choices or selected draft details only when you confirm them. There is no automatic journal upload or sync.")
+                        Link("Privacy and your records", destination: CommunityService.page("privacy/"))
+                        Link("Support and safety", destination: CommunityService.page("support/"))
+                        Link("Manage website account", destination: CommunityService.page("account"))
                         Link("Open-source project", destination: URL(string: "https://github.com/jdhart81/verge-common")!)
                     }
-                }.navigationTitle("Community")
+                }.navigationTitle("Journal tools")
             }.tabItem { Label("Journal tools", systemImage: "gearshape") }
         }
                 .fileExporter(isPresented: $exporting, document: export, contentType: .json, defaultFilename: exportName) { result in
@@ -227,7 +230,7 @@ struct CommunityDetail: View {
     var body: some View {
         List {
             Section { Text(coop.summary); Text([coop.region, coop.country].filter { !$0.isEmpty }.joined(separator: " · ")).foregroundStyle(.secondary)
-                Link("Join or participate on the website", destination: CommunityService.page("network/", id: coop.id))
+                Link("Join or participate on the website", destination: CommunityService.coopPage("network/", id: coop.id))
                 Text("Join on the website, then connect your device in My co-ops to post member updates and submit field observations. Membership, public publishing and RSVPs use the website’s sign-in and permissions.").font(.subheadline).foregroundStyle(.secondary) }
             Section("Public projects") {
                 if coop.projects.isEmpty { Text("No public projects shared yet.").foregroundStyle(.secondary) }
@@ -246,6 +249,10 @@ struct CommunityDetail: View {
                         Text(Date(timeIntervalSince1970: event.startsAt / 1000), format: .dateTime).font(.subheadline)
                         Text("Time shown in your device’s time zone · \(event.status)").font(.caption).foregroundStyle(.secondary) }
                 }
+            }
+            Section("Safety") {
+                Text("Public pages may be viewed without signing in. Member blocking applies inside your co-op workspace. Use support to report concerns about a public page.").font(.caption).foregroundStyle(.secondary)
+                Link("Report a public-page concern", destination: CommunityService.page("support/"))
             }
         }.navigationTitle(coop.name)
     }

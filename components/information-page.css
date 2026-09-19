@@ -1,0 +1,113 @@
+.information-nav .brand {
+  flex-shrink: 0;
+}
+.information-nav nav a {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 44px;
+}
+.information-main {
+  max-width: 920px;
+  padding-top: 62px;
+  padding-bottom: 64px;
+}
+.information-main h1 {
+  font-size: clamp(38px, 5vw, 60px);
+  letter-spacing: -2px;
+}
+.information-intro {
+  font-size: 20px;
+  line-height: 1.7;
+  color: var(--muted-foreground);
+  max-width: 720px;
+}
+.information-content {
+  margin-top: 38px;
+}
+.information-content section {
+  padding: 28px 0 16px;
+  border-top: 1px solid var(--border);
+  scroll-margin-top: 24px;
+}
+.information-content h2 {
+  font-size: 27px;
+  letter-spacing: -0.7px;
+  line-height: 1.25;
+  margin-bottom: 17px;
+}
+.information-content h3 {
+  font-size: 19px;
+  font-weight: 600;
+  margin: 22px 0 10px;
+}
+.information-content p,
+.information-content li {
+  color: var(--muted-foreground);
+  line-height: 1.8;
+}
+.information-content ul,
+.information-content ol {
+  padding-left: 22px;
+  margin-bottom: 22px;
+}
+.information-content li {
+  margin: 9px 0;
+}
+.information-content a:not(.button) {
+  color: var(--primary);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  overflow-wrap: anywhere;
+}
+.information-content .button {
+  margin: 4px 0 20px;
+}
+.information-content .notice {
+  margin: 24px 0;
+}
+.information-content .information-highlight {
+  background: #eaf0e0;
+  padding: 25px;
+  border: 1px solid #c9d4bc;
+  border-radius: 6px;
+  margin: 25px 0;
+}
+.information-footer {
+  border-top: 1px solid var(--border);
+}
+.information-footer nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 22px;
+  font-size: 14px;
+}
+.information-footer a {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  min-height: 44px;
+}
+@media (max-width: 720px) {
+  .information-nav {
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  .information-nav nav {
+    gap: 22px;
+    justify-content: start;
+  }
+  .information-nav nav > a:first-child {
+    display: inline-flex;
+  }
+  .information-main {
+    padding-top: 38px;
+    padding-bottom: 42px;
+  }
+  .information-intro {
+    font-size: 18px;
+  }
+  .information-content .information-highlight {
+    padding: 20px;
+  }
+}

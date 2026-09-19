@@ -329,6 +329,38 @@
   gap: 6px;
   min-height: 44px;
 }
+.home-footer > div {
+  flex-wrap: wrap;
+}
+.home-funding {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 36px;
+  padding-top: 40px;
+  padding-bottom: 54px;
+  border-top: 1px solid var(--border);
+}
+.home-funding .eyebrow {
+  margin-bottom: 18px;
+}
+.home-funding h2 {
+  font-size: clamp(30px, 3vw, 39px);
+}
+.home-funding p:not(.eyebrow) {
+  max-width: 630px;
+  color: var(--muted-foreground);
+  margin: 18px 0 0;
+  line-height: 1.75;
+}
+.home-funding-link {
+  flex-shrink: 0;
+  border: 1px solid #8ba38a;
+  background: #edf2e8;
+}
+.home-funding-link:hover {
+  background: #e3ebd9;
+}
 @media (max-width: 1050px) {
   .home-nav {
     padding: 20px 32px;
@@ -404,6 +436,11 @@
   .home-invitation-bottom {
     align-items: start;
     flex-direction: column;
+    gap: 24px;
+  }
+  .home-funding {
+    flex-direction: column;
+    align-items: start;
     gap: 24px;
   }
   .home-contributor {

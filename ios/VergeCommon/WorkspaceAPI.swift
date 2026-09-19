@@ -80,6 +80,24 @@ struct MemberWorkspace: Decodable, Identifiable {
     let tasks: [MemberTask]
     let parcels: [MemberParcel]
     let observations: [MemberObservation]
+    let members: [WorkspaceMember]?
+    let blocks: [MemberBlock]?
+    var visibleUpdates: [MemberUpdate] { updates.filter(\.isVisible).sorted { $0.createdAt > $1.createdAt } }
+    var blockableMembers: [WorkspaceMember] {
+        (members ?? []).filter { member in
+            !member.isYou && member.status == "active" && !(blocks ?? []).contains(where: { $0.memberId == member.id })
+        }
+    }
+}
+struct WorkspaceMember: Decodable, Identifiable {
+    let id: String
+    let name: String
+    let status: String
+    let isYou: Bool
+}
+struct MemberBlock: Decodable {
+    let memberId: String?
+    let name: String
 }
 struct MemberUpdate: Decodable, Identifiable {
     let id: String
@@ -87,6 +105,8 @@ struct MemberUpdate: Decodable, Identifiable {
     let author: String
     let createdAt: Double
     let hidden: Bool
+    let blocked: Bool?
+    var isVisible: Bool { !hidden && blocked != true }
 }
 struct MemberTask: Decodable, Identifiable {
     let id: String
@@ -137,6 +157,23 @@ struct WorkspaceCommand: Encodable {
     let payload: [String: CommandValue]
     init(id: String, version: Int, op: String, payload: [String: CommandValue], requestId: String = UUID().uuidString.lowercased()) {
         self.id = id; self.version = version; self.op = op; self.payload = payload; self.requestId = requestId
+    }
+    static func reportUpdate(_ updateId: String, reason: String, workspace: WorkspaceView) throws -> WorkspaceCommand {
+        let text = reason.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !text.isEmpty, text.utf16.count <= 2000,
+              workspace.state.visibleUpdates.contains(where: { $0.id == updateId }) else {
+            throw WorkspaceError.rejected("Choose an available update and explain the concern in up to 2,000 characters.")
+        }
+        return WorkspaceCommand(id: workspace.state.id, version: workspace.version, op: "report_content", payload: ["kind": .text("update"), "targetId": .text(updateId), "reason": .text(text)])
+    }
+    static func memberBlock(_ memberId: String, blocked: Bool, workspace: WorkspaceView) throws -> WorkspaceCommand {
+        let member = workspace.state.members?.first { $0.id == memberId }
+        let existing = workspace.state.blocks?.contains { $0.memberId == memberId } == true
+        guard member?.isYou != true,
+              (blocked && member?.status == "active") || (!blocked && existing) else {
+            throw WorkspaceError.rejected("Choose another active member to block, or one of your existing blocks to remove.")
+        }
+        return WorkspaceCommand(id: workspace.state.id, version: workspace.version, op: blocked ? "block_member" : "unblock_member", payload: ["id": .text(memberId)])
     }
     static func observation(_ draft: FieldDraft, workspace: WorkspaceView, parcel: MemberParcel) throws -> WorkspaceCommand {
         _ = try draft.validated()
