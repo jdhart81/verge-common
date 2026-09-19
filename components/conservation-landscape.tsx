@@ -148,12 +148,17 @@ function Bird({
   return (
     <g transform={`translate(${x} ${y})`}>
       <g className="vc-landscape-bird-flight" style={cyclePhase(phase)}>
-        <g transform={`scale(${size})`} className="vc-landscape-bird">
-          <path
-            d="M0 0C-4-8-11-11-18-5M0 0C4-8 11-11 18-5"
-            className="vc-landscape-bird-wings"
-          />
-          <path d="M-2 1L0-3L2 1M0 0v4" />
+        <g
+          transform={`scale(${size}) rotate(72)`}
+          className="vc-landscape-bird"
+        >
+          <g className="vc-landscape-bird-wing vc-landscape-bird-wing-left">
+            <path d="M0-2C-6-8-13-11-20-9L-13-2L-6 2L0 2Z" />
+          </g>
+          <g className="vc-landscape-bird-wing vc-landscape-bird-wing-right">
+            <path d="M0-2C6-8 13-11 20-9L13-2L6 2L0 2Z" />
+          </g>
+          <path d="M0-10C3-7 3-1 2 4L5 10L0 8L-5 10L-2 4C-3-1-3-7 0-10Z" />
         </g>
       </g>
     </g>

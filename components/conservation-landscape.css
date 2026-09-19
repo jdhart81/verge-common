@@ -113,7 +113,7 @@
 .vc-landscape-hedge-growth,
 .vc-landscape-flower-growth,
 .vc-landscape-bloom,
-.vc-landscape-bird-wings,
+.vc-landscape-bird-wing,
 .vc-landscape-butterfly-wings,
 .vc-landscape-rabbit-ears {
   transform-origin: 0 0;
@@ -169,9 +169,9 @@
   stroke: none;
 }
 .vc-landscape-bird {
-  fill: none;
+  fill: #355b48;
   stroke: #355b48;
-  stroke-width: 2.6;
+  stroke-width: 0.6;
 }
 .vc-landscape-butterfly-wings {
   fill: #d4a55b;
@@ -335,9 +335,13 @@
   animation-delay: var(--vc-cycle-delay, 0s);
 }
 
-.vc-landscape:not([data-motion='static']) .vc-landscape-bird-wings {
-  animation: vc-landscape-wingbeat 1.3s ease-in-out infinite;
+.vc-landscape:not([data-motion='static']) .vc-landscape-bird-wing {
+  animation: vc-landscape-wingbeat-left 4.8s ease-in-out infinite;
   animation-delay: var(--vc-cycle-delay, 0s);
+}
+
+.vc-landscape:not([data-motion='static']) .vc-landscape-bird-wing-right {
+  animation-name: vc-landscape-wingbeat-right;
 }
 
 .vc-landscape:not([data-motion='static']) .vc-landscape-butterfly-float {
@@ -491,13 +495,37 @@
   }
 }
 
-@keyframes vc-landscape-wingbeat {
+/* Shoulder rotations preserve the wing shape and stroke. Two small beats
+   settle into a longer glide; the stationary body never flips or collapses. */
+@keyframes vc-landscape-wingbeat-left {
   0%,
+  38%,
   100% {
-    transform: scaleY(1);
+    transform: rotate(0deg);
   }
-  50% {
-    transform: scaleY(-0.55);
+  8%,
+  23% {
+    transform: rotate(18deg);
+  }
+  15%,
+  30% {
+    transform: rotate(-12deg);
+  }
+}
+
+@keyframes vc-landscape-wingbeat-right {
+  0%,
+  38%,
+  100% {
+    transform: rotate(0deg);
+  }
+  8%,
+  23% {
+    transform: rotate(-18deg);
+  }
+  15%,
+  30% {
+    transform: rotate(12deg);
   }
 }
 
