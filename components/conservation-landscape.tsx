@@ -1,8 +1,8 @@
 'use client';
 
 import {
+  type CSSProperties,
   useEffect,
-  useId,
   useRef,
   useState,
   useSyncExternalStore,
@@ -21,20 +21,182 @@ function getMotionPreference() {
   return window.matchMedia(motionQuery).matches;
 }
 
-function Tree({ x, y, size = 1 }: { x: number; y: number; size?: number }) {
+function cyclePhase(seconds: number): CSSProperties {
+  return { '--vc-cycle-delay': `${seconds}s` } as CSSProperties;
+}
+
+function Tree({
+  x,
+  y,
+  size = 1,
+  phase = 0,
+}: {
+  x: number;
+  y: number;
+  size?: number;
+  phase?: number;
+}) {
   return (
-    <g transform={`translate(${x} ${y}) scale(${size})`}>
-      <path
-        d="M0 5V22M0 14l-6-5M0 10l5-4"
-        className="vc-landscape-tree-trunk"
+    <g transform={`translate(${x} ${y + 22 * size}) scale(${size})`}>
+      <ellipse
+        cx="0"
+        cy="1"
+        rx="12"
+        ry="3"
+        className="vc-landscape-tree-ground"
       />
-      <g className="vc-landscape-canopy">
-        <path d="M-2-23C-13-24-17-13-12-6C-23 2-12 13-3 9C4 17 20 8 14-2C20-12 11-24 3-20Z" />
+      <g className="vc-landscape-tree-growth" style={cyclePhase(phase)}>
         <path
-          d="M-7-9C-9-4-7 1-3 3M5-15C11-12 12-7 9-3"
-          className="vc-landscape-leaf-line"
+          d="M0-17V0M0-8l-6-5M0-12l5-4"
+          className="vc-landscape-tree-trunk"
+        />
+        <g transform="translate(0 -22)">
+          <g className="vc-landscape-canopy">
+            <path d="M-2-23C-13-24-17-13-12-6C-23 2-12 13-3 9C4 17 20 8 14-2C20-12 11-24 3-20Z" />
+            <path
+              d="M-7-9C-9-4-7 1-3 3M5-15C11-12 12-7 9-3"
+              className="vc-landscape-leaf-line"
+            />
+          </g>
+        </g>
+      </g>
+    </g>
+  );
+}
+
+function Hedgerow({
+  x,
+  y,
+  angle = 0,
+  phase = 0,
+}: {
+  x: number;
+  y: number;
+  angle?: number;
+  phase?: number;
+}) {
+  return (
+    <g transform={`translate(${x} ${y}) rotate(${angle})`}>
+      <g className="vc-landscape-hedge-growth" style={cyclePhase(phase)}>
+        <path
+          d="M-16 1C-19-5-12-11-7-7C-8-17 7-18 9-9C17-11 23-2 16 2Z"
+          className="vc-landscape-hedge-leaves"
+        />
+        <path
+          d="M-9-2l3-3M1-4l1-5M10-1l3-4"
+          className="vc-landscape-hedge-detail"
         />
       </g>
+    </g>
+  );
+}
+
+function Wildflowers({
+  x,
+  y,
+  phase = 0,
+  color = 'coral',
+}: {
+  x: number;
+  y: number;
+  phase?: number;
+  color?: 'coral' | 'gold' | 'violet';
+}) {
+  return (
+    <g
+      transform={`translate(${x} ${y})`}
+      className={`vc-landscape-flowers vc-landscape-flowers-${color}`}
+    >
+      <g className="vc-landscape-flower-growth" style={cyclePhase(phase)}>
+        <path
+          d="M0 0V-17M-9 0l-2-11M8 0l3-10"
+          className="vc-landscape-flower-stems"
+        />
+        <path
+          d="M0-5C-7-4-8-11-2-9M0-8C6-6 9-13 3-12M7-2C2-3 2-7 6-6"
+          className="vc-landscape-flower-leaves"
+        />
+        <g transform="translate(0 -18)">
+          <g className="vc-landscape-bloom" style={cyclePhase(phase - 2)}>
+            <path d="M0-2C-8-10-11 1-4 2C-10 9 3 11 3 4C11 9 13-3 5-3C10-11-3-13 0-2Z" />
+            <circle r="2.5" className="vc-landscape-flower-center" />
+          </g>
+        </g>
+        <circle
+          cx="-11"
+          cy="-12"
+          r="3.5"
+          className="vc-landscape-small-bloom"
+        />
+        <circle cx="11" cy="-11" r="3" className="vc-landscape-small-bloom" />
+      </g>
+    </g>
+  );
+}
+
+function Bird({
+  x,
+  y,
+  phase = 0,
+  size = 1,
+}: {
+  x: number;
+  y: number;
+  phase?: number;
+  size?: number;
+}) {
+  return (
+    <g transform={`translate(${x} ${y})`}>
+      <g className="vc-landscape-bird-flight" style={cyclePhase(phase)}>
+        <g transform={`scale(${size})`} className="vc-landscape-bird">
+          <path
+            d="M0 0C-4-8-11-11-18-5M0 0C4-8 11-11 18-5"
+            className="vc-landscape-bird-wings"
+          />
+          <path d="M-2 1L0-3L2 1M0 0v4" />
+        </g>
+      </g>
+    </g>
+  );
+}
+
+function Butterfly({
+  x,
+  y,
+  phase = 0,
+}: {
+  x: number;
+  y: number;
+  phase?: number;
+}) {
+  return (
+    <g transform={`translate(${x} ${y})`}>
+      <g className="vc-landscape-butterfly-float" style={cyclePhase(phase)}>
+        <g className="vc-landscape-butterfly-wings">
+          <path d="M0-1C-11-14-16-3-7 1C-11 10-2 11 0 2C2 11 11 10 7 1C16-3 11-14 0-1Z" />
+        </g>
+        <path
+          d="M0-3v8M0-2l-3-4M0-2l3-4"
+          className="vc-landscape-butterfly-body"
+        />
+      </g>
+    </g>
+  );
+}
+
+function Rabbit() {
+  return (
+    <g transform="translate(220 292)" className="vc-landscape-rabbit">
+      <circle cx="-9" cy="-2" r="3" />
+      <ellipse cx="-1" cy="-3" rx="8" ry="5.5" />
+      <g transform="translate(6 -7)">
+        <g className="vc-landscape-rabbit-ears">
+          <path d="M-1 1C-7-12-1-14 1-2C0-14 6-15 4 0" />
+        </g>
+        <circle r="4.5" />
+        <circle cx="2" cy="-1" r="0.8" className="vc-landscape-rabbit-eye" />
+      </g>
+      <path d="M-5 2h5M4 1h5" />
     </g>
   );
 }
@@ -50,17 +212,18 @@ function Home({ x, y }: { x: number; y: number }) {
   );
 }
 
-export function ConservationLandscape() {
-  const id = useId();
+export function ConservationLandscape({
+  id = 'vc-home-landscape',
+}: {
+  id?: string;
+}) {
   const figure = useRef<HTMLElement>(null);
   const reducedMotion = useSyncExternalStore(
     subscribeToMotionPreference,
     getMotionPreference,
     () => true,
   );
-  const [requestedMotion, setRequestedMotion] = useState<boolean | null>(null);
   const [visible, setVisible] = useState(true);
-  const motionEnabled = requestedMotion ?? !reducedMotion;
 
   useEffect(() => {
     if (!figure.current || !('IntersectionObserver' in window)) return;
@@ -76,27 +239,10 @@ export function ConservationLandscape() {
     <figure
       className="vc-landscape"
       ref={figure}
-      data-motion={motionEnabled && visible ? 'running' : 'paused'}
-      data-explicit-motion={requestedMotion === true ? 'true' : undefined}
+      data-motion={reducedMotion ? 'static' : visible ? 'running' : 'paused'}
     >
       <div className="vc-landscape-heading">
         <span>Small places. Shared purpose.</span>
-        <button
-          type="button"
-          className="vc-landscape-motion"
-          aria-pressed={!motionEnabled}
-          aria-controls={`${id}-landscape`}
-          onClick={() => setRequestedMotion(!motionEnabled)}
-        >
-          <svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true">
-            {motionEnabled ? (
-              <path d="M5 3v10M11 3v10" />
-            ) : (
-              <path d="M5 3l8 5-8 5Z" />
-            )}
-          </svg>
-          {motionEnabled ? 'Pause motion' : 'Play motion'}
-        </button>
       </div>
 
       <svg
@@ -108,10 +254,11 @@ export function ConservationLandscape() {
         <title id={`${id}-title`}>Neighboring land, connected by care</title>
         <desc id={`${id}-description`}>
           Three neighboring parcels with homes, trees and a creek connect along
-          a shared habitat path. A community meeting place represents a local
-          conservation partner. A field notebook represents the care neighbors
-          document together. This is a conceptual illustration, not a map of
-          real land.
+          a shared habitat path. Trees grow and wildflowers bloom along property
+          edges as birds, butterflies and a rabbit make their home in the
+          landscape. A community meeting place represents a local conservation
+          partner. A field notebook represents the care neighbors document
+          together. This is a conceptual illustration, not a map of real land.
         </desc>
         <defs>
           <pattern
@@ -225,21 +372,66 @@ export function ConservationLandscape() {
             />
           </g>
 
+          <g className="vc-landscape-boundary-habitat">
+            <Hedgerow x={91} y={158} angle={-29} phase={-3} />
+            <Hedgerow x={130} y={137} angle={-29} phase={-8} />
+            <Hedgerow x={184} y={121} angle={21} phase={-14} />
+            <Hedgerow x={226} y={137} angle={21} phase={-19} />
+            <Hedgerow x={298} y={134} angle={-35} phase={-6} />
+            <Hedgerow x={362} y={120} angle={13} phase={-11} />
+            <Hedgerow x={443} y={160} angle={70} phase={-20} />
+            <Hedgerow x={433} y={249} angle={-34} phase={-4} />
+            <Hedgerow x={203} y={277} angle={-18} phase={-16} />
+            <Hedgerow x={315} y={267} angle={6} phase={-9} />
+            <Hedgerow x={154} y={347} angle={40} phase={-21} />
+            <Hedgerow x={217} y={386} angle={15} phase={-7} />
+            <Hedgerow x={275} y={402} angle={15} phase={-18} />
+            <Hedgerow x={365} y={388} angle={-23} phase={-12} />
+          </g>
+
+          <g className="vc-landscape-boundary-flowers">
+            <Wildflowers x={76} y={245} phase={-3} />
+            <Wildflowers x={94} y={261} phase={-9} color="gold" />
+            <Wildflowers x={160} y={129} phase={-14} color="violet" />
+            <Wildflowers x={258} y={158} phase={-5} color="gold" />
+            <Wildflowers x={393} y={138} phase={-12} />
+            <Wildflowers x={459} y={213} phase={-18} color="violet" />
+            <Wildflowers x={182} y={286} phase={-16} color="gold" />
+            <Wildflowers x={278} y={275} phase={-1} />
+            <Wildflowers x={365} y={279} phase={-7} color="violet" />
+            <Wildflowers x={147} y={328} phase={-11} />
+            <Wildflowers x={247} y={397} phase={-19} color="violet" />
+            <Wildflowers x={334} y={400} phase={-4} color="gold" />
+            <Wildflowers x={410} y={362} phase={-13} />
+          </g>
+
           <Home x={137} y={187} />
           <Home x={407} y={160} />
           <Home x={305} y={312} />
 
-          <Tree x={186} y={178} size={0.82} />
-          <Tree x={212} y={201} size={0.64} />
-          <Tree x={326} y={160} size={0.82} />
-          <Tree x={351} y={178} size={0.68} />
-          <Tree x={373} y={151} size={0.61} />
-          <Tree x={191} y={336} size={0.92} />
-          <Tree x={225} y={357} size={0.7} />
-          <Tree x={247} y={332} size={0.62} />
-          <Tree x={468} y={305} size={0.75} />
-          <Tree x={487} y={326} size={0.6} />
-          <Tree x={71} y={307} size={0.65} />
+          <Tree x={186} y={178} size={0.98} phase={-8} />
+          <Tree x={212} y={201} size={0.72} phase={-15} />
+          <Tree x={326} y={160} size={0.92} phase={-4} />
+          <Tree x={351} y={178} size={0.74} phase={-11} />
+          <Tree x={373} y={151} size={0.65} phase={-18} />
+          <Tree x={191} y={336} size={1.05} phase={-20} />
+          <Tree x={225} y={357} size={0.78} phase={-2} />
+          <Tree x={247} y={332} size={0.69} phase={-13} />
+          <Tree x={468} y={305} size={0.85} phase={-16} />
+          <Tree x={487} y={326} size={0.68} phase={-6} />
+          <Tree x={71} y={307} size={0.72} phase={-10} />
+          <Tree x={109} y={130} size={0.65} phase={-1} />
+          <Tree x={207} y={107} size={0.72} phase={-17} />
+          <Tree x={337} y={91} size={0.66} phase={-22} />
+          <Tree x={401} y={245} size={0.65} phase={-7} />
+          <Tree x={387} y={355} size={0.82} phase={-12} />
+
+          <Rabbit />
+          <Butterfly x={164} y={245} phase={-2} />
+          <Butterfly x={374} y={235} phase={-7} />
+          <Butterfly x={309} y={379} phase={-11} />
+          <Bird x={282} y={138} phase={-4} />
+          <Bird x={300} y={159} phase={-5.5} size={0.8} />
 
           <g className="vc-landscape-nodes">
             <circle cx="116" cy="241" r="8" />

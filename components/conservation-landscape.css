@@ -17,40 +17,6 @@
   letter-spacing: 0.025em;
 }
 
-.vc-landscape-motion {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0.45rem;
-  min-height: 44px;
-  padding: 0.45rem 0.65rem;
-  border: 1px solid #c4ceb9;
-  border-radius: 100px;
-  color: #294a34;
-  background: #f9f7ee;
-  font: inherit;
-  font-weight: 500;
-  cursor: pointer;
-}
-
-.vc-landscape-motion:hover {
-  background: #e9eddc;
-  border-color: #728269;
-}
-
-.vc-landscape-motion:focus-visible {
-  outline: 3px solid #567a45;
-  outline-offset: 3px;
-}
-
-.vc-landscape-motion svg {
-  fill: none;
-  stroke: currentColor;
-  stroke-width: 1.6;
-  stroke-linecap: round;
-  stroke-linejoin: round;
-}
-
 .vc-landscape-art {
   display: block;
   width: 100%;
@@ -139,6 +105,19 @@
   stroke: #456244;
   stroke-width: 1.5;
 }
+.vc-landscape-tree-ground {
+  fill: #7a8b56;
+  opacity: 0.16;
+}
+.vc-landscape-tree-growth,
+.vc-landscape-hedge-growth,
+.vc-landscape-flower-growth,
+.vc-landscape-bloom,
+.vc-landscape-bird-wings,
+.vc-landscape-butterfly-wings,
+.vc-landscape-rabbit-ears {
+  transform-origin: 0 0;
+}
 .vc-landscape-canopy {
   fill: #8fa879;
   stroke: #486946;
@@ -149,6 +128,69 @@
   fill: none;
   stroke: #56754e;
   stroke-width: 1;
+}
+.vc-landscape-hedge-leaves {
+  fill: #91a86e;
+  stroke: #5d7d4e;
+  stroke-width: 1.1;
+}
+.vc-landscape-hedge-detail {
+  fill: none;
+  stroke: #60804e;
+  stroke-width: 1.1;
+}
+.vc-landscape-flowers {
+  --vc-petal: #cf8e77;
+}
+.vc-landscape-flowers-gold {
+  --vc-petal: #d8b655;
+}
+.vc-landscape-flowers-violet {
+  --vc-petal: #a19ab7;
+}
+.vc-landscape-flower-stems {
+  fill: none;
+  stroke: #6e894c;
+  stroke-width: 1.5;
+}
+.vc-landscape-flower-leaves {
+  fill: #8eaa65;
+  stroke: #6e894c;
+  stroke-width: 0.7;
+}
+.vc-landscape-bloom,
+.vc-landscape-small-bloom {
+  fill: var(--vc-petal);
+  stroke: #faf2d9;
+  stroke-width: 0.8;
+}
+.vc-landscape-flower-center {
+  fill: #f4dc95;
+  stroke: none;
+}
+.vc-landscape-bird {
+  fill: none;
+  stroke: #355b48;
+  stroke-width: 2.6;
+}
+.vc-landscape-butterfly-wings {
+  fill: #d4a55b;
+  stroke: #86673f;
+  stroke-width: 1;
+}
+.vc-landscape-butterfly-body {
+  fill: none;
+  stroke: #705b3d;
+  stroke-width: 1.2;
+}
+.vc-landscape-rabbit {
+  fill: #e9ddc1;
+  stroke: #8d8666;
+  stroke-width: 1.1;
+}
+.vc-landscape-rabbit-eye {
+  fill: #526044;
+  stroke: none;
 }
 .vc-landscape-home {
   stroke: #456244;
@@ -254,24 +296,69 @@
   border-top: 2px dashed #5d7c4a;
 }
 
-/* Movement follows existing lines: the complete map is always visible. */
-.vc-landscape-habitat-travel {
+/* The server and reduced-motion view show mature habitat. The live scene
+   repeats gently, with independent phases and plant resets hidden by a fade. */
+.vc-landscape:not([data-motion='static']) .vc-landscape-habitat-travel {
   animation: vc-landscape-path-flow 18s linear infinite;
 }
 
-.vc-landscape-water-line {
+.vc-landscape:not([data-motion='static']) .vc-landscape-water-line {
   animation: vc-landscape-water-flow 22s linear infinite;
 }
 
-.vc-landscape-canopy {
+.vc-landscape:not([data-motion='static']) .vc-landscape-canopy {
   animation: vc-landscape-leaf-sway 9s ease-in-out infinite alternate;
 }
 
-.vc-landscape-partner-halo {
+.vc-landscape:not([data-motion='static']) .vc-landscape-tree-growth {
+  animation: vc-landscape-tree-grow 26s ease-in-out infinite;
+  animation-delay: var(--vc-cycle-delay, 0s);
+}
+
+.vc-landscape:not([data-motion='static']) .vc-landscape-hedge-growth {
+  animation: vc-landscape-hedge-grow 24s ease-in-out infinite;
+  animation-delay: var(--vc-cycle-delay, 0s);
+}
+
+.vc-landscape:not([data-motion='static']) .vc-landscape-flower-growth {
+  animation: vc-landscape-flower-grow 22s ease-in-out infinite;
+  animation-delay: var(--vc-cycle-delay, 0s);
+}
+
+.vc-landscape:not([data-motion='static']) .vc-landscape-bloom {
+  animation: vc-landscape-flower-open 22s ease-in-out infinite;
+  animation-delay: var(--vc-cycle-delay, 0s);
+}
+
+.vc-landscape:not([data-motion='static']) .vc-landscape-bird-flight {
+  animation: vc-landscape-bird-crossing 24s linear infinite;
+  animation-delay: var(--vc-cycle-delay, 0s);
+}
+
+.vc-landscape:not([data-motion='static']) .vc-landscape-bird-wings {
+  animation: vc-landscape-wingbeat 1.3s ease-in-out infinite;
+  animation-delay: var(--vc-cycle-delay, 0s);
+}
+
+.vc-landscape:not([data-motion='static']) .vc-landscape-butterfly-float {
+  animation: vc-landscape-pollinator-path 13s ease-in-out infinite;
+  animation-delay: var(--vc-cycle-delay, 0s);
+}
+
+.vc-landscape:not([data-motion='static']) .vc-landscape-butterfly-wings {
+  animation: vc-landscape-butterfly-flutter 1.1s ease-in-out infinite;
+  animation-delay: var(--vc-cycle-delay, 0s);
+}
+
+.vc-landscape:not([data-motion='static']) .vc-landscape-rabbit-ears {
+  animation: vc-landscape-rabbit-listen 7s ease-in-out infinite;
+}
+
+.vc-landscape:not([data-motion='static']) .vc-landscape-partner-halo {
   animation: vc-landscape-community-breath 8s ease-in-out infinite;
 }
 
-.vc-landscape [class*='vc-landscape-'] {
+.vc-landscape[data-motion='paused'] [class*='vc-landscape-'] {
   animation-play-state: paused;
 }
 
@@ -300,6 +387,162 @@
   }
 }
 
+@keyframes vc-landscape-tree-grow {
+  0% {
+    opacity: 0;
+    transform: scale(0.26, 0.32);
+  }
+  6% {
+    opacity: 1;
+    transform: scale(0.3, 0.36);
+  }
+  42%,
+  81% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  95% {
+    opacity: 0;
+    transform: scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(0.26, 0.32);
+  }
+}
+
+@keyframes vc-landscape-hedge-grow {
+  0%,
+  100% {
+    opacity: 0;
+    transform: scale(0.65, 0.25);
+  }
+  7% {
+    opacity: 1;
+    transform: scale(0.7, 0.4);
+  }
+  36%,
+  84% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  96% {
+    opacity: 0;
+    transform: scale(1);
+  }
+}
+
+@keyframes vc-landscape-flower-grow {
+  0%,
+  100% {
+    opacity: 0;
+    transform: scale(0.55, 0.2);
+  }
+  8% {
+    opacity: 1;
+    transform: scale(0.7, 0.4);
+  }
+  34%,
+  82% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  95% {
+    opacity: 0;
+    transform: scale(1);
+  }
+}
+
+@keyframes vc-landscape-flower-open {
+  0%,
+  100% {
+    transform: scale(0.3) rotate(-25deg);
+  }
+  30%,
+  85% {
+    transform: scale(1) rotate(0deg);
+  }
+  96% {
+    transform: scale(0.3) rotate(-25deg);
+  }
+}
+
+@keyframes vc-landscape-bird-crossing {
+  0% {
+    opacity: 0;
+    transform: translate(-174px, 99px) rotate(-10deg);
+  }
+  7% {
+    opacity: 1;
+  }
+  34% {
+    transform: translate(-25px, 21px) rotate(-4deg);
+  }
+  63% {
+    transform: translate(93px, -17px) rotate(8deg);
+  }
+  88% {
+    opacity: 1;
+  }
+  97%,
+  100% {
+    opacity: 0;
+    transform: translate(232px, -35px) rotate(-5deg);
+  }
+}
+
+@keyframes vc-landscape-wingbeat {
+  0%,
+  100% {
+    transform: scaleY(1);
+  }
+  50% {
+    transform: scaleY(-0.55);
+  }
+}
+
+@keyframes vc-landscape-pollinator-path {
+  0%,
+  100% {
+    transform: translate(0, 0) rotate(-8deg);
+  }
+  25% {
+    transform: translate(14px, -13px) rotate(9deg);
+  }
+  50% {
+    transform: translate(25px, -3px) rotate(-5deg);
+  }
+  75% {
+    transform: translate(9px, 6px) rotate(11deg);
+  }
+}
+
+@keyframes vc-landscape-butterfly-flutter {
+  0%,
+  100% {
+    transform: scaleX(1);
+  }
+  50% {
+    transform: scaleX(0.35);
+  }
+}
+
+@keyframes vc-landscape-rabbit-listen {
+  0%,
+  35%,
+  65%,
+  100% {
+    transform: rotate(0deg);
+  }
+  43%,
+  54% {
+    transform: rotate(13deg);
+  }
+  48% {
+    transform: rotate(-4deg);
+  }
+}
+
 @keyframes vc-landscape-community-breath {
   0%,
   100% {
@@ -311,8 +554,8 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .vc-landscape:not([data-explicit-motion='true']) [class*='vc-landscape-'] {
-    animation: none;
+  .vc-landscape [class*='vc-landscape-'] {
+    animation: none !important;
   }
 }
 
