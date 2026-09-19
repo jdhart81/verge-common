@@ -8,6 +8,7 @@ import {
 import { MonitoringBoard } from '@/components/monitoring-board';
 import { CommunityBoard, PublicEvents } from '@/components/community-board';
 import { allocateCents } from '@/lib/network.mjs';
+import { assessmentIsCurrent, projectReadiness } from '@/lib/readiness.mjs';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   Sprout,
@@ -753,6 +754,26 @@ export function NetworkApp({
                       </Empty>
                     )}
                     <OrganizationDiscovery coops={[]} />
+                    {steward && (state.partnerships ?? []).map((partner: Entity) => (
+                      <article className="network-card" key={partner.id}>
+                        <h3>{partner.name}</h3>
+                        <Status value={partner.status} />
+                        <p>{partner.role}</p>
+                        <p>Agreement reference: {partner.agreementReference}</p>
+                        <a href={partner.website} target="_blank" rel="noreferrer">Partner website ↗</a>
+                        <p className="small">Private co-op record. A steward review does not independently verify the nonprofit or its authority.</p>
+                        {partner.status === 'submitted' && <ActionForm
+                          fields={[choices('decision', 'Partner review decision', ['approve', 'reject'])]}
+                          submit="Review partner agreement"
+                          onSubmit={(v) => mutate('review_partnership', { ...v, id: partner.id })}
+                        />}
+                        {partner.status === 'reviewed' && <ActionForm
+                          fields={[field('reason', 'Reason for ending this partnership record', 'textarea', { max: 1000 })]}
+                          submit="Revoke partner record"
+                          onSubmit={(v) => mutate('revoke_partnership', { ...v, id: partner.id })}
+                        />}
+                      </article>
+                    ))}
                   </section>
                   <aside className="panel">
                     {steward && (
@@ -793,6 +814,20 @@ export function NetworkApp({
                         onSubmit={(v) => mutate('update_organization', v)}
                       />
                     )}
+                    {steward && <p className="small mt-4">First submit the partner’s agreement in Evidence and have another steward review it. Then link that evidence to the same project here.</p>}
+                    {steward && <ActionForm
+                      title="Record an agreed conservation partnership"
+                      fields={[
+                        projectField(),
+                        field('name', 'Partner organization name', undefined, { max: 160 }),
+                        field('website', 'Partner official website (HTTPS)', undefined, { max: 500 }),
+                        field('role', 'Agreed role and responsibilities', 'textarea', { max: 1000 }),
+                        field('agreementReference', 'Private reference to the partner’s agreement', undefined, { max: 500 }),
+                        select('evidenceId', 'Reviewed evidence of the partner’s agreement', state.evidence.filter((e: Entity) => e.status === 'reviewed'), 'title'),
+                      ]}
+                      submit="Submit partner agreement for review"
+                      onSubmit={(v) => mutate('record_partnership', v)}
+                    />}
                     <p className="small mt-4">
                       Profiles are self-reported. Public profiles appear only
                       when the co-op itself is public. No affiliation is
@@ -829,6 +864,13 @@ export function NetworkApp({
                         return (
                           <article className="network-card" key={p.id}>
                             <h3>{p.name}</h3>
+                            <h4>Preparation for external review</h4>
+                            <ul>
+                              {projectReadiness(state, p.id).checks.map((check) => (
+                                <li key={check.id}>{check.complete ? 'Recorded' : 'Needed'}: {check.label}</li>
+                              ))}
+                            </ul>
+                            <p className="small">This checklist tracks preparation records. It does not approve carbon credits or payouts.</p>
                             <p>
                               {parcels.length} reviewed parcels ·{' '}
                               {(
@@ -853,6 +895,7 @@ export function NetworkApp({
                             {a.program} · {a.methodology}
                           </h3>
                           <Status value={a.status} />
+                          {!assessmentIsCurrent(state, a) && <p className="notice">Land records changed, or this older assessment lacks a versioned snapshot. Record and review a new assessment.</p>}
                           <p>
                             Snapshot: {a.areaSquareMetres.toLocaleString()} m²
                             across {a.parcelIds.length} reviewed parcels.

@@ -15,7 +15,7 @@ jobs:
       - run: npm ci
       - run: npm test
       - name: Launch page lint
-        run: npx oxlint app/page.tsx app/layout.tsx
+        run: npx oxlint app/page.tsx app/layout.tsx mcp/server.mjs mcp/stdio.mjs lib/readiness.mjs tests/mcp.test.mjs tests/readiness.test.mjs
       - run: npm run typecheck
       - run: npm run build
       - run: npm run db:migrate:local

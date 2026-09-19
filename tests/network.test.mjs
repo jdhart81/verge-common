@@ -955,3 +955,39 @@ test('analysis jobs preserve reviewed geometry and scene selection', () => {
   assert.equal(f.s.analysisResults[0].receipt.quality, 'insufficient_coverage');
   assert.equal(f.s.lots.length, 0);
 });
+
+test('conservation partnerships require reviewed project evidence, separate reviewers, and remain private', () => {
+  const { f, project, evidence } = prepared();
+  const payload = { projectId: project, name: 'Synthetic land trust', website: 'https://example.org', role: 'Review the monitoring plan', agreementReference: 'private-partner-consent', evidenceId: evidence };
+  assert.throws(() => f.run('record_partnership', payload, stranger), /membership/);
+  assert.throws(() => f.run('record_partnership', { ...payload, website: 'javascript:alert(1)' }), /HTTPS/);
+  const otherProject = f.run('create_project', { name: 'Other', summary: 'Other project', region: 'Test area', kind: 'landscape' });
+  assert.throws(() => f.run('record_partnership', { ...payload, projectId: otherProject }), /this project/);
+  const id = f.run('record_partnership', payload);
+  assert.throws(() => f.run('review_partnership', { id, decision: 'approve' }), /Another steward/);
+  f.run('review_partnership', { id, decision: 'approve' }, reviewer);
+  assert.equal(f.s.partnerships[0].status, 'reviewed');
+  assert.equal(JSON.stringify(publicWorkspace(f.s)).includes('private-partner-consent'), false);
+  const memberId = f.run('request_membership', { name: 'Neighbor' }, stranger);
+  f.run('member_status', { id: memberId, status: 'active' });
+  assert.deepEqual(memberView(f.s, stranger.id).state.partnerships, []);
+  assert.equal(memberView(f.s, owner.id).state.partnerships.length, 1);
+  f.run('revoke_partnership', { id, reason: 'Partner withdrew consent' });
+  assert.equal(f.s.partnerships[0].status, 'revoked');
+  assert.throws(() => f.run('review_partnership', { id, decision: 'approve' }, reviewer), /already been reviewed/);
+});
+
+test('pooling review refuses changed parcel snapshots and legacy assessments', () => {
+  const { f, project } = prepared();
+  const payload = { projectId: project, program: 'Synthetic program', methodology: 'Example v1', source: 'https://example.org/method', minimumSquareMetres: 10000, criteria: 'Synthetic review', gaps: 'Needs external verification' };
+  const assessment = f.run('record_assessment', payload);
+  const parcel = f.run('record_parcel', { projectId: project, name: 'Neighbor land', landReference: 'private-neighbor', areaSquareMetres: 20000, consentReference: 'consent-2' }, reviewer);
+  f.run('review_parcel', { id: parcel, decision: 'approve' });
+  assert.throws(() => f.run('review_assessment', { id: assessment, decision: 'approve' }, reviewer), /Land records changed/);
+  const replacement = f.run('record_assessment', payload);
+  f.run('review_assessment', { id: replacement, decision: 'approve' }, reviewer);
+  assert.equal(f.s.assessments.at(-1).areaSquareMetres, 30000);
+  const legacy = structuredClone(f.s);
+  delete legacy.assessments[0].parcelSnapshot;
+  assert.throws(() => applyCommand(legacy, reviewer, { op: 'review_assessment', payload: { id: assessment, decision: 'approve' } }), /legacy/);
+});

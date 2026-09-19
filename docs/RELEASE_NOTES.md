@@ -1,3 +1,11 @@
+# Local candidate — partner preparation and agent MCP (September 19, 2026)
+
+Adds private project-specific conservation partnership records with reviewed evidence, independent approval, and revocation. Adds a preparation checklist and versioned parcel/boundary snapshots: changed land records prevent approval of an outdated assessment. Adds a stdio MCP server with public co-op discovery and local hypothetical pooling/allocation tools, without private access or financial execution.
+
+61 automated tests, type checking, production build, local HTTP integration, and new-module targeted lint passed. Browser walkthrough verified a synthetic workspace/project, checklist, and partner form. Full-project lint has 147 existing errors. See [feature acceptance and remaining launch requirements](FEATURE_ACCEPTANCE.md) and [MCP setup](../mcp/README.md). This candidate does not complete DigitalOcean migration, production authentication, external carbon approval, or payment execution.
+
+---
+
 # Launch branch preparation — September 17, 2026
 
 The launch branch includes the previously local private parcel mapping commit plus contributor onboarding and mission-led homepage updates. GitHub repository visibility was verified public. Private vulnerability reporting is now enabled and SECURITY.md links directly to it. CI now checks launch-page lint, applies job timeouts, and fails explicitly when the integration server cannot start.

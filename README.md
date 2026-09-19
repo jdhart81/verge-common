@@ -31,6 +31,10 @@ Clone or download this repository, install Node.js 22.13+, and run `npm run laun
 
 See [Worldwide adoption](docs/WORLDWIDE.md) for regional setup and production hosting boundaries.
 
+## Agents and MCP
+
+Agents can discover public co-ops and prepare hypothetical pooling/allocation drafts through the [MCP server](mcp/README.md). Run `node mcp/stdio.mjs` from an MCP client after installing dependencies. This initial interface supports public reads and local planning; it does not access private records, issue credits, or execute payments.
+
 ## What is implemented
 
 - Exportable imagery jobs and an independent NDVI screening worker, with validated result imports and human review. [Worker instructions](workers/imagery/README.md).
