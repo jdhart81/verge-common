@@ -1,6 +1,6 @@
 # Public beta review and deployment — 19 September 2026
 
-**Historical deployed receipt.** The subsequent [launch build checklist](LAUNCH_BUILD_2026-09-19.md) tracks candidate work and its separate verification/deployment status. The receipts below remain unchanged.
+**Historical deployed receipt.** The subsequent [launch build checklist](LAUNCH_BUILD_2026-09-19.md) tracks release work and its separate verification/deployment status. The receipts below remain unchanged.
 
 The updated website is live at **https://vergecommon.com/**. Native account access, associated-data deletion, safety controls and the approved support contact are implemented and tested. Apple distribution and optional Stripe contributions are **not launched**. Recurring encrypted offhost backup transfer is **paused pending explicit approval**; on-server daily backups remain active.
 

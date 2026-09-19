@@ -1,6 +1,6 @@
 # One service, web, native and agent clients
 
-This document describes the source candidate. The [launch build checklist](LAUNCH_BUILD_2026-09-19.md) distinguishes implemented changes from deployed receipts and remaining owner/device gates.
+This document describes the implemented launch source. The [launch build checklist](LAUNCH_BUILD_2026-09-19.md) distinguishes implemented changes from deployed receipts and remaining owner/device gates.
 
 ## Authoritative implementation
 
@@ -28,7 +28,7 @@ Browser / native client / MCP client
    Local SQLite + private evidence files
 ```
 
-`npm run build:selfhost` selects the Node storage adapter. The adapter implements the existing D1 query interface against SQLite and the existing private-object interface against files outside the asset directory. Routes keep the same SQL tables, versioned `state_json`, membership filtering, command validation, request IDs and audit transport. Versioned SQL migrations, including the candidate upload-cleanup queue, are applied transactionally; this is not a normalized-schema rewrite or an automatic migration from a hosted Sites database.
+`npm run build:selfhost` selects the Node storage adapter. The adapter implements the existing D1 query interface against SQLite and the existing private-object interface against files outside the asset directory. Routes keep the same SQL tables, versioned `state_json`, membership filtering, command validation, request IDs and audit transport. Versioned SQL migrations, including the upload-cleanup queue, are applied transactionally; this is not a normalized-schema rewrite or an automatic migration from a hosted Sites database.
 
 The gateway and internal app share a single process and database connection. SQLite uses WAL, full synchronous writes and version compare-and-swap. Evidence uses private immutable paths and SHA-256 records. The supported model is one application process on one server; replicas, a network-mounted SQLite database and high availability are not supplied. Daily local backup scheduling was verified active in the previous deployment receipt. Historical on-server restore checks and an earlier offhost copy are recorded separately. Recurring encrypted production transfer is paused pending the owner's outstanding authorization, with independent recovery-key custody still unqualified. See [current operations status](OPERATIONS_BETA.md) and the [historical deployment receipt](DEPLOYMENT_2026-09-19.md). See [single-server operations](../self-hosted/README.md).
 

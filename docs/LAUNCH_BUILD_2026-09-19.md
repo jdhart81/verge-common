@@ -1,8 +1,8 @@
 # Launch build checklist — 19 September 2026
 
-**Source candidate; consolidated release verification and deployment receipt pending.** This build addresses the owner's request to work through the launch-gap list. It does not establish a real community pilot, Apple distribution, funded conservation outcomes or active offhost recovery. The [previous deployed receipt](BETA_RELEASE_2026-09-19.md) remains historical evidence; do not infer that every candidate feature below is already live.
+**Implemented, pushed and deployed at approximately 21:19 UTC on 19 September 2026.** This build addresses the owner's request to work through the launch-gap list. It does not establish a real community pilot, Apple distribution, funded conservation outcomes or active offhost recovery. The [previous deployed receipt](BETA_RELEASE_2026-09-19.md) remains historical evidence. Web/backend features below are live; native source is checked but not distributed, and the optional operator notification/scheduler configuration remains inactive.
 
-## Implemented in this candidate
+## Implemented in this release
 
 | Area | Result and practical boundary |
 | --- | --- |
@@ -10,7 +10,7 @@
 | Evidence uploads | Cancel/discard, replacement and retry are explicit. Unattached files older than 24 hours are eligible for cleanup at startup, hourly maintenance or subsequent uploads; attached evidence remains protected. A durable deletion queue and atomic attachment/quota/membership checks address lost responses and concurrent edits. Includes the additive `0001_evidence_upload_lifecycle.sql` migration. |
 | Setup progress | The circle step requires two active stewards. The pathway step requires the latest reviewed assessment for a project to match its current land records. Recorded setup is not carbon eligibility. |
 | Operator reports | Web and native clients submit private reports to an operator queue with random private status receipts and exact-request retries. This provides escalation independent of a co-op's stewards. Signed-in reports participate in account export/deletion; anonymous native reports remain receipt-based. Human review/response coverage must still be qualified. |
-| Operator decisions | An existing SSH-authorized operator uses `self-hosted/safety-cli.mjs` to inspect, review, hide, restrict or dismiss. Restriction release keeps the co-op private. Queue pagination keeps open reports reachable after older resolutions. Decisions and workspace versions commit atomically; there is no HTTP operator-admin endpoint. See [the runbook](OPERATIONS.md#operator-safety-queue-in-the-candidate). |
+| Operator decisions | An existing SSH-authorized operator uses `self-hosted/safety-cli.mjs` to inspect, review, hide, restrict or dismiss. Restriction release keeps the co-op private. Queue pagination keeps open reports reachable after older resolutions. Decisions and workspace versions commit atomically; there is no HTTP operator-admin endpoint. See [the runbook](OPERATIONS.md#operator-safety-queue). |
 | Calendar dates | Web/native observations carry a matching calendar date and time zone. New native drafts preserve their originating zone; legacy drafts keep their UTC interpretation and retry identity. This addresses local-midnight rejection east of UTC. |
 | Events | Organizers/stewards can edit or reschedule upcoming visible events within ownership, block, public-visibility, date and capacity rules. RSVPs remain recorded; edits cannot shrink a positive capacity below active Going responses. Calendar UID stays stable, SEQUENCE advances, and participants are told to check the new details and reimport their calendar. No messages are sent automatically. |
 | Pending work | A private in-app summary links to visible membership requests, reviews, reports, eligible outstanding votes and ready-to-tally proposals. It uses the existing permission-filtered workspace; it does not send email, push or agent notifications. |
@@ -19,7 +19,7 @@
 | Native readiness | Source includes direct operator reports, protected receipt storage/status lookup, directory search/pagination and local-calendar-date handling. The native workstream reports 55 passing core tests and an unsigned iOS Simulator build. The earlier Xcode-license error no longer blocks those checks; signing and physical acceptance remain separate. |
 | Operational checks | Candidate operations tooling addresses monitoring/report-queue/capacity checks and recovery alerts. Installed scheduling, actual notification delivery and a new production-backed offhost recovery receipt require their own evidence; see [operations status](OPERATIONS_BETA.md). |
 
-## Candidate verification and release record
+## Verification and release record
 
 - Final consolidated local suite: **170 Node tests passed**, including the **15-case Python operations suite**. Lint, TypeScript, Cloudflare, static-public and self-hosted builds passed. Production dependency advisory check reported **zero known vulnerabilities** at this check.
 - Native core suite: **55 tests passed**; unsigned iPhone/iPad Simulator compilation passed. Logs: `/tmp/verge-native-launch-core.log` and `/tmp/verge-native-launch-ios.log`. No signed or physical-device acceptance is implied.
@@ -32,9 +32,16 @@
 
 The final browser report regression passed: malformed and valid earlier-receipt lookups preserved the new draft; submitting it created a distinct receipt. No console warnings/errors were observed in these browser checks.
 
-**Release still pending at this source checkpoint:** exact-image isolated acceptance, on-server backup/restore, deployment receipt and PR checks. All browser writes above were synthetic and local. New-account recovery acknowledgment remains covered by API/domain checks and prior acceptance, not a newly completed human pilot.
+All browser writes described above were synthetic and local. New-account recovery acknowledgment remains covered by API/domain checks and prior acceptance, not a newly completed human pilot.
 
-Final implementation commit and production image: recorded in the follow-up deployment receipt once verified. The prior image is retained stopped for diagnosis; after this release's operator restrictions or migration are used, use a compatible forward fix rather than an old executable that lacks those safeguards. Never restore stale deletion data or discard the current committed erasure ledger.
+- **Implementation:** `df056314a67147402f5f66b511d0a719ddd0bd61`, branch `build/coop-launch-readiness`, [PR #2](https://github.com/jdhart81/verge-common/pull/2). [Implementation CI](https://github.com/jdhart81/verge-common/actions/runs/35469937906) passed all four jobs: web, exact container, imagery and iOS. This receipt-only follow-up does not change deployed executable bytes.
+- **Dedicated server release:** `/opt/vergecommon/releases/20260919-launch-build`; image `vergecommon:20260919-launch-build`; image ID `sha256:192b1525a2d8abd41f8e152f242e807f1d0216f14f276518f79a7af88d883236`. Same private container network, read-only executable filesystem and constrained process settings are retained. Live health is healthy.
+- **Exact-image acceptance:** isolated fixture `5f19ef5c-d38a-47c7-95db-dc172f42c80e` passed the full account/co-op/evidence/MCP runner; 29 additional image-level safety, upload, event, discovery and date regressions passed. Isolated backup/restore passed with database SHA-256 `670c987e91ba97d4841f6780cf9d47008854e18d5fbde801e04855f4eb03d397`. Staging container `vergecommon-launch-check-df05631` is stopped.
+- **Predeployment recovery:** on-server snapshot `/backups/2026-09-19T21-18-52-895Z-fQtcXn`, SHA-256 `1a936a8c65dd9ee57584eba3dbb16ea8d56032cb310ed0c7ddc2d444b1458e6b`; isolated restore passed. No production records were copied offhost.
+- **Live HTTPS acceptance:** fixture `1d33d8bf-e551-421f-8991-412a1da12a6f` passed the full runner, including private file discard/protection, permissions, retries, native account lifecycle, MCP reads/bounded writes/financial denial, blocking, founder handover, archival and erasure. All four synthetic accounts were deleted. No public posts or operator complaints were created. Operator queue subsequently contained zero open reports.
+- **Live browser/route checks:** homepage, app, directory, support, privacy, project-support, reporting, health and MCP discovery returned successfully; invitation sign-in retained `/join/`. The browser verified directory search, corrected sign-in, and the new report page with no captured console warnings/errors. Invalid report input returned400 without creating a complaint.
+- **Postdeployment recovery:** snapshot `/backups/2026-09-19T21-20-25-593Z-HK44Yk`, SHA-256 `a1962d0c468a7388edba821887d52c5c1e716f3bed08615c466228c60acff5dc`; isolated restore passed at21:20UTC. Both migrations are present, eight committed deletion receipts preserved, five historical synthetic workspaces, three retained historical synthetic evidence objects, and zero accounts. These are test records, not community adoption.
+- **Rollback boundary:** previous image/container `vergecommon-launch-previous-bc49c48` is retained stopped for diagnosis. It does not enforce the new operator restrictions. Use a compatible forward fix after migration/policy use; do not automatically start an older executable or restore stale deletion data. Preserve the current committed erasure ledger.
 
 ## Independent gates still open
 
@@ -46,7 +53,7 @@ Final implementation commit and production image: recorded in the follow-up depl
 | Physical/device acceptance | Rehearse the exact signed build on physical iPhone and iPad, including VoiceOver, large text, offline/locked storage, receipt recovery, date boundaries, account switching, revocation and deletion. Capture real native screenshots with synthetic data. |
 | Real community pilot | Consenting neighbors and two responsible stewards must complete the [pilot acceptance loop](PILOT.md), including invitation, land/consent review, an activity, evidence, reporting and recovery. Automated fixtures do not establish adoption or ecological impact. No outreach is sent by this build. |
 | Human safety coverage | Name the operator and backup responder, establish response expectations, and rehearse queue checks/decision handling and alert delivery. The software records submissions and decisions; it does not staff the service. |
-| Repository release | Final source/CI reconciliation and the pending main-branch merge remain separate from implementation. Do not replace historical deployment hashes with an unverified candidate. |
+| Repository release | Implementation checks and deployment are verified above. The pending main-branch merge remains separate and awaits the existing approval gate. |
 
 The [Apple release review](APPLE_RELEASE.md) and [submission draft](APPLE_SUBMISSION_DRAFT.md) cover native distribution details. TestFlight beta access is not sold; any finished paid App Store release, price, agreements and storefront configuration are separate owner decisions. Optional website support does not purchase co-op privileges, land rights, carbon credits or promised returns.
 

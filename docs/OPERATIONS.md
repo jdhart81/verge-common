@@ -1,12 +1,12 @@
 # Operating Verge Common
 
-These instructions describe the [launch build candidate](LAUNCH_BUILD_2026-09-19.md). Confirm its deployment receipt before relying on newly added controls in production.
+These instructions describe the [verified launch build](LAUNCH_BUILD_2026-09-19.md). Confirm its deployment receipt before relying on newly added controls in production.
 
 ## Start a real co-op workspace
 
 1. Sign in and create a private workspace with a general region and purpose.
 2. Set the profile public when the group consents to its introduction being visible. Private record access remains limited by membership and record-specific permissions.
-3. Copy a public profile link or create a private single-use invitation and share it yourself. The candidate keeps an invitation through registration, sign-in or recovery in the same tab; save the new account recovery code before continuing. The steward still approves membership. If browser session storage is unavailable, reopen the original link after authentication.
+3. Copy a public profile link or create a private single-use invitation and share it yourself. The web application keeps an invitation through registration, sign-in or recovery in the same tab; save the new account recovery code before continuing. The steward still approves membership. If browser session storage is unavailable, reopen the original link after authentication.
 4. Appoint a second trusted steward. The founding steward is the only person who can grant or remove steward roles.
 5. Add projects. Publish only consented general descriptions; keep exact land references in private parcel records.
 6. Assign actions and record observations/updates. The pending-work summary links to visible membership requests, reviews, safety reports and eligible votes; it sends no messages. A steward can hide inappropriate updates or remove member access. Operator escalation is separate below.
@@ -58,13 +58,13 @@ Password-confirmed account deletion removes attributable personal records and cr
 
 Each mutation checks the caller's workspace version. An atomic SQL update commits the entire aggregate and its linked audit event or rejects a stale version. The UI refreshes on a conflict. Request IDs and payload hashes recognize a retry without appending another mutation. Financial references and per-receipt allocation constraints add domain-level duplicate protection.
 
-Uploads precede attachment to an evidence record. The candidate supports cancel/discard, replacement and retry. Unattached files older than 24 hours are cleaned at startup and during subsequent uploads; this is not a promise of deletion at the exact expiry instant. Attached assets are protected by a same-statement attachment/existence guard. A durable object-deletion queue retries failures without losing cleanup intent. File quota and active-membership checks occur atomically at metadata insertion. The additive `0001_evidence_upload_lifecycle.sql` migration preserves existing evidence.
+Uploads precede attachment to an evidence record. The application supports cancel/discard, replacement and retry. Unattached files older than 24 hours are cleaned at startup, hourly maintenance and during subsequent uploads; this is not a promise of deletion at the exact expiry instant. Attached assets are protected by a same-statement attachment/existence guard. A durable object-deletion queue retries failures without losing cleanup intent. File quota and active-membership checks occur atomically at metadata insertion. The additive `0001_evidence_upload_lifecycle.sql` migration preserves existing evidence.
 
 Event organizers and stewards can edit upcoming visible events or cancel an event. Public edits require a steward. Edits preserve RSVPs and cannot reduce a positive capacity below current active Going responses. Tell attendees about schedule/location changes: the app does not send email or push notifications. Calendar exports keep a stable UID and advance SEQUENCE, but participants must download and import the updated file; calendar-client import behavior varies.
 
 Production migration state may advance before a failed deployment finishes. Verify applied migrations before retrying. Keep the previous code version available for rollback; additive schema changes preserve the previous static pages.
 
-## Operator safety queue in the candidate
+## Operator safety queue
 
 People can submit a private concern from `/report/`, including complaints about the sole founding steward. The native candidate submits directly and saves a private receipt before sending. The receipt's status endpoint returns only report ID, general status and update time; it cannot retrieve complaint text or operator notes. Anonymous reports need no account. A private target must be accessible to an authenticated member; a general report can describe inaccessible concerns without probing private records. Signed-in submissions appear only in that account's export and are removed on account deletion. The native report client is anonymous; deleting a native account does not identify or withdraw those reports.
 
