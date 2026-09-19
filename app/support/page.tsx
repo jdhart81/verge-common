@@ -122,14 +122,18 @@ export default function SupportPage() {
         </ul>
       </section>
       <section>
-        <h2>Export records or close your login</h2>
+        <h2>Export records or delete your account</h2>
         <p>
           <a href={accountRoutes.account}>Your account</a> includes an export of
           records you can access and a{' '}
-          <a href={accountRoutes.close}>permanent login closure option</a>.
-          Shared co-op records remain after closure. If you founded a co-op,
+          <a href={accountRoutes.close}>permanent account deletion option</a>.
+          Deletion removes your authored personal content and revokes access;
+          shared numeric and governance structures may remain without your
+          account identity. If you founded a co-op with other active members,
           first transfer responsibility to another active steward in{' '}
-          <strong>Members</strong>. That transfers app administration only.
+          <strong>Members</strong>. That transfers app administration only. The
+          native app also offers account deletion and a separate control for
+          clearing its on-device journal.
         </p>
         <p>
           <Link href="/privacy/">Read about privacy and record retention</Link>{' '}

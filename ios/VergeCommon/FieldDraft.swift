@@ -91,6 +91,7 @@ final class JournalRepository {
         try commit(next)
     }
     func remove(_ id: UUID) throws { try commit(drafts.filter { $0.id != id }) }
+    func removeAll() throws { try commit([]) }
     func merge(_ incoming: [FieldDraft]) throws -> Int {
         // A conflict rejects the entire import; no silent replacement of edited notes.
         var next = drafts

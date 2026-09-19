@@ -1,5 +1,7 @@
 # Launch acceptance — September 19, 2026
 
+This is the earlier feature inventory. See [the current beta release receipt](BETA_RELEASE_2026-09-19.md) for newer native account/deletion controls, support, moderation and encrypted operations evidence.
+
 ## Target
 
 A conservation social network where neighbors organize a co-op, document distinct land contributions, work with a consenting conservation nonprofit, prepare a compatible carbon pathway for external review, and maintain transparent records of externally issued holdings, proceeds, and member allocations. No claim of being the first such project is established.

@@ -6,6 +6,7 @@ import {
   readFile,
   stat,
   lstat,
+  readdir,
 } from 'node:fs/promises';
 import { resolve, join } from 'node:path';
 import { createHash } from 'node:crypto';
@@ -19,6 +20,12 @@ await mkdir(backupRoot, { recursive: true, mode: 0o700 });
 const target = await mkdtemp(
   join(backupRoot, new Date().toISOString().replace(/[:.]/g, '-') + '-'),
 );
+const ledgerDirectory = join(dataDir, 'deletion-ledger');
+const ledgerNames = await readdir(ledgerDirectory);
+if (ledgerNames.some((name) => !/^[a-f0-9-]{36}\.json$/.test(name)))
+  throw new Error(
+    'Deletion ledger has a pending or invalid entry. Retry the backup after reconciliation.',
+  );
 await backupDatabase(join(target, 'vergecommon.sqlite'));
 // Evidence keys are immutable after creation; copy after the database snapshot.
 // Extra objects from concurrent uploads are harmless; referenced objects must exist.
@@ -56,6 +63,27 @@ for (const asset of db.prepare('SELECT object_key,sha256 FROM assets').all()) {
     throw new Error('Backup evidence checksum mismatch');
   files++;
 }
+await cp(ledgerDirectory, join(target, 'deletion-ledger'), {
+  recursive: true,
+  force: false,
+  filter: async (source) => {
+    const info = await lstat(source);
+    if (info.isSymbolicLink() || (!info.isDirectory() && !info.isFile()))
+      throw new Error('Unsafe deletion ledger object');
+    return true;
+  },
+});
+const copiedLedger = await readdir(join(target, 'deletion-ledger'));
+if (copiedLedger.some((name) => !/^[a-f0-9-]{36}\.json$/.test(name)))
+  throw new Error(
+    'Deletion changed during the backup. Retry after reconciliation.',
+  );
+for (const row of db.prepare('SELECT user_id FROM erasure_tombstones').all()) {
+  if (!copiedLedger.includes(`${String(row.user_id)}.json`))
+    throw new Error(
+      'Backup deletion ledger is missing a committed account deletion.',
+    );
+}
 const manifest = {
   createdAt: new Date().toISOString(),
   databaseIntegrity: 'ok',
@@ -68,6 +96,7 @@ const manifest = {
     .map((r) => r.name),
   verifiedEvidenceFiles: files,
   databaseBytes: (await stat(join(target, 'vergecommon.sqlite'))).size,
+  committedDeletions: copiedLedger.length,
 };
 await writeFile(
   join(target, 'receipt.json'),

@@ -23,5 +23,5 @@ function contactEmail(value: string | null): string | null {
 export const projectSupport = Object.freeze({
   operator: 'Viridis LLC',
   stripePaymentLink: stripePaymentLink(null),
-  contactEmail: contactEmail(null),
+  contactEmail: contactEmail('justin@viridisconservation.com'),
 });

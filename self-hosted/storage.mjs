@@ -7,6 +7,7 @@ import {
   link,
   unlink,
   lstat,
+  readdir,
 } from 'node:fs/promises';
 import { resolve, dirname } from 'node:path';
 import { randomUUID } from 'node:crypto';
@@ -16,7 +17,7 @@ export function openDatabase(path = resolve(dataDir, 'vergecommon.sqlite')) {
   const db = new DatabaseSync(path);
   chmodSync(path, 0o600);
   db.exec(
-    'PRAGMA journal_mode=WAL; PRAGMA busy_timeout=5000; PRAGMA foreign_keys=ON; PRAGMA synchronous=FULL;',
+    'PRAGMA journal_mode=WAL; PRAGMA busy_timeout=5000; PRAGMA foreign_keys=ON; PRAGMA synchronous=FULL; PRAGMA secure_delete=ON;',
   );
   db.exec(
     `CREATE TABLE IF NOT EXISTS schema_migrations (name TEXT PRIMARY KEY);`,
@@ -70,7 +71,10 @@ export function d1Adapter(db) {
     },
   };
 }
-export function objectStore(root = resolve(dataDir, 'evidence')) {
+export function objectStore(
+  root = resolve(dataDir, 'evidence'),
+  { deleteFile = unlink, database = getDatabase } = {},
+) {
   const pathFor = (key) => {
     if (
       typeof key !== 'string' ||
@@ -125,8 +129,8 @@ export function objectStore(root = resolve(dataDir, 'evidence')) {
       }
     },
     async delete(key) {
+      const path = pathFor(key);
       try {
-        const path = pathFor(key);
         for (const part of [
           root,
           resolve(root, 'private'),
@@ -136,12 +140,62 @@ export function objectStore(root = resolve(dataDir, 'evidence')) {
           if ((await lstat(part)).isSymbolicLink())
             throw new Error('Object paths must not be symbolic links');
         }
-        await unlink(path);
+        await deleteFile(path);
       } catch (e) {
-        if (e.code !== 'ENOENT') throw e;
+        if (e.code !== 'ENOENT') {
+          // Also covers an upload rejected after its account was deleted.
+          // Persist cleanup before reporting failure so restart can retry it.
+          const db = database();
+          db.exec(
+            'CREATE TABLE IF NOT EXISTS erasure_file_queue (object_key TEXT PRIMARY KEY, requested_at INTEGER NOT NULL)',
+          );
+          db.prepare(
+            'INSERT OR IGNORE INTO erasure_file_queue VALUES (?,?)',
+          ).run(key, Date.now());
+          throw e;
+        }
       }
     },
   };
+}
+// Startup only, before serving requests. A crash between object creation and
+// metadata insertion can leave an unreferenced file even without a deletion.
+export async function reconcileEvidence(
+  db,
+  root = resolve(dataDir, 'evidence'),
+) {
+  let removed = 0;
+  const walk = async (directory) => {
+    const info = await lstat(directory);
+    if (info.isSymbolicLink())
+      throw new Error('Evidence path cannot be a symbolic link');
+    for (const entry of await readdir(directory, { withFileTypes: true })) {
+      const path = resolve(directory, entry.name);
+      if (entry.isDirectory()) {
+        await walk(path);
+        continue;
+      }
+      if (!entry.isFile() || entry.isSymbolicLink())
+        throw new Error('Unsupported evidence object');
+      const key = path.slice(resolve(root).length + 1);
+      if (
+        !/^private\/[a-zA-Z0-9-]+\/[a-zA-Z0-9-]+(?:\.[a-zA-Z0-9-]+\.tmp)?$/.test(
+          key,
+        )
+      )
+        throw new Error('Unsafe evidence object');
+      if (!db.prepare('SELECT id FROM assets WHERE object_key=?').get(key)) {
+        await unlink(path);
+        removed++;
+      }
+    }
+  };
+  try {
+    await walk(root);
+  } catch (error) {
+    if (error.code !== 'ENOENT') throw error;
+  }
+  return { removedOrphanFiles: removed };
 }
 export async function backupDatabase(destination, db = getDatabase()) {
   await backup(db, destination);

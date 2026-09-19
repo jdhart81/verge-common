@@ -1,8 +1,22 @@
 import http from 'node:http';
 import { Readable } from 'node:stream';
 import { pathToFileURL } from 'node:url';
+import { resolve } from 'node:path';
 import { createAuth } from './auth.mjs';
-import { getDatabase } from './storage.mjs';
+import {
+  getDatabase,
+  dataDir,
+  objectStore,
+  reconcileEvidence,
+} from './storage.mjs';
+import {
+  eraseAccountData,
+  commitErasureIntent,
+  abortErasureIntent,
+  recoverErasureIntents,
+  replayErasureLedger,
+  drainErasureFiles,
+} from './erasure.mjs';
 import { accountPage } from './account.mjs';
 import { createHttpHandler, mcpDiscovery } from '../mcp/http.mjs';
 const safeReturn = (value) => {
@@ -163,10 +177,97 @@ export function createGateway({
         return json(200, mcpDiscovery(origin));
       if (url.pathname === '/mcp') return await mcp(req, res);
       if (principal?.kind === 'token') {
-        if (!principal.scopes.includes(isWrite ? 'app:write' : 'app:read'))
+        const scope =
+          url.pathname === '/auth/native/logout'
+            ? 'app:read'
+            : isWrite
+              ? 'app:write'
+              : 'app:read';
+        if (!principal.scopes.includes(scope))
           return json(403, {
             error: 'This token does not grant the required app permission.',
           });
+      }
+      if (url.pathname.startsWith('/auth/native/')) {
+        if (req.method !== 'POST')
+          return json(405, { error: 'Method not allowed.' });
+        if (
+          req.headers.origin !== origin ||
+          String(req.headers['content-type']).split(';')[0].trim() !==
+            'application/json'
+        )
+          return json(403, {
+            error: 'Use the VergeCommon app to submit this request.',
+          });
+        let data;
+        try {
+          data = JSON.parse((await readBody(req, 12000)).toString());
+        } catch (error) {
+          if (error.status) throw error;
+          return json(400, { error: 'Send a valid JSON object.' });
+        }
+        if (!data || typeof data !== 'object' || Array.isArray(data))
+          return json(400, { error: 'Send a valid JSON object.' });
+        if (
+          !auth.rateLimit(`auth:${client}`, 20, 15 * 60000) ||
+          !auth.rateLimit('auth:global', 200, 60000)
+        )
+          return json(429, {
+            error: 'Too many account attempts. Wait 15 minutes.',
+          });
+        const action = url.pathname.slice('/auth/native/'.length);
+        if (
+          !['register', 'login', 'recover', 'logout', 'delete'].includes(action)
+        )
+          return json(404, { error: 'Unknown account action.' });
+        if (['register', 'login', 'recover'].includes(action)) {
+          if (principal || req.headers.cookie)
+            return json(400, {
+              error: 'Sign out before starting a new app session.',
+            });
+          if (
+            typeof data.username !== 'string' ||
+            typeof data.password !== 'string'
+          )
+            return json(400, { error: 'Enter a username and password.' });
+          if (
+            !auth.rateLimit(
+              `auth:user:${data.username.trim().toLowerCase()}`,
+              12,
+              15 * 60000,
+            )
+          )
+            return json(429, {
+              error: 'Too many sign-in attempts. Wait 15 minutes.',
+            });
+          try {
+            const result = await auth[action](data);
+            return json(
+              action === 'register' ? 201 : 200,
+              auth.nativeSession(result),
+            );
+          } catch (error) {
+            return json(error.status || (action === 'register' ? 400 : 401), {
+              error: error.message,
+            });
+          }
+        }
+        if (principal?.kind !== 'token')
+          return json(401, { error: 'Sign in with the app first.' });
+        if (action === 'logout') {
+          auth.revokeToken(principal.id, principal.tokenId);
+          return json(200, { ok: true });
+        }
+        if (data.confirmation !== 'DELETE')
+          return json(400, {
+            error: 'Type DELETE to confirm account deletion.',
+          });
+        try {
+          await auth.closeAccount(principal.id, data.password);
+          return json(200, { ok: true, deleted: true });
+        } catch (error) {
+          return json(error.status || 400, { error: error.message });
+        }
       }
       if (
         url.pathname === '/signin-with-chatgpt' ||
@@ -250,7 +351,7 @@ export function createGateway({
         if (
           data.username &&
           !auth.rateLimit(
-            `auth:user:${data.username.toLowerCase()}`,
+            `auth:user:${data.username.trim().toLowerCase()}`,
             12,
             15 * 60000,
           )
@@ -311,13 +412,13 @@ export function createGateway({
             message =
               'Password changed. Other sessions and device tokens were revoked.';
           } else if (action === 'close') {
-            if (data.confirmation !== 'CLOSE')
-              throw new Error('Type CLOSE to confirm.');
+            if (data.confirmation !== 'DELETE')
+              throw new Error('Type DELETE to confirm.');
             await auth.closeAccount(principal.id, data.password);
             res.setHeader('set-cookie', cookie(''));
             return page(200, {
               message:
-                'Account closed. Shared co-op records remain with the co-op.',
+                'Account deleted. Your access and authored personal content have been removed. Shared governance and numeric records may remain with identity fields removed.',
             });
           } else return json(404, { error: 'Unknown account action.' });
           return page(200, {
@@ -328,7 +429,7 @@ export function createGateway({
             token,
           });
         } catch (e) {
-          return page(400, {
+          return page(e.status || 400, {
             user: principal,
             tokens: principal ? auth.tokens(principal.id) : [],
             message: e.message,
@@ -394,6 +495,36 @@ export async function start() {
   const origin = process.env.VERGE_ORIGIN || 'http://127.0.0.1:3100';
   process.env.VINEXT_TRUST_PROXY = '1';
   process.env.VINEXT_TRUSTED_HOSTS = new URL(origin).host;
+  const db = getDatabase();
+  const ledgerDirectory = resolve(dataDir, 'deletion-ledger');
+  const store = objectStore();
+  const auth = createAuth(db, Date.now, {
+    eraseAccountData: (id, now) =>
+      eraseAccountData(db, id, now, { ledgerDirectory }),
+    abortAccountDeletion: (id) => abortErasureIntent(ledgerDirectory, id),
+    afterAccountDeletion: async (id) => {
+      try {
+        commitErasureIntent(ledgerDirectory, id);
+        await drainErasureFiles(db, store);
+        const checkpoint = db.prepare('PRAGMA wal_checkpoint(TRUNCATE)').get();
+        if (checkpoint.busy) throw new Error('Deletion checkpoint is busy');
+      } catch {
+        throw Object.assign(
+          new Error(
+            'Your account access has been removed. Private-file cleanup needs operator attention and will retry on restart. Contact justin@viridisconservation.com.',
+          ),
+          { status: 503 },
+        );
+      }
+    },
+  });
+  // Recovery must reconcile committed deletions before any request can reach
+  // the app, including after restoring an older database beside a newer ledger.
+  recoverErasureIntents(db, ledgerDirectory);
+  replayErasureLedger(db, { ledgerDirectory });
+  await drainErasureFiles(db, store);
+  await reconcileEvidence(db);
+  db.exec('PRAGMA wal_checkpoint(TRUNCATE)');
   const { startProdServer } = await import('vinext/server/prod-server');
   const internal = await startProdServer({
     port: 0,
@@ -401,7 +532,6 @@ export async function start() {
     outDir: 'dist',
     silent: true,
   });
-  const auth = createAuth(getDatabase());
   const { server } = createGateway({
     origin,
     upstreamPort: internal.port,

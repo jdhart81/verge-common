@@ -217,6 +217,13 @@ await test('account closure removes credentials and tokens without permitting a 
   assert.equal(f.auth.authenticate(cookie(alice.session)), null);
   assert.equal(f.auth.authenticate(bearer(token)), null);
   assert.equal(f.auth.tokens(alice.user.id).length, 0);
+  f.auth.revokeToken(alice.user.id, 'delayed-revocation');
+  assert.equal(
+    f.db
+      .prepare('SELECT count(*) AS n FROM auth_audit WHERE user_id=?')
+      .get(alice.user.id).n,
+    0,
+  );
   await assert.rejects(
     f.auth.login({ username: 'alice', password }),
     /incorrect/,

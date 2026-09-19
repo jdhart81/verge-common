@@ -28,7 +28,7 @@ The bundled Caddyfile redirects `www.vergecommon.com` to the canonical HTTPS dom
 
 The dedicated droplet uses Docker container `vergecommon-app` on private bridge network `vergecommon`. Its `/data` mount is `/opt/vergecommon/data` on the host; `/backups` is `/opt/vergecommon/backups`. Release source/image inputs are retained under `/opt/vergecommon/releases/<UTC>-app`. Caddy keeps its existing certificate volumes and reaches the app only through the private network. Do not publish the app's port directly on the host.
 
-The deployment includes `vergecommon-backup.service` and `vergecommon-backup.timer`, scheduled daily at **03:15 UTC**. Confirm installation and the last successful receipt on the actual host before relying on this schedule. A copied verified archive in the owner's private Mac backup directory is an initial offhost recovery point, not recurring offsite protection. The encrypted recurring offsite destination and its key custody still require operator configuration.
+The deployment includes `vergecommon-backup.service` and `vergecommon-backup.timer`, scheduled daily at **03:15 UTC**. Confirm installation and the last successful receipt on the actual host before relying on this schedule. The owner’s Mac now has an hourly encrypted pull and isolated restore rehearsal; see [operations](../docs/OPERATIONS_BETA.md) for its actual status, sleep/offline limits, approved paths and remaining independent key-custody requirement.
 
 ## Build and isolated acceptance
 
@@ -81,7 +81,7 @@ Browser sessions expire after seven days. Device/agent tokens expire after 90 da
 
 The remote MCP endpoint is `/mcp`; discovery is `/.well-known/mcp.json`. Send the token in the Authorization bearer header, never in a URL. Co-op membership and steward permissions still apply. Agent access does not authorize legal/financial approvals or membership escalation. See [MCP documentation](../mcp/README.md) for the exact allowed tools.
 
-Changing a password revokes previous sessions and tokens. Account closure removes the login and its access; it does not delete shared co-op records. Resolve ongoing stewardship responsibilities before closure. The account export includes records the user is authorized to see, not every member's private evidence.
+Changing a password revokes previous sessions and tokens. Native login, registration and recovery use origin-bound JSON endpoints under `/auth/native/`; the app receives a 90-day participation token, never a cookie. Logout revokes that device token. Account deletion on the web or native app verifies the password and `DELETE`, removes associated personal records and credentials atomically, and drains private file deletions before reporting success. Transfer active shared stewardship first. De-identified governance/numeric structures and other members’ independently authored content may remain; see [privacy](../PRIVACY.md). The account export includes records the user is authorized to see, not every member's private evidence.
 
 ## Capacity and monitoring
 
@@ -101,7 +101,7 @@ VERGE_BACKUP_DIR=/absolute/private/backups \
 npm run backup:selfhost
 ```
 
-The command creates a uniquely named directory, uses SQLite's online snapshot API, copies immutable evidence, verifies referenced evidence SHA-256 hashes, and emits a receipt containing the database hash, migration names, evidence count, and database size. A failed command is a failed backup even if a partial directory remains. Do not retain or transfer it as a successful recovery point.
+The command creates a uniquely named directory, uses SQLite's online snapshot API, copies evidence and the committed deletion ledger, verifies referenced evidence SHA-256 hashes, and emits a receipt containing the database hash, migration names, evidence count, deletion count and database size. A pending deletion intent or missing referenced file refuses the snapshot; retry after reconciliation. A failed command is a failed backup even if a partial directory remains. Do not retain or transfer it as a successful recovery point.
 
 Then pass the exact completed directory to:
 
@@ -139,12 +139,12 @@ Verify the encrypted checksum at the destination. Periodically fetch an offsite 
 ### Actual recovery after an incident
 
 1. Stop public writes and preserve the failed deployment/data for diagnosis. Record the recovery point time and expected data loss window.
-2. Retrieve and decrypt a trusted offsite archive into an isolated private directory. Run the restore checker, then launch the matching release image with that recovered directory on a local-only staging listener.
+2. Retrieve and decrypt a trusted offsite archive into an isolated private directory. Run the restore checker. Independently retrieve the **latest committed deletion ledger**, verify its freshness and replace the restored directory’s `deletion-ledger` with that trusted copy. Run `node self-hosted/erasure.mjs --replay --data /isolated/restored-data --ledger /isolated/restored-data/deletion-ledger` before starting a listener. A missing or stale deletion ledger blocks reopening: the ledger bundled in an old snapshot is insufficient. Then launch a release with the erasure safeguards against the recovered directory on a local-only staging listener.
 3. Repeat the two-account, file-download, restart and permission checks. If compromise is suspected, revoke restored sessions/device tokens and complete credential recovery before reopening.
 4. Stop the production application before switching its data mount. Install the verified recovery directory with the correct unprivileged ownership. Keep the previous directory and image available for rollback; do not overwrite it in place or merge SQLite/WAL files from different snapshots.
 5. Start the approved release, verify canonical HTTPS and authenticated behavior, then reopen writes. Record the result, gaps and recovery duration. Take a new verified backup.
 
-The checker is a rehearsal tool; the final production data switch is an explicit operational action. Never restore old auth/session data blindly after a security incident.
+The checker is a rehearsal tool; the final production data switch is an explicit operational action. Never restore old auth/session data blindly after a security incident. After enabling account deletion, do not roll back to an older executable lacking startup replay and erasure triggers; use a compatible forward fix or keep service closed while repairing.
 
 ## Incident, moderation and retention runbook
 
@@ -154,4 +154,4 @@ The checker is a rehearsal tool; the final production data switch is an explicit
 
 **Community reports:** members report an update, comment or event. A steward reviews the report and records hide/dismiss plus a reason. Another steward handles reports about the reviewing steward's own content. Use membership restrictions and archived workspaces when appropriate; do not expose private evidence in a public moderation response. Export relevant records before a sanctioned removal. Legal disputes and urgent threats require the appropriate external process.
 
-**Retention:** this release does not automatically purge co-op histories, agreement/financial receipts, evidence, auth audit entries, or old backups. Session/rate-limit cleanup removes expired operational rows as implemented, but it is not a full retention policy. Before broad enrollment, the operator must choose and publish retention periods and a reviewed removal procedure consistent with co-op obligations. Keep an inventory of live records, local backups and offsite copies; apply approved expiry/removal across all of them. A user account closure is not a promise that shared records were erased. Do not purge the only known-good recovery point or records subject to an active preservation requirement.
+**Retention:** account deletion now removes attributable personal records, with minimal private tombstones and file-cleanup queues preventing resurrection. It is not a blanket purge of other members’ content or shared numeric structures. Existing backups have no automatic expiry, and older plaintext Mac copies remain unchanged. The operator must choose retention periods and handle requests involving other members’ independent text. Every restore must replay the current committed deletion ledger before access opens. Do not purge the only known-good recovery point or records subject to an active preservation requirement. Private account, safety and privacy contact: **justin@viridisconservation.com**.

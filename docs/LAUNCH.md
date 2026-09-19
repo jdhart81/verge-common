@@ -1,5 +1,7 @@
 # VergeCommon launch kit
 
+Current beta changes and exact deployment evidence are maintained in [the beta release receipt](BETA_RELEASE_2026-09-19.md); earlier hashes and counts below are historical milestones.
+
 ## Positioning
 
 **What if conservation could be an open-source project? Enter VergeCommon.**
@@ -46,7 +48,7 @@ Suggested topics: `conservation`, `open-source`, `community`, `cooperatives`, `s
 - [ ] Complete final source review and obtain approval before merging the launch branch into `main`.
 - [ ] Check contributor links, issue forms and license rendering on the final merged revision.
 - [x] Enable and verify GitHub private vulnerability reporting; link its destination in SECURITY.md.
-- [ ] Establish a dedicated confidential conduct contact before broad community recruitment; the current policy documents the interim contact-request route.
+- [x] Publish the owner-selected private support, safety and privacy contact: justin@viridisconservation.com. Human response coverage still needs an operating rehearsal.
 - [ ] Approve the announcement text and destination before posting it. No announcement has been sent by this preparation.
 
 The draft is not posted. GitHub is public and private vulnerability reporting is enabled. The live shared website was checked using synthetic accounts on September 19, 2026; co-op record access still requires membership approval. The deployed pilot source is on the launch branch while PR #2 is under review. Neither deployment nor its acceptance tests establish real community adoption, nonprofit affiliation or carbon payouts.

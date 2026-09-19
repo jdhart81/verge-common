@@ -30,4 +30,4 @@ Do not log authorization headers, cookies, password/recovery values, private res
 
 ## Reporting
 
-Use [GitHub private vulnerability reporting](https://github.com/jdhart81/verge-common/security/advisories/new), enabled for this repository. Reports go privately to repository maintainers. If GitHub reporting is unavailable, request a private contact in an issue without disclosing the vulnerability. Do not post secrets, exploit details, exact private locations, or participant records in public issues. The current main branch is maintained without a guaranteed response time.
+Use [GitHub private vulnerability reporting](https://github.com/jdhart81/verge-common/security/advisories/new), enabled for this repository. Reports go privately to repository maintainers. If GitHub reporting is unavailable, contact **justin@viridisconservation.com** privately. Do not post secrets, exploit details, exact private locations, or participant records in public issues. Do not email live credentials. The current main branch is maintained without a guaranteed response time.

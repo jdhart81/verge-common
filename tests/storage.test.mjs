@@ -22,10 +22,15 @@ import {
   d1Adapter,
   objectStore,
   backupDatabase,
+  reconcileEvidence,
 } from '../self-hosted/storage.mjs';
 import { checkBackup } from '../self-hosted/restore-check.mjs';
 import { newWorkspace } from '../lib/network.mjs';
 import { createAuth } from '../self-hosted/auth.mjs';
+import {
+  initializeErasure,
+  drainErasureFiles,
+} from '../self-hosted/erasure.mjs';
 
 const execute = promisify(execFile);
 const repository = resolve(import.meta.dirname, '..');
@@ -84,6 +89,8 @@ async function fixtureBackup(t) {
     bytes.length,
     1,
   );
+  initializeErasure(db);
+  await mkdir(join(data, 'deletion-ledger'));
   const { stdout } = await execute(
     process.execPath,
     ['self-hosted/backup.mjs'],
@@ -423,6 +430,9 @@ await test('empty new deployment can be backed up and checked before any evidenc
   const dir = await temporary(t),
     data = join(dir, 'data');
   const db = openDatabase(join(data, 'vergecommon.sqlite'));
+  createAuth(db);
+  initializeErasure(db);
+  await mkdir(join(data, 'deletion-ledger'));
   db.close();
   const { stdout } = await execute(
     process.execPath,
@@ -460,4 +470,92 @@ await test('backup rejects an unreferenced symlink rather than copying an unsafe
     /Unsupported evidence object/,
   );
   assert.equal(await readFile(outside, 'utf8'), 'private external bytes');
+});
+
+await test('failed rejected-upload cleanup is durable and orphan recovery preserves referenced evidence', async (t) => {
+  const dir = await temporary(t),
+    root = join(dir, 'evidence');
+  const db = openDatabase(join(dir, 'vergecommon.sqlite'));
+  t.after(() => db.close());
+  insertWorkspace(db);
+  createAuth(db);
+  const store = objectStore(root, { database: () => db });
+  await store.put('private/coop/kept', Buffer.from('retained'));
+  db.prepare('INSERT INTO assets VALUES (?,?,?,?,?,?,?,?,?)').run(
+    'kept',
+    'coop',
+    'user',
+    'private/coop/kept',
+    'kept.txt',
+    'text/plain',
+    hash('retained'),
+    8,
+    1,
+  );
+  await store.put('private/coop/rejected', Buffer.from('rejected upload'));
+  const failing = objectStore(root, {
+    database: () => db,
+    deleteFile: async () => {
+      throw Object.assign(new Error('Simulated filesystem unavailable'), {
+        code: 'EIO',
+      });
+    },
+  });
+  await assert.rejects(
+    failing.delete('private/coop/rejected'),
+    /filesystem unavailable/,
+  );
+  assert.equal(
+    db.prepare('SELECT count(*) AS n FROM erasure_file_queue').get().n,
+    1,
+  );
+  await drainErasureFiles(db, store);
+  assert.equal(await store.get('private/coop/rejected'), null);
+  assert.equal(
+    db.prepare('SELECT count(*) AS n FROM erasure_file_queue').get().n,
+    0,
+  );
+  await store.put(
+    'private/coop/interrupted',
+    Buffer.from('crash before metadata'),
+  );
+  await writeFile(
+    join(root, 'private/coop/unfinished.random.tmp'),
+    'unfinished',
+  );
+  assert.equal((await reconcileEvidence(db, root)).removedOrphanFiles, 2);
+  assert.equal(
+    Buffer.from((await store.get('private/coop/kept')).body).toString(),
+    'retained',
+  );
+  assert.equal(await store.get('private/coop/interrupted'), null);
+});
+
+await test('backup refuses a missing or pending deletion ledger instead of qualifying an unsafe restore point', async (t) => {
+  const f = await fixtureBackup(t);
+  const invoke = () =>
+    execute(process.execPath, ['self-hosted/backup.mjs'], {
+      cwd: repository,
+      env: {
+        ...process.env,
+        VERGE_DATA_DIR: f.data,
+        VERGE_BACKUP_DIR: f.destination,
+      },
+    });
+  const pending = join(
+    f.data,
+    'deletion-ledger',
+    'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa.pending',
+  );
+  await writeFile(pending, '{}');
+  await assert.rejects(invoke(), /pending or invalid entry/);
+  await rm(pending);
+  await rm(join(f.data, 'deletion-ledger'), { recursive: true });
+  await assert.rejects(invoke(), /ENOENT/);
+  const completed = [];
+  for (const name of await readdir(f.destination)) {
+    if ((await readdir(join(f.destination, name))).includes('receipt.json'))
+      completed.push(name);
+  }
+  assert.equal(completed.length, 1);
 });

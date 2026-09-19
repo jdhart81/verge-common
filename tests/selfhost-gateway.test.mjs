@@ -14,7 +14,6 @@ const bobCoop = 'f9cacbc9-ae4a-4f40-9385-32e11d01b471';
 const projectId = '98329113-e8a1-49a3-8d68-50a73e425fd0';
 const cookieFor = (registration) => `vc_session=${registration.session}`;
 
-
 async function listen(server) {
   await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
   return server.address().port;
@@ -70,10 +69,10 @@ const nodeFetch = (url, options = {}) =>
     );
   });
 
-async function fixture(t) {
+async function fixture(t, lifecycle = {}) {
   const db = new DatabaseSync(':memory:');
   db.exec('PRAGMA foreign_keys=ON');
-  const auth = createAuth(db);
+  const auth = createAuth(db, Date.now, lifecycle);
   const register = (username) =>
     auth.register({ username, displayName: `${username} display`, password });
   const alice = await register('alice');
@@ -145,7 +144,10 @@ async function fixture(t) {
 await test('router-generated account URLs preserve the gateway destination', async (t) => {
   const f = await fixture(t);
   for (const [path, location] of [
-    ['/account/?mode=register&returnTo=%2Fworkspace%2F', '/account?mode=register&returnTo=%2Fworkspace%2F'],
+    [
+      '/account/?mode=register&returnTo=%2Fworkspace%2F',
+      '/account?mode=register&returnTo=%2Fworkspace%2F',
+    ],
     ['/account/export/', '/account/export'],
   ]) {
     const response = await f.request(path);
@@ -540,4 +542,228 @@ await test('gateway MCP integrates tokens with the same backend membership and a
   });
   assert.equal(missingBearer.status, 401);
   assert.match(missingBearer.headers.get('www-authenticate'), /Bearer/);
+});
+
+await test('native account lifecycle issues scoped tokens, rotates recovery, revokes devices and deletes credentials', async (t) => {
+  let erased;
+  const f = await fixture(t, {
+    eraseAccountData: (id) => {
+      erased = id;
+    },
+  });
+  const native = (action, data = {}, token) =>
+    f.request(`/auth/native/${action}`, {
+      method: 'POST',
+      headers: {
+        origin,
+        'content-type': 'application/json',
+        ...(token ? { authorization: `Bearer ${token}` } : {}),
+      },
+      body: JSON.stringify(data),
+    });
+  const registered = await native('register', {
+    username: 'native',
+    displayName: 'Native user',
+    password,
+    scope: 'mcp:write',
+  });
+  assert.equal(registered.status, 201);
+  assert.equal(registered.headers.get('set-cookie'), null);
+  assert.equal(registered.headers.get('cache-control'), 'no-store');
+  const initial = await registered.json();
+  assert.ok(initial.expiresAt > Date.now());
+  assert.equal(initial.session, undefined);
+  assert.match(initial.recoveryCode, /^[A-Za-z0-9_-]{43}$/);
+  assert.deepEqual(
+    f.auth.authenticate({ authorization: `Bearer ${initial.token}` }).scopes,
+    ['app:read', 'app:write'],
+  );
+  assert.equal(
+    f.db
+      .prepare('SELECT count(*) AS n FROM sessions WHERE user_id=?')
+      .get(initial.user.id).n,
+    0,
+  );
+  const signedIn = await native('login', { username: 'NATIVE', password });
+  const second = await signedIn.json();
+  assert.equal(signedIn.status, 200);
+  assert.equal(second.recoveryCode, undefined);
+  assert.equal((await native('logout', {}, second.token)).status, 200);
+  assert.equal(
+    f.auth.authenticate({ authorization: `Bearer ${second.token}` }),
+    null,
+  );
+  assert.ok(f.auth.authenticate({ authorization: `Bearer ${initial.token}` }));
+  const recovered = await native('recover', {
+    username: 'native',
+    recoveryCode: initial.recoveryCode,
+    password: password + ' replacement',
+  });
+  const fresh = await recovered.json();
+  assert.equal(recovered.status, 200);
+  assert.equal(fresh.user.id, initial.user.id);
+  assert.notEqual(fresh.recoveryCode, initial.recoveryCode);
+  assert.equal(
+    f.auth.authenticate({ authorization: `Bearer ${initial.token}` }),
+    null,
+  );
+  assert.equal(
+    (
+      await native('recover', {
+        username: 'native',
+        recoveryCode: initial.recoveryCode,
+        password,
+      })
+    ).status,
+    401,
+  );
+  assert.equal(
+    (
+      await native(
+        'delete',
+        { password: password + ' replacement', confirmation: 'CLOSE' },
+        fresh.token,
+      )
+    ).status,
+    400,
+  );
+  assert.equal(
+    (
+      await native(
+        'delete',
+        { password: 'incorrect password', confirmation: 'DELETE' },
+        fresh.token,
+      )
+    ).status,
+    400,
+  );
+  assert.equal(erased, undefined);
+  const removed = await native(
+    'delete',
+    { password: password + ' replacement', confirmation: 'DELETE' },
+    fresh.token,
+  );
+  assert.deepEqual(await removed.json(), { ok: true, deleted: true });
+  assert.equal(erased, initial.user.id);
+  assert.equal(
+    f.db.prepare('SELECT id FROM users WHERE id=?').get(initial.user.id),
+    undefined,
+  );
+  assert.equal(
+    f.auth.authenticate({ authorization: `Bearer ${fresh.token}` }),
+    null,
+  );
+  assert.equal(
+    f.db
+      .prepare('SELECT count(*) AS n FROM auth_audit WHERE user_id=?')
+      .get(initial.user.id).n,
+    0,
+  );
+});
+
+await test('native auth rejects cross-origin, cookie identity, agent/read tokens and malformed payloads', async (t) => {
+  const f = await fixture(t);
+  const request = (headers, body = '{}', method = 'POST') =>
+    f.request('/auth/native/login', {
+      method,
+      headers,
+      ...(method === 'POST' ? { body } : {}),
+    });
+  assert.equal(
+    (await request({ 'content-type': 'application/json' })).status,
+    403,
+  );
+  assert.equal(
+    (
+      await request({
+        origin: 'https://evil.test',
+        'content-type': 'application/json',
+      })
+    ).status,
+    403,
+  );
+  assert.equal(
+    (await request({ origin, 'content-type': 'text/plain' })).status,
+    403,
+  );
+  assert.equal(
+    (await request({ origin, 'content-type': 'application/json' }, '[')).status,
+    400,
+  );
+  assert.equal(
+    (await request({ origin, 'content-type': 'application/json' }, '[]'))
+      .status,
+    400,
+  );
+  assert.equal(
+    (
+      await request(
+        { origin, 'content-type': 'application/json' },
+        'x'.repeat(12001),
+      )
+    ).status,
+    413,
+  );
+  assert.equal(
+    (
+      await request({
+        origin,
+        'content-type': 'application/json',
+        cookie: cookieFor(f.alice),
+      })
+    ).status,
+    400,
+  );
+  assert.equal((await request({}, undefined, 'GET')).status, 405);
+  for (const scope of ['mcp:write', 'app:read']) {
+    const token = f.auth.createToken(f.alice.user.id, scope, scope);
+    const response = await f.request('/auth/native/delete', {
+      method: 'POST',
+      headers: {
+        origin,
+        'content-type': 'application/json',
+        authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({ password, confirmation: 'DELETE' }),
+    });
+    assert.equal(response.status, 403);
+    if (scope === 'app:read') {
+      const logout = await f.request('/auth/native/logout', {
+        method: 'POST',
+        headers: {
+          origin,
+          'content-type': 'application/json',
+          authorization: `Bearer ${token}`,
+        },
+        body: '{}',
+      });
+      assert.equal(logout.status, 200);
+      assert.equal(
+        f.auth.authenticate({ authorization: `Bearer ${token}` }),
+        null,
+      );
+    }
+  }
+  assert.equal(f.db.prepare('SELECT count(*) AS n FROM users').get().n, 2);
+});
+
+await test('erasure blockers roll back changes and preserve login until stewardship is resolved', async (t) => {
+  const f = await fixture(t, {
+    eraseAccountData: (id) => {
+      f.db.prepare('DELETE FROM sessions WHERE user_id=?').run(id);
+      throw Object.assign(new Error('Transfer founder responsibility first.'), {
+        status: 409,
+      });
+    },
+  });
+  const response = await f.form(
+    '/auth/close',
+    { password, confirmation: 'DELETE' },
+    cookieFor(f.alice),
+  );
+  assert.equal(response.status, 409);
+  assert.ok(f.auth.authenticate({ cookie: cookieFor(f.alice) }));
+  assert.ok(
+    f.db.prepare('SELECT id FROM users WHERE id=?').get(f.alice.user.id),
+  );
 });

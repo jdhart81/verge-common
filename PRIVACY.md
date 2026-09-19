@@ -16,7 +16,7 @@ Active members can view co-op projects, governance and financial records. Parcel
 
 The software does not collect payment-account credentials or send invitations. Sharing a link, copying text, or downloading an export is a deliberate user action. Exports contain private information and must be stored securely.
 
-Removed members lose private access. Their earlier records remain with the co-op. Archiving stops edits and public discovery but preserves authorized reads. The current software has no hard-delete or automatic retention scheduler; operators must establish appropriate retention/deletion procedures before admitting sensitive or regulated records.
+Removed members lose private access. Their earlier records remain with the co-op unless their account is deleted. Archiving stops edits and public discovery but preserves authorized reads. Account deletion is available on the self-hosted website and native app; it is distinct from leaving, removing a member, or archiving a co-op.
 
 ## Supporting tools
 
@@ -46,7 +46,13 @@ The optional boundary basemap contacts OpenFreeMap only after you choose **Load 
 
 ## Self-hosted accounts and recovery
 
-The account page lets you export records available to you, revoke device or agent tokens, change your password, or permanently close your login. Closing an account revokes access and removes its authentication records; shared co-op history remains with the co-op. Transfer stewardship before closing an owner account. Recovery codes are shown once and rotated after use. Account actions retain an internal security event with user ID and timestamp, without passwords, recovery codes or tokens. Rate-limit keys are hashed and expire. Operators control backup retention and must process any shared-record deletion requests according to their applicable responsibilities.
+The account page lets you export records available to you, revoke device or agent tokens, change your password, or permanently delete your account. The native app supports sign-in, registration, recovery and password-confirmed deletion directly. Recovery codes are shown once and rotated after use. Account security events omit passwords, recovery codes and tokens. Rate-limit keys are hashed and expire.
+
+Deletion revokes all credentials and removes authored social content, private land and evidence records, uploaded files, invitations and attributable personal text. A founder must first transfer responsibility to another active steward when other active members remain. A sole-person workspace can be deleted. Shared governance and financial structures can retain de-identified internal IDs, enum statuses and numeric amounts to avoid changing other members' records or inventing a financial reversal. Financial recording is paused where erasure removed identifiers needed to check uniqueness. No claim of a legal retention requirement is made by this implementation.
+
+Other members' independently authored text is not automatically attributed to the deleting person, and previously downloaded exports or provider requests cannot be recalled by account deletion. Contact **justin@viridisconservation.com** for privacy requests involving those records. Native journal drafts live separately on the device and have their own confirmed deletion control.
+
+The service retains a minimal private deletion receipt with the opaque account ID and time to prevent resurrection from backups. The database change and credential revocation commit together; private-file cleanup is queued durably and retried on startup. Success is reported only after the immediate cleanup completes. Existing backups are not instantly rewritten: recovery must replay the latest committed deletion ledger before reopening the restored service. Operators control backup access, retention and independently secured recovery keys. This is application-level deletion, not a claim of forensic erasure of storage media or external copies.
 
 ## Optional project support
 

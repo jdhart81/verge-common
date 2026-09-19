@@ -110,7 +110,25 @@ assert a.call('/api/workspaces',{'op':'create','requestId':id,'payload':{}})[0]=
 assert b.call('/api/workspaces',{'op':'create','requestId':id,'payload':{}})[0]==200
 assert command(a,'archive',{})[0]==403
 code,current=command(b,'archive',{});assert code==200,(code,current)
-# Preserve archived synthetic co-op receipt, remove synthetic login accounts.
+# Remove synthetic personal records and accounts after archive.
 for c in [a,b,eve]:
- code,_=c.call('/auth/close',{'password':c.password,'confirmation':'CLOSE'},form=True);assert code==200,code
-print(json.dumps({'status':'passed','workspace':id,'checks':['distinct mission homepage and app route','three independent accounts','forged identity denied','private invitation and membership','member post','idempotency and conflict','outsider denial','CSRF rejection','evidence upload/hash/private download','native read scope and token revocation','real hosted MCP handshake/read/write','agent financial denial','encoded scope bypass denied','private blocking and interaction denial','persisted founder transfer and authority change','archive','account closure']}))
+ code,_=c.call('/auth/close',{'password':c.password,'confirmation':'DELETE'},form=True);assert code==200,code
+print(json.dumps({'status':'passed','workspace':id,'checks':['distinct mission homepage and app route','three independent accounts','forged identity denied','private invitation and membership','member post','idempotency and conflict','outsider denial','CSRF rejection','evidence upload/hash/private download','native read scope and token revocation','real hosted MCP handshake/read/write','agent financial denial','encoded scope bypass denied','private blocking and interaction denial','persisted founder transfer and authority change','archive','account and associated-data deletion']}))
+
+# Native consumer auth: no browser cookie, manual token creation or redirect.
+native=Client();native_name=prefix+'native';native_password=uuid.uuid4().hex+'!'
+code,registration=native.call('/auth/native/register',{'username':native_name,'displayName':'Synthetic native','password':native_password});assert code==201,(code,registration)
+assert not list(native.jar)
+token=registration['token'];assert registration['expiresAt']>0
+headers={'Authorization':'Bearer '+token}
+code,_=native.call('/api/workspaces',headers=headers);assert code==200,code
+code,login=native.call('/auth/native/login',{'username':native_name,'password':native_password});assert code==200,(code,login)
+assert native.call('/auth/native/logout',{},headers={'Authorization':'Bearer '+login['token']})[0]==200
+assert native.call('/api/workspaces',headers={'Authorization':'Bearer '+login['token']})[0]==401
+replacement=uuid.uuid4().hex+'!'
+code,recovered=native.call('/auth/native/recover',{'username':native_name,'password':replacement,'recoveryCode':registration['recoveryCode']});assert code==200,(code,recovered)
+assert native.call('/api/workspaces',headers=headers)[0]==401
+headers={'Authorization':'Bearer '+recovered['token']}
+code,result=native.call('/auth/native/delete',{'password':replacement,'confirmation':'DELETE'},headers=headers);assert code==200 and result.get('deleted') is True,(code,result)
+assert native.call('/api/workspaces',headers=headers)[0]==401
+print(json.dumps({'status':'passed','checks':['native registration without cookies','native login and session expiry metadata','native server-side logout','native recovery rotates access','native account deletion']}))

@@ -10,7 +10,7 @@ import { projectSupport } from '@/lib/project-support';
 export const metadata: Metadata = {
   title: 'Privacy and visibility · VergeCommon',
   description:
-    'How VergeCommon handles account information, shared conservation records, visibility and account closure.',
+    'How VergeCommon handles account information, shared conservation records, visibility and account deletion.',
 };
 
 export default function PrivacyPage() {
@@ -115,23 +115,33 @@ export default function PrivacyPage() {
         </p>
       </section>
       <section id="your-choices">
-        <h2>Your choices and account closure</h2>
+        <h2>Your choices and account deletion</h2>
         <p>
           From <a href={accountRoutes.account}>Your account</a>, you can export
           records available to you, change your password, revoke connected
           devices or agents, and{' '}
-          <a href={accountRoutes.close}>permanently close your login</a>.
-          Closing the login removes its authentication records and revokes
-          access. Shared co-op history remains with the co-op for
-          accountability; closing a login does not delete those shared records.
+          <a href={accountRoutes.close}>permanently delete your account</a>.
+          Deletion revokes access and removes your authored personal content,
+          private land records, associated evidence and uploaded files. The
+          native app also offers account deletion. It has a separate control for
+          deleting journal drafts stored on your device.
         </p>
         <p>
           Transfer founder responsibility from the co-op’s Members area before
-          closing a founder account. Removed members lose private access, while
-          their earlier contributions remain. Archiving a co-op stops edits and
-          public discovery but preserves authorized reads. There is no automatic
-          shared-record deletion schedule; record removal and backup retention
-          need operator review.
+          deleting a founder account when other active members remain. Shared
+          numeric and governance structures may remain with account identities
+          and attributable text removed; related financial recording is paused
+          when necessary identifiers have been erased. Other members’ own text
+          and copies already downloaded by others cannot be automatically
+          removed by this action. Contact us if those records identify you.
+        </p>
+        <p>
+          A minimal private deletion receipt keeps an opaque account identifier
+          and time so restoring an older backup does not restore deleted account
+          data. Existing backups are not instantly rewritten; any restoration
+          must apply the current deletion ledger before the service reopens.
+          Operators control backup access and retention. Removing a member or
+          archiving a co-op is separate from deleting an account.
         </p>
         <p>
           {projectSupport.contactEmail ? (

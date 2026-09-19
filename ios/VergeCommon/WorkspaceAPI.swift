@@ -131,8 +131,8 @@ enum WorkspaceError: Error, LocalizedError {
     case unauthorized, denied, inactive(String), conflict, invalid, oversized, unavailable, rejected(String)
     var errorDescription: String? {
         switch self {
-        case .unauthorized: return "Your device token is missing, expired or revoked. Create a new app token in your website account and reconnect this device."
-        case .denied: return "This action is not permitted. Check your co-op membership and your device token’s app:read or app:write access on the website."
+        case .unauthorized: return "Your sign-in is missing, expired or revoked. Sign out or remove the saved sign-in in My co-ops, then sign in again."
+        case .denied: return "This action is not permitted. Check your co-op membership. If you used an advanced device token, it must allow the requested access."
         case .inactive(let status): return "Your membership is \(status). A steward can check your access on the website."
         case .conflict: return "This co-op changed. Refresh it, review the latest information, and confirm your change again."
         case .invalid: return "The service returned an unsupported response. No local draft was removed."

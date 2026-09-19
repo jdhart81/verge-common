@@ -3,10 +3,14 @@ import SwiftUI
 @MainActor final class DeviceAccount: ObservableObject {
     @Published private(set) var connected = false
     @Published private(set) var workspaces: [WorkspaceSummary] = []
-    @Published var loading = false
+    @Published private(set) var loading = false
     @Published var message: String?
+    @Published private(set) var pendingRecovery: NativeAccountSession?
+    @Published private(set) var displayName: String?
+    @Published private(set) var accountDeleted = false
     private var token: String?
     private let tokenStore: DeviceTokenStore
+    private var operationID: UUID?
     @Published private(set) var sessionID = UUID()
     init(tokenStore: DeviceTokenStore = KeychainDeviceTokenStore()) {
         self.tokenStore = tokenStore
@@ -17,70 +21,112 @@ import SwiftUI
         guard let token else { throw WorkspaceError.unauthorized }
         return WorkspaceClient(token: token)
     }
+    private func begin() -> UUID? {
+        guard !loading else { return nil }
+        let operation = UUID(); operationID = operation; loading = true; message = nil
+        return operation
+    }
+    private func finish(_ operation: UUID) {
+        if operationID == operation { operationID = nil; loading = false }
+    }
+    private func install(_ credential: String, name: String? = nil, list: [WorkspaceSummary] = []) throws {
+        try tokenStore.save(credential)
+        token = credential; sessionID = UUID(); connected = true; workspaces = list
+        displayName = name; pendingRecovery = nil; accountDeleted = false
+    }
+    func authenticate(_ action: NativeAccountAction, username: String, displayName: String, password: String, recoveryCode: String) async {
+        guard !connected, pendingRecovery == nil, let operation = begin() else { return }
+        defer { finish(operation) }
+        do {
+            let result = try await NativeAccountClient().authenticate(action, username: username, displayName: displayName, password: password, recoveryCode: recoveryCode)
+            guard operationID == operation else { return }
+            if result.recoveryCode != nil { pendingRecovery = result }
+            else { try install(result.token, name: result.user.displayName); finish(operation); await refresh() }
+        } catch { if operationID == operation { message = error.localizedDescription } }
+    }
+    func confirmRecoverySaved() {
+        guard !loading, let result = pendingRecovery else { return }
+        do { try install(result.token, name: result.user.displayName); message = nil }
+        catch { message = error.localizedDescription }
+    }
     func connect(_ input: String) async {
-        guard !loading else { return }
-        loading = true; message = nil
-        let current = sessionID
-        defer { loading = false }
+        guard !connected, pendingRecovery == nil, let operation = begin() else { return }
+        defer { finish(operation) }
         do {
             let credential = try DeviceCredential.validate(input)
             let list = try await WorkspaceClient(token: credential).list()
-            guard current == sessionID else { return }
-            try tokenStore.save(credential)
-            token = credential; sessionID = UUID(); connected = true; workspaces = list
-        } catch { if current == sessionID { message = error.localizedDescription } }
+            guard operationID == operation else { return }
+            try install(credential, list: list)
+        } catch { if operationID == operation { message = error.localizedDescription } }
     }
     func refresh() async {
-        guard !loading, connected else { return }
-        loading = true; message = nil
+        guard connected, let operation = begin() else { return }
         let current = sessionID
-        defer { loading = false }
+        defer { finish(operation) }
         do {
             let list = try await client().list()
-            guard current == sessionID else { return }
+            guard operationID == operation, current == sessionID else { return }
             workspaces = list
         } catch {
-            guard current == sessionID else { return }
+            guard operationID == operation, current == sessionID else { return }
             workspaces = []; message = error.localizedDescription
         }
     }
+    func signOut() async {
+        guard let token, let operation = begin() else { return }
+        defer { finish(operation) }
+        do {
+            try await NativeAccountClient().logout(token: token)
+            guard operationID == operation else { return }
+            disconnect()
+        } catch { if operationID == operation { message = "Sign-out was not confirmed. Retry when connected, or remove this device’s saved sign-in below. \(error.localizedDescription)" } }
+    }
+    func deleteAccount(password: String, confirmation: String) async -> Bool {
+        guard let token, let operation = begin() else { return false }
+        defer { finish(operation) }
+        do {
+            try await NativeAccountClient().delete(token: token, password: password, confirmation: confirmation)
+            guard operationID == operation else { return false }
+            disconnect(); accountDeleted = true
+            return true
+        } catch { if operationID == operation { message = error.localizedDescription }; return false }
+    }
     func disconnect() {
-        sessionID = UUID()
-        token = nil; connected = false; workspaces = []; message = nil
+        operationID = nil; loading = false; sessionID = UUID()
+        token = nil; connected = false; workspaces = []; message = nil; pendingRecovery = nil; displayName = nil
         do { try tokenStore.remove() }
-        catch { message = "This session is disconnected, but the saved token could not be removed. Unlock the device, tap Remove saved token again, and revoke it on the website. No journal drafts were removed." }
+        catch { message = "This session is disconnected, but the saved sign-in could not be removed. Unlock the device, tap Remove saved sign-in again, and revoke device access on the website. Your local journal is preserved." }
     }
 }
 
 struct MyCoops: View {
     @EnvironmentObject var account: DeviceAccount
-    @State private var pastedToken = ""
+    @State private var deletingAccount = false
     var body: some View {
         NavigationStack {
             List {
-                Section("Device access") {
-                    if account.connected {
-                        Text("This device is connected with your personal app token.")
-                        Button("Disconnect this device", role: .destructive) { pastedToken = ""; account.disconnect() }
-                        Text("Disconnect removes the saved token here. Revoke it on your website account to invalidate every copy. Your local journal is preserved.").font(.caption).foregroundStyle(.secondary)
-                    } else {
-                        Text("Sign in on the website and create a personal token with app:write access to participate, or app:read to browse your co-ops.")
-                        Link("Open account and create a token", destination: CommunityService.page("account"))
-                        SecureField("Paste personal device token", text: $pastedToken).textInputAutocapitalization(.never).autocorrectionDisabled()
-                        Button("Connect this device") { Task { let input = pastedToken; pastedToken = ""; await account.connect(input) } }
-                            .disabled(pastedToken.isEmpty || account.loading)
-                        Button("Remove saved token", role: .destructive) { pastedToken = ""; account.disconnect() }
-                        Text("The token is stored in this device’s protected keychain. Your password is entered only on the website.").font(.caption).foregroundStyle(.secondary)
+                if let pending = account.pendingRecovery {
+                    RecoveryCodeNotice(session: pending)
+                } else if account.connected {
+                    Section("Your account") {
+                        Text(account.displayName.map { "Signed in as \($0)." } ?? "You’re signed in on this device.")
+                        Button("Sign out") { Task { await account.signOut() } }.disabled(account.loading)
+                        Text("Sign-out revokes this device’s access and clears its saved sign-in. Your local field journal stays on this device.").font(.caption).foregroundStyle(.secondary)
+                        DisclosureGroup("Device access") {
+                            Button("Remove saved sign-in", role: .destructive) { account.disconnect() }
+                            Text("Use this if you are offline. It does not revoke copies of the sign-in credential; revoke those from your website account.").font(.caption).foregroundStyle(.secondary)
+                            Link("Manage device access", destination: CommunityService.page("account"))
+                        }
                     }
-                    Link("Manage or revoke device access", destination: CommunityService.page("account"))
+                } else {
+                    if account.accountDeleted {
+                        Section("Account deleted") {
+                            Text("Your online account has been deleted. Your local field journal is still on this device. Delete its drafts separately in Journal tools if you want to remove them too.")
+                        }
+                    }
+                    NativeSignInForm()
                 }
-                Section("Privacy and account") {
-                    Link("Privacy and your records", destination: CommunityService.page("privacy/"))
-                    Link("Close your website login", destination: CommunityService.page("account", fragment: "close-account"))
-                    Text("Closing your login revokes account access. Shared co-op records currently remain; this is not deletion of all associated data. Disconnecting this device also keeps your local journal.").font(.caption).foregroundStyle(.secondary)
-                    Link("Get support", destination: CommunityService.page("support/"))
-                }
-                if account.loading { ProgressView("Connecting…") }
+                if account.loading { ProgressView("Working…") }
                 if let message = account.message { Section { Text(message).foregroundStyle(.red) } }
                 if account.connected {
                     Section("Your co-ops") {
@@ -88,23 +134,29 @@ struct MyCoops: View {
                             Text("No co-ops to show. Start one or accept an invitation on the website.").foregroundStyle(.secondary)
                         }
                         ForEach(account.workspaces) { workspace in
-                            NavigationLink {
-                                PrivateWorkspace(id: workspace.id)
-                            } label: {
-                                VStack(alignment: .leading) {
-                                    Text(workspace.name).font(.headline)
-                                    Text(workspace.region).font(.subheadline).foregroundStyle(.secondary)
-                                    Text(workspace.visibility).font(.caption).foregroundStyle(.secondary)
-                                }
+                            NavigationLink { PrivateWorkspace(id: workspace.id) } label: {
+                                VStack(alignment: .leading) { Text(workspace.name); Text(workspace.region).font(.caption).foregroundStyle(.secondary) }
                             }
                         }
-                        Button("Refresh co-ops") { Task { await account.refresh() } }.disabled(account.loading)
-                        Link("Create or join a co-op", destination: CommunityService.page("workspace/"))
+                        Link("Start or join a co-op", destination: CommunityService.page("workspace/"))
+                    }
+                }
+                Section("Privacy and support") {
+                    Link("Privacy and your records", destination: CommunityService.page("privacy/"))
+                    Link("Get support", destination: CommunityService.page("support/"))
+                    Link("Email support", destination: URL(string: "mailto:justin@viridisconservation.com")!)
+                    if account.connected {
+                        Button("Delete account", role: .destructive) { account.message = nil; deletingAccount = true }.disabled(account.loading)
+                        Text("Account deletion is permanent. It is separate from deleting your local field journal and exported copies.").font(.caption).foregroundStyle(.secondary)
+                    }
+                    if !account.connected && account.pendingRecovery == nil {
+                        Button("Remove saved sign-in", role: .destructive) { account.disconnect() }.disabled(account.loading)
                     }
                 }
             }.navigationTitle("My co-ops")
                 .refreshable { await account.refresh() }
-                .task { await account.refresh() }
+                .task(id: account.sessionID) { await account.refresh() }
+                .sheet(isPresented: $deletingAccount) { DeleteAccountForm() }
         }.id(account.sessionID)
     }
 }
@@ -208,7 +260,7 @@ struct PrivateWorkspace: View {
             let latest = try await account.client().detail(id)
             guard account.connected, account.sessionID == current else { return }
             workspace = latest
-        } catch { workspace = nil; message = error.localizedDescription }
+        } catch { guard account.connected, account.sessionID == current else { return }; workspace = nil; message = error.localizedDescription }
     }
 }
 
@@ -248,7 +300,7 @@ struct MemberSafetyForm: View {
                         } else {
                             Text("This affects social interaction in this co-op. Shared project, governance and land records remain available under existing permissions. Public pages can still be viewed.").font(.caption).foregroundStyle(.secondary)
                         }
-                        Text("An app token with permission to participate is required.").font(.caption).foregroundStyle(.secondary)
+                        Text("Your account must have permission to participate in this co-op.").font(.caption).foregroundStyle(.secondary)
                     }
                     if let message { Text(message).foregroundStyle(.red) }
                     if conflict {
@@ -280,8 +332,8 @@ struct MemberSafetyForm: View {
             let updated = try await account.client().submit(pending!)
             guard account.connected, account.sessionID == session else { return }
             workspace = updated; saved(updated); complete = true
-        } catch WorkspaceError.conflict { conflict = true; message = WorkspaceError.conflict.localizedDescription }
-        catch { message = error.localizedDescription }
+        } catch WorkspaceError.conflict { guard account.connected, account.sessionID == session else { return }; conflict = true; message = WorkspaceError.conflict.localizedDescription }
+        catch { guard account.connected, account.sessionID == session else { return }; message = error.localizedDescription }
     }
     private func resolveConflict() async {
         sending = true
@@ -292,7 +344,7 @@ struct MemberSafetyForm: View {
             guard account.connected, account.sessionID == session else { return }
             workspace = latest; pending?.version = latest.version; conflict = false
             message = "The co-op is refreshed. Review the action, then confirm again."
-        } catch { message = error.localizedDescription }
+        } catch { guard account.connected, account.sessionID == session else { return }; message = error.localizedDescription }
     }
 }
 
@@ -334,16 +386,26 @@ struct MemberPostComposer: View {
     }
     private func submit() async {
         sending = true; message = nil
+        let session = account.sessionID
         defer { sending = false }
         if pending == nil { pending = WorkspaceCommand(id: workspace.state.id, version: workspace.version, op: "post_update", payload: ["projectId": .text(projectId), "text": .text(text), "visibility": .text("members")]) }
-        do { let updated = try await account.client().submit(pending!); saved(updated); dismiss() }
-        catch WorkspaceError.conflict { conflict = true; message = WorkspaceError.conflict.localizedDescription }
-        catch { message = error.localizedDescription }
+        do {
+            let updated = try await account.client().submit(pending!)
+            guard account.connected, account.sessionID == session else { return }
+            saved(updated); dismiss()
+        }
+        catch WorkspaceError.conflict { guard account.connected, account.sessionID == session else { return }; conflict = true; message = WorkspaceError.conflict.localizedDescription }
+        catch { guard account.connected, account.sessionID == session else { return }; message = error.localizedDescription }
     }
     private func resolveConflict() async {
         sending = true; defer { sending = false }
-        do { workspace = try await account.client().detail(workspace.state.id); pending?.version = workspace.version; conflict = false; message = "The workspace is refreshed. Check your project and update, then confirm again." }
-        catch { message = error.localizedDescription }
+        let session = account.sessionID
+        do {
+            let latest = try await account.client().detail(workspace.state.id)
+            guard account.connected, account.sessionID == session else { return }
+            workspace = latest; pending?.version = workspace.version; conflict = false; message = "The workspace is refreshed. Check your project and update, then confirm again."
+        }
+        catch { guard account.connected, account.sessionID == session else { return }; message = error.localizedDescription }
     }
 }
 
@@ -398,22 +460,28 @@ struct FieldSubmission: View {
     }
     private func submit() async {
         sending = true; message = nil
+        let session = account.sessionID
         defer { sending = false }
         do {
             if pending == nil {
                 guard let draft, let parcel = workspace.state.parcels.first(where: { $0.id == parcelId }) else { throw WorkspaceError.invalid }
                 pending = try WorkspaceCommand.observation(draft, workspace: workspace, parcel: parcel)
             }
-            let updated = try await account.client().submit(pending!); saved(updated); submitted = true
-        } catch WorkspaceError.conflict { conflict = true; message = WorkspaceError.conflict.localizedDescription }
-        catch { message = error.localizedDescription }
+            let updated = try await account.client().submit(pending!)
+            guard account.connected, account.sessionID == session else { return }
+            saved(updated); submitted = true
+        } catch WorkspaceError.conflict { guard account.connected, account.sessionID == session else { return }; conflict = true; message = WorkspaceError.conflict.localizedDescription }
+        catch { guard account.connected, account.sessionID == session else { return }; message = error.localizedDescription }
     }
     private func resolveConflict() async {
         sending = true; defer { sending = false }
+        let session = account.sessionID
         do {
-            workspace = try await account.client().detail(workspace.state.id)
+            let latest = try await account.client().detail(workspace.state.id)
+            guard account.connected, account.sessionID == session else { return }
+            workspace = latest
             // Revalidate the current parcel boundary and fields before a fresh confirmation.
             pending = nil; conflict = false; message = "The workspace is refreshed. Review the selected parcel and draft before submitting again."
-        } catch { message = error.localizedDescription }
+        } catch { guard account.connected, account.sessionID == session else { return }; message = error.localizedDescription }
     }
 }

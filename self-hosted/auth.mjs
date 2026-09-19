@@ -6,6 +6,7 @@ import {
   randomUUID,
 } from 'node:crypto';
 import { promisify } from 'node:util';
+import { contentSafetyIssue } from '../lib/content-safety.mjs';
 const scrypt = promisify(scryptCallback);
 export const digest = (token) =>
   createHash('sha256').update(token).digest('hex');
@@ -42,16 +43,21 @@ export async function passwordMatches(password, stored) {
   });
   return timingSafeEqual(key, Buffer.from(hash, 'hex'));
 }
-export function createAuth(db, now = Date.now) {
+export function createAuth(db, now = Date.now, lifecycle = {}) {
   db.exec(`CREATE TABLE IF NOT EXISTS users (id TEXT PRIMARY KEY, username TEXT UNIQUE NOT NULL, display_name TEXT NOT NULL, password_hash TEXT NOT NULL, recovery_hash TEXT NOT NULL, created_at INTEGER NOT NULL);
     CREATE TABLE IF NOT EXISTS sessions (hash TEXT PRIMARY KEY, user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE, expires_at INTEGER NOT NULL);
     CREATE TABLE IF NOT EXISTS api_tokens (id TEXT PRIMARY KEY, hash TEXT UNIQUE NOT NULL, user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE, label TEXT NOT NULL, scopes TEXT NOT NULL, expires_at INTEGER NOT NULL, created_at INTEGER NOT NULL);
     CREATE TABLE IF NOT EXISTS auth_audit (id TEXT PRIMARY KEY, user_id TEXT, event TEXT NOT NULL, created_at INTEGER NOT NULL);
     CREATE TABLE IF NOT EXISTS rate_limits (key TEXT PRIMARY KEY, count INTEGER NOT NULL, expires_at INTEGER NOT NULL);`);
-  const audit = (id, event) =>
-    db
-      .prepare('INSERT INTO auth_audit VALUES (?,?,?,?)')
-      .run(randomUUID(), id, event, now());
+  const audit = (id, event) => {
+    if (id && !db.prepare('SELECT id FROM users WHERE id=?').get(id)) return;
+    db.prepare('INSERT INTO auth_audit VALUES (?,?,?,?)').run(
+      randomUUID(),
+      id,
+      event,
+      now(),
+    );
+  };
   const session = (id) => {
     const token = secret();
     db.prepare('DELETE FROM sessions WHERE expires_at < ?').run(now());
@@ -89,6 +95,8 @@ export function createAuth(db, now = Date.now) {
         );
       if (!displayName || displayName.length > 80)
         throw new Error('Enter a display name of up to 80 characters.');
+      const safetyIssue = contentSafetyIssue(displayName);
+      if (safetyIssue) throw new Error(safetyIssue);
       const hash = await passwordHash(password);
       const recoveryCode = secret();
       const id = randomUUID();
@@ -201,6 +209,7 @@ export function createAuth(db, now = Date.now) {
         'mcp:write': ['mcp:read', 'mcp:write'],
       };
       if (!choices[scope]) throw new Error('Choose valid permissions.');
+      db.prepare('DELETE FROM api_tokens WHERE expires_at <= ?').run(now());
       if (this.tokens(id).length >= 20)
         throw new Error('Revoke an old token before creating another.');
       const token = `vc_${secret()}`,
@@ -216,6 +225,28 @@ export function createAuth(db, now = Date.now) {
       );
       audit(id, 'token_created');
       return token;
+    },
+    nativeSession(result) {
+      // Browser auth primitives issue a session; native clients receive only
+      // a device token. Always remove the temporary cookie session.
+      try {
+        const token = this.createToken(
+          result.user.id,
+          'VergeCommon iOS',
+          'app:write',
+        );
+        const row = db
+          .prepare('SELECT expires_at FROM api_tokens WHERE hash=?')
+          .get(digest(token));
+        return {
+          user: result.user,
+          token,
+          expiresAt: row.expires_at,
+          ...(result.recoveryCode ? { recoveryCode: result.recoveryCode } : {}),
+        };
+      } finally {
+        this.logout({ cookie: `vc_session=${result.session}` });
+      }
     },
     revokeToken(id, tokenId) {
       db.prepare('DELETE FROM api_tokens WHERE user_id=? AND id=?').run(
@@ -268,18 +299,36 @@ export function createAuth(db, now = Date.now) {
       db.prepare('DELETE FROM sessions WHERE user_id=?').run(row.id);
       db.prepare('DELETE FROM api_tokens WHERE user_id=?').run(row.id);
       audit(row.id, 'recovered');
-      return { session: session(row.id), recoveryCode: code };
+      return {
+        user: getUser(row),
+        session: session(row.id),
+        recoveryCode: code,
+      };
     },
     async closeAccount(id, password) {
       const row = db.prepare('SELECT * FROM users WHERE id=?').get(id);
       if (!row || !(await passwordMatches(password, row.password_hash)))
         throw new Error('Password is incorrect.');
-      const changed = db
-        .prepare('DELETE FROM users WHERE id=? AND password_hash=?')
-        .run(id, row.password_hash);
-      if (!changed.changes)
-        throw new Error('Credentials changed. Sign in again.');
-      audit(id, 'account_closed');
+      db.exec('BEGIN IMMEDIATE');
+      try {
+        if (
+          db.prepare('SELECT password_hash FROM users WHERE id=?').get(id)
+            ?.password_hash !== row.password_hash
+        )
+          throw new Error('Credentials changed. Sign in again.');
+        // No await inside this transaction: deletion and credential revocation
+        // commit together and cannot interleave with another command.
+        lifecycle.eraseAccountData?.(id, now());
+        db.prepare('DELETE FROM users WHERE id=?').run(id);
+        db.prepare('DELETE FROM auth_audit WHERE user_id=?').run(id);
+        audit(null, 'account_deleted');
+        db.exec('COMMIT');
+      } catch (error) {
+        db.exec('ROLLBACK');
+        lifecycle.abortAccountDeletion?.(id);
+        throw error;
+      }
+      await lifecycle.afterAccountDeletion?.(id);
     },
   };
 }
