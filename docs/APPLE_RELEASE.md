@@ -20,7 +20,7 @@
 | App Store Connect access | Browser reaches Apple sign-in; no authenticated team/app access verified |
 | Distribution proof | No signed archive, App Store Connect app record, upload receipt, approved TestFlight build or App Store listing verified in this review |
 
-Prior macOS CI passed core tests and an unsigned simulator build. That result does not establish local device behavior, signing or distribution. The license must be reviewed and accepted by the account holder; automation has not accepted Apple terms.
+Fresh [macOS CI for revision c7cc5d4](https://github.com/jdhart81/verge-common/actions/runs/35458553516) passed all 28 core tests and an unsigned iPhone/iPad simulator build, including these safety controls and corrected co-op browser links. That result does not establish local device behavior, signing or distribution. The license must be reviewed and accepted by the account holder; automation has not accepted Apple terms.
 
 ## Release blockers
 
