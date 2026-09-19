@@ -5,13 +5,13 @@ assert base.startswith(('http://127.0.0.1:','http://localhost:')) or (base=='htt
 prefix='test_'+uuid.uuid4().hex[:12]
 class Client:
  def __init__(self): self.jar=http.cookiejar.CookieJar();self.open=urllib.request.build_opener(urllib.request.HTTPCookieProcessor(self.jar))
- def call(self,path,data=None,headers=None,form=False):
+ def call(self,path,data=None,headers=None,form=False,method=None):
   h={'Origin':base,**(headers or {})}
   if data is not None:
    h['Content-Type']='application/x-www-form-urlencoded' if form else 'application/json'
    data=(urllib.parse.urlencode(data) if form else json.dumps(data)).encode()
   try:
-   with self.open.open(urllib.request.Request(base+path,data=data,headers=h)) as r:
+   with self.open.open(urllib.request.Request(base+path,data=data,headers=h,method=method)) as r:
     raw=r.read();return r.status,json.loads(raw) if r.headers.get_content_type()=='application/json' else raw.decode()
   except urllib.error.HTTPError as e:
    raw=e.read()
@@ -65,6 +65,18 @@ assert asset['sha256']==hashlib.sha256(content).hexdigest()
 with a.open.open(base+'/api/files?id='+asset['id']) as r:assert r.read()==content
 assert b.call('/api/files?id='+asset['id'])[0]==404
 assert eve.call('/api/files?id='+asset['id'])[0]==403
+# Unsubmitted files can be discarded only by the uploader; attached files survive.
+assert b.call('/api/files?id='+asset['id'],method='DELETE')[0]==404
+assert a.call('/api/files?id='+asset['id'],headers={'Origin':'https://wrong.example'},method='DELETE')[0]==403
+assert a.call('/api/files?id='+asset['id'],method='DELETE')[0]==200
+assert a.call('/api/files?id='+asset['id'],method='DELETE')[0]==200
+assert a.call('/api/files?id='+asset['id'])[0]==404
+assert command(a,'submit_evidence',{'projectId':project,'title':'Discarded evidence','method':'Inspection','period':'Test','notes':'Synthetic','assetId':asset['id']})[0]==404
+with a.open.open(urllib.request.Request(base+'/api/files?workspace='+id,data=multipart,headers={'Origin':base,'Content-Type':'multipart/form-data; boundary='+boundary})) as r:asset=json.load(r)
+code,current=command(a,'submit_evidence',{'projectId':project,'title':'Attached evidence','method':'Inspection','period':'Test','notes':'Synthetic','assetId':asset['id']})
+assert code==200,(code,current)
+assert a.call('/api/files?id='+asset['id'],method='DELETE')[0]==409
+with a.open.open(base+'/api/files?id='+asset['id']) as r:assert r.read()==content
 # Native scoped access and revocation.
 token=b.token('app:read');anonymous=Client()
 assert anonymous.call('/api/workspaces?id='+id,headers={'Authorization':'Bearer '+token})[0]==200
@@ -113,7 +125,7 @@ code,current=command(b,'archive',{});assert code==200,(code,current)
 # Remove synthetic personal records and accounts after archive.
 for c in [a,b,eve]:
  code,_=c.call('/auth/close',{'password':c.password,'confirmation':'DELETE'},form=True);assert code==200,code
-print(json.dumps({'status':'passed','workspace':id,'checks':['distinct mission homepage and app route','three independent accounts','forged identity denied','private invitation and membership','member post','idempotency and conflict','outsider denial','CSRF rejection','evidence upload/hash/private download','native read scope and token revocation','real hosted MCP handshake/read/write','agent financial denial','encoded scope bypass denied','private blocking and interaction denial','persisted founder transfer and authority change','archive','account and associated-data deletion']}))
+print(json.dumps({'status':'passed','workspace':id,'checks':['distinct mission homepage and app route','three independent accounts','forged identity denied','private invitation and membership','member post','idempotency and conflict','outsider denial','CSRF rejection','evidence upload/hash/private download/discard and attached-file protection','native read scope and token revocation','real hosted MCP handshake/read/write','agent financial denial','encoded scope bypass denied','private blocking and interaction denial','persisted founder transfer and authority change','archive','account and associated-data deletion']}))
 
 # Native consumer auth: no browser cookie, manual token creation or redirect.
 native=Client();native_name=prefix+'native';native_password=uuid.uuid4().hex+'!'

@@ -9,10 +9,13 @@ import sqlite3
 import subprocess
 import sys
 import tarfile
+import time
+import stat
 
 BACKUPS = Path('/opt/vergecommon/backups')
 LEDGER = Path('/opt/vergecommon/data/deletion-ledger')
 DATABASE = Path('/opt/vergecommon/data/vergecommon.sqlite')
+EVIDENCE = Path('/opt/vergecommon/data/evidence')
 NAME = re.compile(r'^[0-9TZ-]+-[A-Za-z0-9]+$')
 ENTRY = re.compile(r'^[a-f0-9-]{36}\.json$')
 
@@ -73,20 +76,89 @@ def snapshot(name=None):
     return max(candidates, key=lambda item: item[1]['createdAt'])
 
 
+def tree_usage(root, maximum_entries=250000):
+    """Count regular bytes without opening private contents or following links."""
+    if not root.is_dir() or root.is_symlink():
+        raise ValueError('Storage inventory unavailable')
+    total = files = entries = 0
+    for directory, subdirectories, filenames in os.walk(root, followlinks=False):
+        for name in subdirectories + filenames:
+            entries += 1
+            if entries > maximum_entries:
+                raise ValueError('Storage inventory limit exceeded')
+            info = (Path(directory) / name).lstat()
+            if stat.S_ISLNK(info.st_mode) or not (stat.S_ISDIR(info.st_mode) or stat.S_ISREG(info.st_mode)):
+                raise ValueError('Storage inventory contains unsupported entries')
+            if stat.S_ISREG(info.st_mode):
+                total += info.st_size
+                files += 1
+    return {'bytes': total, 'files': files}
+
+
+def database_summary(now=None):
+    """Only aggregates leave this read-only connection, never report contents."""
+    if not DATABASE.is_file() or DATABASE.is_symlink():
+        raise ValueError('Live database unavailable')
+    now = time.time() if now is None else now
+    database = sqlite3.connect(DATABASE.resolve().as_uri() + '?mode=ro', uri=True, timeout=5)
+    try:
+        database.execute('PRAGMA query_only=ON')
+        # Bound pathological/corrupt aggregate scans rather than holding a reader.
+        deadline = time.monotonic() + 5
+        database.set_progress_handler(lambda: int(time.monotonic() > deadline), 1000)
+        tables = {row[0] for row in database.execute("SELECT name FROM sqlite_schema WHERE type='table'")}
+        capacity = {
+            'workspaceCount': database.execute('SELECT count(*) FROM workspaces').fetchone()[0],
+            'assetCount': database.execute('SELECT count(*) FROM assets').fetchone()[0],
+            'maxWorkspaceFiles': database.execute('SELECT coalesce(max(n),0) FROM (SELECT count(*) AS n FROM assets GROUP BY workspace_id)').fetchone()[0],
+            'maxWorkspaceMembers': database.execute("SELECT coalesce(max(json_array_length(state_json,'$.members')),0) FROM workspaces").fetchone()[0],
+            'pendingEvidenceDeletions': database.execute('SELECT count(*) FROM evidence_file_deletions').fetchone()[0] if 'evidence_file_deletions' in tables else None,
+            'pendingErasureFiles': database.execute('SELECT count(*) FROM erasure_file_queue').fetchone()[0] if 'erasure_file_queue' in tables else None,
+        }
+        safety = {'available': False}
+        if 'safety_reports' in tables:
+            count, oldest = database.execute("SELECT count(*),min(created_at) FROM safety_reports WHERE status IN ('received','reviewing')").fetchone()
+            safety = {'available': True, 'openReports': count, 'oldestOpenAgeSeconds': max(0, now - oldest / 1000) if oldest is not None else 0}
+        return capacity, safety
+    finally:
+        database.close()
+
+
 def inspect():
-    path, receipt = snapshot()
-    disk = shutil.disk_usage('/opt/vergecommon/data')
+    try:
+        path, receipt = snapshot()
+        latest = {'available': True, 'name': path.name, **receipt}
+    except (OSError, ValueError):
+        latest = {'available': False}
+    disk = shutil.disk_usage(DATABASE.parent)
     health = subprocess.run(['docker', 'inspect', '--format', '{{.State.Health.Status}}', 'vergecommon-app'], capture_output=True, text=True, timeout=10)
     try:
         entries = ledger_entries()
         ledger = {'available': True, 'entries': len(entries), 'sha256': ledger_digest(entries)}
     except ValueError:
         ledger = {'available': False}
+    try:
+        capacity, safety = database_summary()
+    except (OSError, ValueError, sqlite3.Error):
+        capacity, safety = {'available': False}, {'available': False}
+    try:
+        if capacity.get('available') is False:
+            raise ValueError('Database capacity unavailable')
+        evidence = tree_usage(EVIDENCE) if EVIDENCE.exists() else {'bytes': 0, 'files': 0}
+        if not EVIDENCE.exists() and capacity['assetCount']:
+            raise ValueError('Evidence directory missing')
+        capacity.update({'available': True, 'databaseBytes': DATABASE.stat().st_size,
+                         'walBytes': Path(str(DATABASE) + '-wal').stat().st_size if Path(str(DATABASE) + '-wal').is_file() else 0,
+                         'evidence': evidence, 'backups': tree_usage(BACKUPS)})
+    except (OSError, ValueError, sqlite3.Error):
+        capacity['available'] = False
     return {
-        'snapshot': {'name': path.name, **receipt},
+        'snapshot': latest,
         'disk': {'total': disk.total, 'used': disk.used, 'free': disk.free},
         'containerHealthy': health.returncode == 0 and health.stdout.strip() == 'healthy',
         'erasureLedger': ledger,
+        'capacity': capacity,
+        'safetyQueue': safety,
     }
 
 

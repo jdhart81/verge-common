@@ -8,7 +8,10 @@ import {
   dataDir,
   objectStore,
   reconcileEvidence,
+  d1Adapter,
 } from './storage.mjs';
+import { createSafety } from './safety.mjs';
+import { cleanupExpiredUploads } from '../server/evidence-uploads.mjs';
 import {
   eraseAccountData,
   commitErasureIntent,
@@ -47,6 +50,8 @@ export function createGateway({
   origin,
   upstreamPort,
   auth,
+  safety,
+  maintenanceHealthy = () => true,
   host = '127.0.0.1',
 }) {
   const base = new URL(origin);
@@ -168,8 +173,8 @@ export function createGateway({
       )
         return json(403, { error: 'A same-origin request is required.' });
       if (url.pathname === '/healthz')
-        return json(200, {
-          status: 'ok',
+        return json(maintenanceHealthy() ? 200 : 503, {
+          status: maintenanceHealthy() ? 'ok' : 'attention',
           service: 'vergecommon',
           version: '0.8.0',
         });
@@ -187,6 +192,23 @@ export function createGateway({
           return json(403, {
             error: 'This token does not grant the required app permission.',
           });
+      }
+      if (['/api/safety-reports', '/api/safety-reports/status'].includes(url.pathname)) {
+        if (req.method !== 'POST') return json(405, { error: 'Use the private report form.' });
+        if (!safety) return json(503, { error: 'Reporting is unavailable. Contact justin@viridisconservation.com.' });
+        if (req.headers.origin !== origin || String(req.headers['content-type']).split(';')[0].trim() !== 'application/json')
+          return json(403, { error: 'Submit this report from VergeCommon.' });
+        const statusCheck = url.pathname.endsWith('/status');
+        if (!auth.rateLimit(`safety:${statusCheck ? 'status' : 'submit'}:${client}`, statusCheck ? 60 : 10, 15 * 60000) ||
+          !auth.rateLimit('safety:global', 100, 60000)) return json(429, { error: 'Too many report requests. Try again later or contact support.' });
+        let input;
+        // Four thousand UTF-16 characters can need 12 KB of UTF-8 before JSON
+        // field overhead. Keep the body bounded without rejecting valid text.
+        try { input = JSON.parse((await readBody(req, 20 * 1024)).toString()); }
+        catch (error) { if (error.status) throw error; return json(400, { error: 'Send a valid report.' }); }
+        if (!input || typeof input !== 'object' || Array.isArray(input)) return json(400, { error: 'Send a valid report.' });
+        const result = statusCheck ? safety.status(input) : safety.submit(input, principal);
+        return json(statusCheck || result.repeated ? 200 : 201, result);
       }
       if (url.pathname.startsWith('/auth/native/')) {
         if (req.method !== 'POST')
@@ -269,11 +291,7 @@ export function createGateway({
           return json(error.status || 400, { error: error.message });
         }
       }
-      if (
-        url.pathname === '/signin-with-chatgpt' ||
-        url.pathname === '/signout-with-chatgpt' ||
-        url.pathname === '/callback'
-      )
+      if (/^\/(?:signin-with-chatgpt|signout-with-chatgpt|callback)\/?$/.test(url.pathname))
         return redirect(
           '/account?returnTo=' +
             encodeURIComponent(safeReturn(url.searchParams.get('return_to'))),
@@ -320,6 +338,7 @@ export function createGateway({
               displayName: principal.displayName,
             },
             workspaces,
+            operatorReports: safety ? safety.export(principal.id) : [],
           });
         }
         if (url.pathname === '/account' && ['GET', 'HEAD'].includes(req.method))
@@ -518,13 +537,26 @@ export async function start() {
       }
     },
   });
+  const safety = createSafety(db);
   // Recovery must reconcile committed deletions before any request can reach
   // the app, including after restoring an older database beside a newer ledger.
   recoverErasureIntents(db, ledgerDirectory);
   replayErasureLedger(db, { ledgerDirectory });
   await drainErasureFiles(db, store);
+  await cleanupExpiredUploads(d1Adapter(db), store);
   await reconcileEvidence(db);
   db.exec('PRAGMA wal_checkpoint(TRUNCATE)');
+  let maintenanceFailed = false;
+  let maintenanceBusy = false;
+  const upkeep = setInterval(() => {
+    if (maintenanceBusy) return;
+    maintenanceBusy = true;
+    void cleanupExpiredUploads(d1Adapter(db), store)
+      .then(() => { maintenanceFailed = false; })
+      .catch(() => { maintenanceFailed = true; console.error('Evidence maintenance needs operator attention'); })
+      .finally(() => { maintenanceBusy = false; });
+  }, 60 * 60 * 1000);
+  upkeep.unref();
   const { startProdServer } = await import('vinext/server/prod-server');
   const internal = await startProdServer({
     port: 0,
@@ -536,6 +568,8 @@ export async function start() {
     origin,
     upstreamPort: internal.port,
     auth,
+    safety,
+    maintenanceHealthy: () => !maintenanceFailed,
   });
   await new Promise((resolve) =>
     server.listen(
@@ -546,6 +580,7 @@ export async function start() {
   );
   console.log(`VergeCommon ready at ${origin}`);
   const close = () => {
+    clearInterval(upkeep);
     server.close();
     internal.server.close();
   };

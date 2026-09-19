@@ -74,7 +74,8 @@ export default function SupportPage() {
         <p>
           Co-op stewards handle their community’s reports. For a concern
           involving the hosting service or an unresolved safety issue, use the
-          private operator contact below. This service is not an emergency
+          <Link href="/report/">private operator report form</Link> and keep
+          its receipt to check progress, or use the contact below. This service is not an emergency
           response channel.
         </p>
       </section>

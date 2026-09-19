@@ -14,6 +14,7 @@ import {
 } from '@/components/ui/native-select';
 import { Checkbox } from '@/components/ui/checkbox';
 import { validateBoundary } from '@/lib/monitoring.mjs';
+import { localObservationDate } from '@/lib/observation-date.mjs';
 type PolygonGeometry = { type: string; coordinates: number[][][] };
 export type MonitoringBoundary = {
   id: string; status: string; geometry: PolygonGeometry;
@@ -24,7 +25,7 @@ export type MonitoringState = AnalysisState & {
   id: string; visibility: string; parcels: MonitoringParcel[];
   observations?: {
     id: string; parcelId: string; boundaryId: string; status: string;
-    observedAt: number; method: string; finding: string; reference: string;
+    observedAt: number; observedDate?: string; observedTimeZone?: string; method: string; finding: string; reference: string;
   }[];
 };
 type Save = (op: string, payload: Record<string, unknown>) => Promise<boolean>;
@@ -343,7 +344,8 @@ export function MonitoringBoard({
               .map((o) => (
                 <article className="network-card" key={o.id}>
                   <p className="eyebrow">
-                    {o.status} · {new Date(o.observedAt).toLocaleDateString()}
+                    {o.status} · {o.observedDate ?? new Date(o.observedAt).toLocaleDateString(undefined, { timeZone: 'UTC' })}
+                    {o.observedTimeZone ? ` (${o.observedTimeZone})` : ''}
                   </p>
                   <p>
                     <strong>Method:</strong> {o.method}
@@ -491,7 +493,7 @@ export function MonitoringBoard({
                 mutate('record_observation', {
                   ...v,
                   parcelId: parcel.id,
-                  observedAt: Date.parse(v.date + 'T00:00:00Z'),
+                  ...localObservationDate(v.date),
                 })
               }
             >

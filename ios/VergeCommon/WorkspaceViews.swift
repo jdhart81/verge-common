@@ -170,6 +170,7 @@ struct PrivateWorkspace: View {
     @State private var composing = false
     @State private var submittingDraft = false
     @State private var safetyAction: MemberSafetyAction?
+    @State private var operatorReporting = false
     var body: some View {
         List {
             if loading { ProgressView("Loading co-op…") }
@@ -223,6 +224,8 @@ struct PrivateWorkspace: View {
                         }
                     }
                     Link("Safety help and contact", destination: CommunityService.page("support/"))
+                    Button("Report a concern to the project operator") { operatorReporting = true }
+                    Text("Use this separate route for complaints about a steward or concerns you cannot safely raise within this co-op.").font(.caption).foregroundStyle(.secondary)
                 }
                 Section("Tasks") {
                     ForEach(workspace.state.tasks) { task in
@@ -233,7 +236,9 @@ struct PrivateWorkspace: View {
                 Section("Observation review") {
                     if workspace.state.observations.isEmpty { Text("No observations available to you yet.").foregroundStyle(.secondary) }
                     ForEach(workspace.state.observations) { observation in
-                        VStack(alignment: .leading) { Text(observation.finding); Text(observation.status).font(.caption).foregroundStyle(.secondary) }
+                        VStack(alignment: .leading) { Text(observation.finding)
+                            if let day = observation.observedDate { Text([day, observation.observedTimeZone].compactMap { $0 }.joined(separator: " · ")).font(.caption).foregroundStyle(.secondary) }
+                            Text(observation.status).font(.caption).foregroundStyle(.secondary) }
                     }
                 }
             }
@@ -250,6 +255,7 @@ struct PrivateWorkspace: View {
             .sheet(item: $safetyAction) { action in
                 if let workspace { MemberSafetyForm(workspace: workspace, action: action) { self.workspace = $0 } }
             }
+            .sheet(isPresented: $operatorReporting) { SafetyReportForm(kind: .general, coopId: id, targetId: nil) }
     }
     private func refresh() async {
         guard !loading else { return }
@@ -441,7 +447,7 @@ struct FieldSubmission: View {
                         Text("Only your accessible parcels with a reviewed current boundary are listed. A steward can review boundaries on the website.").font(.caption)
                     }
                     if let draft {
-                        Section("Review before sending") { Text("Place: \(draft.place)"); Text("Date: \(draft.date)"); Text(draft.method); Text(draft.finding); if !draft.reference.isEmpty { Text(draft.reference) }
+                        Section("Review before sending") { Text("Place: \(draft.place)"); Text("Date: \(draft.date)"); Text("Time zone: \(draft.timeZone ?? "UTC (original draft)")").font(.caption).foregroundStyle(.secondary); Text(draft.method); Text(draft.finding); if !draft.reference.isEmpty { Text(draft.reference) }
                             Text("The selected parcel associates this observation with land. Check that it matches your visit. Sending uploads the date, method, finding and reference to your co-op.").font(.caption) }
                     }
                     if let message { Section { Text(message).foregroundStyle(.red) } }

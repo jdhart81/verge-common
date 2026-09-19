@@ -2,6 +2,8 @@
 
 **Status: native development candidate; not uploaded, submitted, or approved.** The website's public beta and an Apple distribution release are separate milestones. Viridis LLC is the project operator identified by the owner. Authenticated App Store Connect access is verified, but the available enrolled seller is an individual account; no Viridis LLC team is available in its account menu. The owner must choose the intended seller before a VergeCommon app record is created.
 
+This source review now includes the [launch build candidate](LAUNCH_BUILD_2026-09-19.md). Historical CI and account observations are retained below; they do not identify a newly uploaded release.
+
 ## Current candidate and evidence
 
 | Item | Observed state |
@@ -11,30 +13,30 @@
 | Version / build | `0.8.0` / `1` |
 | Platforms | iPhone and iPad; iOS 17 or later |
 | Backend | `https://vergecommon.com` |
-| Native features | Native registration/sign-in/recovery, one-time recovery-code acknowledgement, account deletion, public co-op discovery and item reporting, device-only co-op hiding, member workspaces/posts/reports/blocking, explicit field submission, offline journal and separate local-draft deletion/export |
+| Native features | Native registration/sign-in/recovery, one-time recovery-code acknowledgement, account deletion, public co-op search/additional pages and direct operator reporting with saved private status receipts, device-only co-op hiding, member workspaces/posts/reports/blocking, explicit field submission, offline journal and separate local-draft deletion/export |
 | Website handoffs | Membership, mapping, governance, steward moderation and financial recordkeeping |
 | App icon | Present, 1024 × 1024 PNG, no alpha channel |
 | Local toolchain | Xcode 27.0, build 27A266a; selected at `/Applications/Xcode.app/Contents/Developer` |
-| Local checks attempted | `swift test --package-path ios` and unsigned simulator build both exit 69: Xcode license agreement is not accepted |
+| Local candidate checks | 55 Swift tests and unsigned iOS Simulator build passed; the earlier Xcode-license exit 69 no longer blocks these local checks |
 | Local signing | `security find-identity -v -p codesigning` reports zero valid identities; project has no development team |
 | App Store Connect access | Authenticated Apps and Business pages verified; no VergeCommon app record or registered `org.vergecommon.app` identifier is available |
 | Seller and agreements | Individual seller; Free Apps Agreement active, Paid Apps Agreement not accepted; EU trader-status declaration remains outstanding |
 | Distribution proof | No signed archive, App Store Connect app record, upload receipt, approved TestFlight build or App Store listing verified in this review |
 
-[Fresh macOS CI for 5aa1a5f](https://github.com/jdhart81/verge-common/actions/runs/35462710257) passed all 44 Swift tests and the unsigned iPhone/iPad simulator build. The candidate adds 16 tests covering native account requests, local journal deletion and public safety controls. Local core compilation and focused smoke checks passed using Command Line Tools. A fresh local Swift test attempt still exits 69. Xcode is open to the Xcode and Apple SDKs Agreement for the owner's review; automation has not accepted Apple terms.
+[Historical macOS CI for 5aa1a5f](https://github.com/jdhart81/verge-common/actions/runs/35462710257) passed 44 Swift tests and the unsigned iPhone/iPad simulator build. The current candidate passes 55 local Swift tests and an unsigned simulator build using the current Xcode toolchain. The 11 additional checks cover calendar-date/time-zone behavior and legacy retries, directory search/cursor continuity, and operator reporting with protected receipts, exact retries and status lookup. The earlier local license error is historical. Signing, physical-device acceptance and an Apple upload receipt remain absent. Final consolidated validation and the recorded release commit belong in the [candidate checklist](LAUNCH_BUILD_2026-09-19.md).
 
 ## Implemented account and safety changes
 
 - Native account forms send origin-bound JSON directly to the HTTPS gateway and receive a scoped, expiring Keychain token. They do not require a browser token-paste flow. Recovery codes are acknowledged once and kept only in memory; passwords are never persisted. Sign-out revokes the device token on the server.
 - Password-confirmed deletion removes authored personal records and credentials atomically, drains private file cleanup, and records a minimal durable deletion ledger for older-backup replay. Shared governance/numeric structures retain identity fields removed, and other members' independent content is separate. Failed cleanup is visibly incomplete; native completion requires explicit server confirmation. Local journal deletion is a separate confirmed control. See [privacy](../PRIVACY.md) and [Apple's deletion requirements](https://developer.apple.com/support/offering-account-deletion-in-your-app/).
-- Member reports and blocks use the shared co-op service. Native public item reports open a user-controlled email draft with only public identifiers; nothing is sent automatically. Device-only hiding of a public co-op has an undo list and is clearly distinguished from member blocking. The approved private contact is **justin@viridisconservation.com**.
+- Member reports and blocks use the shared co-op service. Native public reports now submit directly to the private operator queue after the user chooses Send, with a saved device receipt for status checks and exact-request retry after uncertain responses. Private-workspace escalation is a general operator report with visible co-op context. It is independent of the co-op's stewards and does not require an email app; native requests are anonymous. Operator decisions remain a human responsibility, performed through the private host CLI. Device-only hiding of a public co-op has an undo list and is clearly distinguished from member blocking. The approved private contact is **justin@viridisconservation.com**.
 - A narrow shared text filter rejects matched direct threats, personal abuse and explicit sexual promotion before social/profile text is saved. It preserves legitimate ecology terms and permits incident quotations in report reasons. Legacy matching public content is screened from discovery. This English-language baseline is not comprehensive moderation, a staffed response service or proof of Apple compliance.
 
 ## Remaining release blockers
 
-1. **Build and signing.** Resolve the local license prompt and the seller choice (current individual account or Viridis LLC organization enrollment), register the identifier under that confirmed team, configure signing, build a release archive and validate it. Enrollment, certificate and provisioning changes must use the owner's authorized account. Do not commit certificates, credentials or profiles.
+1. **Build and signing.** Resolve the seller choice (current individual account or Viridis LLC organization enrollment), register the identifier under that confirmed team, configure signing, build a release archive and validate it. Enrollment, certificate and provisioning changes must use the owner's authorized account. Do not commit certificates, credentials or profiles.
 2. **Device acceptance.** Run the exact release build on physical iPhone and iPad hardware, including VoiceOver, larger text, offline journaling, locked storage, app relaunch, failed/repeated submission, concurrent edits, recovery acknowledgement, token expiry/revocation, account switching and deletion. Capture actual screenshots with synthetic records.
-3. **Moderation operation.** Exercise public reports, private reports and blocks with the final native build and establish a timely human response process, including escalation when the founding steward is the subject of a report. Public co-op hiding does not establish a global author block. Qualify the full scope against [App Review Guidelines 1.2 and 1.5](https://developer.apple.com/app-store/review/guidelines/); a keyword filter alone is not a release guarantee.
+3. **Moderation operation.** Exercise public reports, private reports and blocks with the final native build and establish a timely human response process, including receipt lookup, lost-response retries and escalation when the founding steward is the subject of a report. The candidate implements the submission/queue/decision path; it does not establish response staffing or completed device acceptance. Public co-op hiding does not establish a global author block. Qualify the full scope against [App Review Guidelines 1.2 and 1.5](https://developer.apple.com/app-store/review/guidelines/); a keyword filter alone is not a release guarantee.
 4. **Submission declarations and review access.** Confirm reachable privacy/support destinations, the enrolled seller, age-rating answers, required-reason API/privacy manifest review, export compliance, content rights and territorial availability. Prepare a dedicated synthetic review account with appropriate sample records; never publish its password/token. Declare actual collection by both the app and its service. See [Apple's privacy details guidance](https://developer.apple.com/app-store/app-privacy-details/).
 5. **Upload and review.** Obtain a signed archive, upload it, verify processing and submit for TestFlight beta review. No build has yet been uploaded or submitted by this work.
 
@@ -68,7 +70,7 @@ Draft description:
 
 > Work with your neighbors to care for the places you share. VergeCommon connects a local field journal with community conservation workspaces.
 >
-> Discover public conservation co-ops, follow their projects and events, and connect to your member workspaces. Write field notes offline, keep a private journal backup, and choose when to submit an observation for steward review. Share updates with co-op members and follow the review status of your records.
+> Search public conservation co-ops, load more communities, follow their projects and events, and connect to your member workspaces. Write field notes offline, keep a private journal backup, and choose when to submit an observation for steward review. Share updates with co-op members and follow the review status of your records.
 >
 > The shared website provides membership, land mapping, governance and detailed project tools. VergeCommon helps communities organize evidence and decisions; it does not certify carbon credits or guarantee conservation funding or payouts.
 

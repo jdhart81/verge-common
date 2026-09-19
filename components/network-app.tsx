@@ -18,6 +18,9 @@ import {
   type CommunityEvent,
 } from '@/components/community-board';
 import { allocateCents } from '@/lib/network.mjs';
+import { CooperativeParcelMap } from '@/components/cooperative-parcel-map';
+import { onboardingProgress } from '@/lib/onboarding.mjs';
+import { PendingWork } from '@/components/pending-work';
 import {
   assessmentIsCurrent,
   projectReadiness,
@@ -450,6 +453,10 @@ export function NetworkApp({
 }) {
   const now = useSyncExternalStore(subscribeClock, clockSnapshot, serverClock);
   const pendingRequests = useRef(new Map<string, string>());
+  const loadGeneration = useRef(0);
+  const [appliedSearch, setAppliedSearch] = useState('');
+  const [nextId, setNextId] = useState<string | null>(null);
+  const [loadingMore, setLoadingMore] = useState(false);
   const [coops, setCoops] = useState<PublicCoop[]>([]),
     [mine, setMine] = useState<WorkspaceSummary[]>([]),
     [selected, setSelected] = useState(''),
@@ -463,33 +470,39 @@ export function NetworkApp({
     [invitationLink, setInvitationLink] = useState(''),
     [next, setNext] = useState<number | null>(null);
   const load = useCallback(
-    async (id = '') => {
+    async (id = '', query = '') => {
+      const generation = ++loadGeneration.current;
       setLoading(true);
       setError('');
       try {
         const url =
           mode === 'network'
-            ? `/api/network${id ? `?id=${encodeURIComponent(id)}` : ''}`
+            ? `/api/network${id ? `?id=${encodeURIComponent(id)}` : `?q=${encodeURIComponent(query)}`}`
             : `/api/workspaces${id ? `?id=${encodeURIComponent(id)}` : ''}`;
         const r = await fetch(url, { cache: 'no-store' });
         const value: WorkspaceResponse & {
           coops: PublicCoop[];
           next: number | null;
+          nextId: string | null;
           workspaces: WorkspaceSummary[];
         } = await r.json();
         if (!r.ok) throw new Error(value.error);
+        if (generation !== loadGeneration.current) return;
         if (id) setData(value);
         else {
           setData(null);
           if (mode === 'network') {
             setCoops(value.coops);
             setNext(value.next);
+            setNextId(value.nextId);
+            setAppliedSearch(query);
+            setSearch(query);
           } else setMine(value.workspaces);
         }
       } catch (e) {
-        setError((e as Error).message);
+        if (generation === loadGeneration.current) setError((e as Error).message);
       } finally {
-        setLoading(false);
+        if (generation === loadGeneration.current) setLoading(false);
       }
     },
     [mode],
@@ -561,17 +574,23 @@ export function NetworkApp({
     }
   }
   async function more() {
-    if (next === null) return;
+    if (next === null || loadingMore) return;
+    const generation = loadGeneration.current;
+    setLoadingMore(true);
     try {
-      const r = await fetch(`/api/network?before=${next}`);
-      const v: { error: string; coops: PublicCoop[]; next: number | null } =
+      const query = new URLSearchParams({ before: String(next), q: appliedSearch });
+      if (nextId) query.set('beforeId', nextId);
+      const r = await fetch(`/api/network?${query}`);
+      const v: { error: string; coops: PublicCoop[]; next: number | null; nextId: string | null } =
         await r.json();
       if (!r.ok) throw new Error(v.error);
-      setCoops((c) => [...c, ...v.coops]);
+      if (generation !== loadGeneration.current) return;
+      setCoops((c) => [...c, ...v.coops.filter(item => !c.some(existing => existing.id === item.id))]);
       setNext(v.next);
+      setNextId(v.nextId);
     } catch (e) {
-      setError((e as Error).message);
-    }
+      if (generation === loadGeneration.current) setError((e as Error).message);
+    } finally { setLoadingMore(false); }
   }
   async function copyLink() {
     const url = `${location.origin}/network/?coop=${selected}`;
@@ -621,11 +640,7 @@ export function NetworkApp({
       state?.evidence.filter((e) => e.status === 'reviewed') ?? [],
       'title',
     );
-  const visibleCoops = coops.filter((c) =>
-    `${c.name} ${c.country ?? ''} ${c.region} ${c.summary}`
-      .toLowerCase()
-      .includes(search.trim().toLowerCase()),
-  );
+  const visibleCoops = coops;
   return (
     <>
       <a className="skip" href="#main">
@@ -707,6 +722,7 @@ export function NetworkApp({
             </Link>
           )}
         </div>
+        {selected && <p className="small mb-4"><Link href={`/report/?kind=coop&coop=${encodeURIComponent(selected)}`}>Report a concern to the operator</Link></p>}
         {!selected && (
           <p className="intro">
             Bring an EcoHedge corridor, a woodlot, or a larger conservation
@@ -829,14 +845,18 @@ export function NetworkApp({
             ) : (
               <>
                 <OrganizationDiscovery coops={coops} />
+                <form onSubmit={event => { event.preventDefault(); void load('', search.trim()); }}>
                 <ControlLabel className="search-label">
-                  Find a co-op in the loaded results
+                  Search the public co-op directory
                   <Input
                     placeholder="Search by name or general region…"
                     value={search}
+                    maxLength={160}
                     onChange={(e) => setSearch(e.target.value)}
                   />
                 </ControlLabel>
+                <Button type="submit" className="mb-4">Search</Button>
+                </form>
                 <div className="network-grid">
                   {visibleCoops.map((c) => (
                     <article className="network-card" key={c.id}>
@@ -859,19 +879,18 @@ export function NetworkApp({
                     </article>
                   ))}
                 </div>
-                {coops.length > 0 && visibleCoops.length === 0 && (
+                {appliedSearch && visibleCoops.length === 0 && (
                   <Empty>
-                    <h2>No matching co-ops</h2>
+                    <h2>{next !== null ? 'Keep exploring the directory' : 'No matching co-ops'}</h2>
                     <output className="block mb-4">
-                      No co-ops match “{search}” in the loaded results. Try
-                      another name or general region.
+                      {next !== null ? `No matches for “${appliedSearch}” in this part of the directory. Load more to continue searching.` : `No public co-ops match “${appliedSearch}” in the current results. Try another name or general region.`}
                     </output>
-                    <Button variant="outline" onClick={() => setSearch('')}>
+                    <Button variant="outline" onClick={() => { void load(); }}>
                       Clear search
                     </Button>
                   </Empty>
                 )}
-                {!coops.length && (
+                {!coops.length && !appliedSearch && (
                   <Empty>
                     <Sprout size={36} className="mx-auto mb-4" />
                     <h2>Be the first to plant a flag.</h2>
@@ -890,8 +909,8 @@ export function NetworkApp({
                   </Empty>
                 )}
                 {next !== null && (
-                  <Button variant="outline" onClick={more}>
-                    Load more co-ops
+                  <Button variant="outline" onClick={more} disabled={loadingMore}>
+                    {loadingMore ? 'Loading…' : 'Load more co-ops'}
                   </Button>
                 )}
               </>
@@ -932,6 +951,13 @@ export function NetworkApp({
                 available; changes are disabled.
               </div>
             )}
+            <PendingWork
+              state={state}
+              steward={steward}
+              memberId={data.memberId ?? ''}
+              now={now}
+              onOpenTab={setWorkspaceTab}
+            />
             <Tabs
               value={workspaceTab}
               onValueChange={(v) => setWorkspaceTab(String(v))}
@@ -991,8 +1017,7 @@ export function NetworkApp({
                       'members',
                       '3. Invite your circle',
                       'Invite participants; approve members and appoint a second steward.',
-                      state.members.filter((m) => m.status === 'active')
-                        .length > 1,
+                      onboardingProgress(state).circle,
                     ],
                     [
                       'parcels',
@@ -1004,9 +1029,7 @@ export function NetworkApp({
                       'pooling',
                       '5. Assess a carbon pathway',
                       'Document the chosen methodology, compatible land, and unresolved requirements.',
-                      (state.assessments ?? []).some(
-                        (a) => a.status === 'reviewed',
-                      ),
+                      onboardingProgress(state).assessment,
                     ],
                     [
                       'governance',
@@ -1221,6 +1244,7 @@ export function NetworkApp({
                   program and methodology. An area total is a planning measure,
                   not a carbon-credit approval.
                 </p>
+                {steward && <CooperativeParcelMap key={selected} parcels={state.parcels} projects={state.projects} steward={steward} />}
                 {steward ? (
                   <div className="network-columns">
                     <section>
@@ -2321,6 +2345,7 @@ export function NetworkApp({
                   </section>
                   <aside className="panel">
                     <EvidenceForm
+                      key={selected}
                       workspaceId={selected}
                       projects={state.projects}
                       disabled={busy}
@@ -2772,49 +2797,147 @@ function EvidenceForm({
   disabled: boolean;
   onSubmit: (p: CommandPayload) => Promise<boolean>;
 }) {
-  const [asset, setAsset] = useState<{ id: string; filename: string } | null>(
-      null,
-    ),
+  type PendingAsset = { id: string; filename: string };
+  const [asset, setAsset] = useState<PendingAsset | null>(null),
     [uploading, setUploading] = useState(false),
+    [retryFile, setRetryFile] = useState<File | null>(null),
+    [discarding, setDiscarding] = useState(false),
     [message, setMessage] = useState('');
+  const inputRef = useRef<HTMLInputElement>(null);
+  const transfer = useRef({
+    asset: null as PendingAsset | null,
+    cancelled: false,
+    attaching: false,
+    generation: 0,
+  });
+
+  async function discard(id: string) {
+    const response = await fetch(`/api/files?id=${encodeURIComponent(id)}`, { method: 'DELETE' });
+    if (!response.ok) {
+      const result = await response.json() as PendingAsset & { error?: string };
+      throw new Error(result.error || 'Could not discard the file. Please retry.');
+    }
+  }
+
+  useEffect(() => {
+    const tracker = transfer.current;
+    const current = ++tracker.generation;
+    return () => {
+      if (tracker.generation === current) tracker.generation++;
+      const abandoned = tracker.asset;
+      if (abandoned && !tracker.attaching) {
+        // A failed background cleanup is retried by the 24-hour expiry sweep.
+        void discard(abandoned.id).catch(() => {});
+      }
+    };
+  }, []);
+
+  async function removeFile() {
+    if (!transfer.current.asset) {
+      setRetryFile(null);
+      if (inputRef.current) inputRef.current.value = '';
+      setMessage('File selection cleared.');
+      return;
+    }
+    setDiscarding(true);
+    setMessage('Discarding unsubmitted file…');
+    try {
+      await discard(transfer.current.asset.id);
+      transfer.current.asset = null;
+      setAsset(null);
+      setRetryFile(null);
+      if (inputRef.current) inputRef.current.value = '';
+      setMessage('Unsubmitted file discarded.');
+    } catch (error) {
+      setMessage((error as Error).message);
+    } finally {
+      setDiscarding(false);
+    }
+  }
+
+  async function upload(file: File) {
+    const current = transfer.current.generation;
+    transfer.current.cancelled = false;
+    setUploading(true);
+    setRetryFile(null);
+    setMessage('');
+    try {
+      // Release the previous upload before replacing it, including at quota.
+      if (transfer.current.asset) {
+        await discard(transfer.current.asset.id);
+        transfer.current.asset = null;
+        setAsset(null);
+      }
+      const form = new FormData();
+      form.append('file', file);
+      const response = await fetch(`/api/files?workspace=${encodeURIComponent(workspaceId)}`, {
+        method: 'POST', body: form,
+      });
+      const result = await response.json() as PendingAsset & { error?: string };
+      if (!response.ok) throw new Error(result.error || 'Upload failed. Please retry.');
+      if (transfer.current.cancelled || transfer.current.generation !== current) {
+        // Wait for the server receipt before discarding; aborting the browser
+        // request alone cannot cancel a server write already in progress.
+        if (transfer.current.generation === current) {
+          transfer.current.asset = result;
+          setAsset(result);
+        }
+        await discard(result.id);
+        if (transfer.current.generation === current) {
+          transfer.current.asset = null;
+          setAsset(null);
+          if (inputRef.current) inputRef.current.value = '';
+          setMessage('Upload cancelled and unsubmitted file discarded.');
+        }
+        return;
+      }
+      transfer.current.asset = result;
+      setAsset(result);
+      setMessage(`Uploaded ${result.filename}. Complete the evidence form to attach it.`);
+    } catch (error) {
+      if (transfer.current.generation === current) {
+        if (!transfer.current.cancelled) setRetryFile(file);
+        setMessage(`${(error as Error).message} Any unattached upload expires after 24 hours.`);
+      }
+    } finally {
+      if (transfer.current.generation === current) setUploading(false);
+    }
+  }
+
   return (
     <>
       <h2>Submit evidence</h2>
       <ControlLabel className="upload-label">
         Private file (optional)
         <Input
+          ref={inputRef}
           type="file"
           accept="application/pdf,image/png,image/jpeg,image/webp,text/plain"
-          disabled={uploading || disabled}
-          onChange={async (e) => {
-            const f = e.target.files?.[0];
-            setAsset(null);
-            if (!f) return;
-            setUploading(true);
-            setMessage('');
-            try {
-              const form = new FormData();
-              form.append('file', f);
-              const r = await fetch(`/api/files?workspace=${workspaceId}`, {
-                method: 'POST',
-                body: form,
-              });
-              const result: { error: string; id: string; filename: string } =
-                await r.json();
-              if (!r.ok) throw new Error(result.error);
-              setAsset(result);
-              setMessage(
-                `Uploaded ${result.filename}. Complete the evidence form to attach it.`,
-              );
-            } catch (e) {
-              setMessage((e as Error).message);
-            } finally {
-              setUploading(false);
-            }
+          disabled={uploading || discarding || disabled}
+          onChange={(e) => {
+            const file = e.target.files?.[0];
+            // Clearing the browser chooser is not a replacement or discard.
+            if (file) void upload(file);
           }}
         />
       </ControlLabel>
-      <output className="small">{uploading ? 'Uploading…' : message}</output>
+      <output className="small" aria-live="polite">
+        {uploading ? message || 'Uploading…' : message}
+      </output>
+      <p className="small">Unsubmitted files expire after 24 hours. Attached evidence is retained.</p>
+      {uploading ? (
+        <Button type="button" variant="outline" onClick={() => {
+          transfer.current.cancelled = true;
+          setMessage('Cancelling… Waiting for the upload receipt so the file can be discarded.');
+        }}>Cancel upload</Button>
+      ) : (
+        <div className="flex gap-2">
+          {retryFile && <Button type="button" variant="outline" disabled={disabled || discarding}
+            onClick={() => void upload(retryFile)}>Retry upload</Button>}
+          {(asset || retryFile) && <Button type="button" variant="outline" disabled={disabled || discarding}
+            onClick={() => void removeFile()}>Discard file</Button>}
+        </div>
+      )}
       <ActionForm
         fields={[
           select('projectId', 'Project', projects),
@@ -2830,14 +2953,25 @@ function EvidenceForm({
           field('notes', 'What does this evidence establish?', 'textarea'),
         ]}
         submit="Submit evidence"
-        disabled={disabled || uploading || !projects.length}
+        disabled={disabled || uploading || discarding || !projects.length || !!retryFile}
         onSubmit={async (p) => {
-          const ok = await onSubmit({ ...p, assetId: asset?.id });
-          if (ok) {
-            setAsset(null);
-            setMessage('Evidence submitted.');
+          transfer.current.attaching = true;
+          const current = transfer.current.generation;
+          const submittedAsset = transfer.current.asset;
+          try {
+            const ok = await onSubmit({ ...p, assetId: submittedAsset?.id });
+            if (ok) {
+              transfer.current.asset = null;
+              setAsset(null);
+              if (inputRef.current) inputRef.current.value = '';
+              setMessage('Evidence submitted.');
+            } else if (transfer.current.generation !== current && submittedAsset) {
+              void discard(submittedAsset.id).catch(() => {});
+            }
+            return ok;
+          } finally {
+            transfer.current.attaching = false;
           }
-          return ok;
         }}
       />
     </>

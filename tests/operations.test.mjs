@@ -9,6 +9,6 @@ await test('operational encryption, safe recovery extraction, committed erasure 
     timeout: 60000,
     maxBuffer: 100000,
   });
-  assert.match(result.stderr, /Ran 7 tests/);
+  assert.match(result.stderr, /Ran 15 tests/);
   assert.match(result.stderr, /OK/);
 });

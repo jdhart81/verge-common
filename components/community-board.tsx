@@ -21,6 +21,9 @@ export type CommunityEvent = {
   status: string;
   projectId?: string;
   createdAt?: number;
+  updatedAt?: number;
+  cancelledAt?: number;
+  calendarSequence?: number;
   hidden?: boolean;
   blocked?: boolean;
   visibility?: string;
@@ -82,6 +85,18 @@ function subscribeTimeZone(onChange: () => void) {
 }
 const timeZoneSnapshot = () => Intl.DateTimeFormat().resolvedOptions().timeZone;
 const serverTimeZone = () => '';
+function localDateTime(value: number) {
+  const date = new Date(value);
+  return new Date(value - date.getTimezoneOffset() * 60_000)
+    .toISOString()
+    .slice(0, 16);
+}
+function eventInstant(value: string, original: number) {
+  // Preserve the original instant when an unchanged local time falls in a DST fold.
+  return value === localDateTime(original)
+    ? original
+    : new Date(value).getTime();
+}
 function Form({
   children,
   submit,
@@ -255,7 +270,7 @@ export function CommunityBoard({
     link.click();
     setTimeout(() => URL.revokeObjectURL(url), 1000);
     setNotice(
-      'Calendar file downloaded. It includes private meeting instructions; keep it within your group. Re-download after a cancellation.',
+      'Calendar file downloaded. It includes private meeting instructions; keep it within your group. Re-download and import after an edit or cancellation. Your calendar may ask whether to update its existing entry.',
     );
   }
   return (
@@ -338,6 +353,14 @@ export function CommunityBoard({
                     <p className="whitespace-pre-wrap">{e.meetingDetails}</p>
                   </div>
                   {e.cancelReason && <p>Cancellation: {e.cancelReason}</p>}
+                  {!!e.updatedAt && (
+                    <p className="notice">
+                      Event details changed on{' '}
+                      {new Date(e.updatedAt).toLocaleString()}. Please check the
+                      time and meeting instructions, update your response if
+                      needed, and download the latest calendar entry.
+                    </p>
+                  )}
                   <p>
                     {e.goingCount} going
                     {e.capacity ? ` / ${e.capacity} places` : ''} · Your
@@ -383,6 +406,126 @@ export function CommunityBoard({
                       ))}
                     </details>
                   )}
+                  {(steward || e.isOrganizer) &&
+                    e.status === 'scheduled' &&
+                    !e.hidden &&
+                    e.startsAt > now && (
+                      <details className="mt-4">
+                        <summary>Edit or reschedule event</summary>
+                        <Form
+                          key={e.updatedAt ?? e.createdAt ?? e.id}
+                          disabled={disabled || !zone}
+                          submit="Save event changes"
+                          save={async (v) => {
+                            const startsAt = eventInstant(v.start, e.startsAt);
+                            const endsAt = eventInstant(v.end, e.endsAt);
+                            const saved = await mutate('update_event', {
+                              ...v,
+                              id: e.id,
+                              startsAt,
+                              endsAt,
+                              timeZone:
+                                startsAt === e.startsAt && endsAt === e.endsAt
+                                  ? e.timeZone
+                                  : zone,
+                              capacity: Number(v.capacity),
+                            });
+                            if (saved)
+                              setNotice(
+                                'Event updated. Existing responses are kept. Tell participants about the change and ask them to check their response and calendar.',
+                              );
+                            return saved;
+                          }}
+                        >
+                          <ControlLabel>
+                            Event title
+                            <Input
+                              name="title"
+                              maxLength={160}
+                              required
+                              defaultValue={e.title}
+                            />
+                          </ControlLabel>
+                          <ControlLabel>
+                            Summary
+                            <Textarea
+                              name="summary"
+                              maxLength={2000}
+                              required
+                              defaultValue={e.summary}
+                            />
+                          </ControlLabel>
+                          <ControlLabel>
+                            Start · {zone || 'your local time'}
+                            <Input
+                              name="start"
+                              type="datetime-local"
+                              required
+                              defaultValue={
+                                zone ? localDateTime(e.startsAt) : ''
+                              }
+                            />
+                          </ControlLabel>
+                          <ControlLabel>
+                            End · {zone || 'your local time'}
+                            <Input
+                              name="end"
+                              type="datetime-local"
+                              required
+                              defaultValue={zone ? localDateTime(e.endsAt) : ''}
+                            />
+                          </ControlLabel>
+                          <ControlLabel>
+                            Private meeting instructions
+                            <Textarea
+                              name="meetingDetails"
+                              maxLength={2000}
+                              required
+                              defaultValue={e.meetingDetails}
+                            />
+                          </ControlLabel>
+                          <ControlLabel>
+                            Available places (0 = no cap)
+                            <Input
+                              name="capacity"
+                              type="number"
+                              min="0"
+                              max="500"
+                              required
+                              defaultValue={e.capacity ?? 0}
+                            />
+                          </ControlLabel>
+                          <ControlLabel>
+                            Who can discover this event?
+                            <NativeSelect
+                              name="visibility"
+                              defaultValue={steward ? e.visibility : 'members'}
+                            >
+                              <NativeSelectOption value="members">
+                                Members only
+                              </NativeSelectOption>
+                              {steward && (
+                                <NativeSelectOption value="public">
+                                  Public summary
+                                </NativeSelectOption>
+                              )}
+                            </NativeSelect>
+                          </ControlLabel>
+                          {!steward && e.visibility === 'public' && (
+                            <p>
+                              These changes make the event members-only. Ask a
+                              steward to update its public summary.
+                            </p>
+                          )}
+                          <p className="small">
+                            Existing responses stay recorded. This does not send
+                            notifications: tell participants about time or
+                            location changes and ask them to check their plans.
+                            Re-download the calendar entry after saving.
+                          </p>
+                        </Form>
+                      </details>
+                    )}
                   {(steward || e.isOrganizer) && e.status === 'scheduled' && (
                     <details className="mt-4">
                       <summary>Cancel event</summary>

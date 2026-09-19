@@ -78,6 +78,16 @@ export default function PrivacyPage() {
       <section>
         <h2>Reports, blocking and stewardship</h2>
         <p>
+          The separate operator report form stores your description, category,
+          referenced item and review status privately on the hosting server.
+          A signed-in browser report is associated with your account and removed
+          when that account is deleted. Reports sent without sign-in are linked
+          only to a private receipt; contact the operator with that receipt for
+          a privacy request. No email address is required. The receipt reveals
+          status only, not report text. Operator decisions are recorded separately
+          for accountability; reports and decisions also follow backup retention.
+        </p>
+        <p>
           Reports are visible to the reporting member and co-op stewards. Hidden
           content stays in moderation records; hiding is not deletion. Your
           personal block list is visible only to you. Blocking hides social

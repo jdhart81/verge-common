@@ -41,7 +41,8 @@ struct DraftDocument: FileDocument {
     @StateObject private var store = JournalStore()
     @StateObject private var account = DeviceAccount()
     @StateObject private var safety = PublicSafetyStore()
-    var body: some Scene { WindowGroup { JournalHome().environmentObject(store).environmentObject(account).environmentObject(safety).tint(Color(red: 0.09, green: 0.32, blue: 0.23)) } }
+    @StateObject private var receipts = SafetyReceiptStore()
+    var body: some Scene { WindowGroup { JournalHome().environmentObject(store).environmentObject(account).environmentObject(safety).environmentObject(receipts).tint(Color(red: 0.09, green: 0.32, blue: 0.23)) } }
 }
 struct JournalHome: View {
     @EnvironmentObject var store: JournalStore
@@ -52,6 +53,7 @@ struct JournalHome: View {
     @State private var importing = false
     @State private var removingAll = false
     @State private var exportName = "verge-field-draft"
+    @State private var reporting = false
     var body: some View {
         TabView {
             CommunityDiscovery().tabItem { Label("Discover", systemImage: "globe") }
@@ -123,11 +125,13 @@ struct JournalHome: View {
                         Text("This version does not collect device location, photographs, analytics or advertising identifiers. It sends member posts, safety reports, block choices or selected draft details only when you confirm them. There is no automatic journal upload or sync.")
                         Link("Privacy and your records", destination: CommunityService.page("privacy/"))
                         Link("Support and safety", destination: CommunityService.page("support/"))
+                        Button("Report a concern to the project operator") { reporting = true }
+                        NavigationLink("Report receipts") { SafetyReportHistory() }
                         Link("Manage website account", destination: CommunityService.page("account"))
                         Link("Open-source project", destination: URL(string: "https://github.com/jdhart81/verge-common")!)
                     }
-                }.navigationTitle("Journal tools")
-            }.tabItem { Label("Journal tools", systemImage: "gearshape") }
+                }.navigationTitle("Support & tools")
+            }.tabItem { Label("Support", systemImage: "gearshape") }
         }
                 .fileExporter(isPresented: $exporting, document: export, contentType: .json, defaultFilename: exportName) { result in
                     if case .failure(let error) = result { store.error = error.localizedDescription }
@@ -147,8 +151,9 @@ struct JournalHome: View {
             }
         } message: { Text("This does not delete submitted co-op records, exported files or copies in device backups.") }
         .alert("Journal", isPresented: Binding(get: { store.error != nil }, set: { if !$0 { store.error = nil } })) { Button("OK") { store.error = nil } } message: { Text(store.error ?? "") }
+        .sheet(isPresented: $reporting) { SafetyReportForm(kind: .general, coopId: nil, targetId: nil) }
     }
-    static var today: String { let f = DateFormatter(); f.locale = Locale(identifier: "en_US_POSIX"); f.dateFormat = "yyyy-MM-dd"; return f.string(from: Date()) }
+    static var today: String { FieldDraft.today() }
 }
 struct DraftEditor: View {
     @EnvironmentObject var store: JournalStore
@@ -160,7 +165,10 @@ struct DraftEditor: View {
             Form {
                 Section("Place and date") {
                     TextField("Place name (up to 200 characters)", text: $draft.place)
-                    TextField("Date: YYYY-MM-DD", text: $draft.date).keyboardType(.numbersAndPunctuation)
+                    DatePicker("Observation date", selection: Binding(get: { draft.observationDay ?? Date() }, set: { draft.date = FieldDraft.dateFormatter(in: draft.observationTimeZone).string(from: $0) }), displayedComponents: .date)
+                        .environment(\.timeZone, draft.observationTimeZone)
+                        .environment(\.calendar, Calendar(identifier: .gregorian))
+                    Text("Time zone: \(draft.timeZone ?? "UTC (original draft)"). The date stays with this note when you travel.").font(.caption).foregroundStyle(.secondary)
                 }
                 Section("How did you check?") { TextField("Method, sampling locations and units", text: $draft.method, axis: .vertical).lineLimit(3...8); Text("Up to 1,000 characters").font(.caption) }
                 Section("What did you find?") { TextField("Findings, measurements and uncertainty", text: $draft.finding, axis: .vertical).lineLimit(5...12); Text("Up to 2,000 characters").font(.caption) }
@@ -178,24 +186,53 @@ struct DraftEditor: View {
 }
 
 @MainActor final class CommunityModel: ObservableObject {
-    @Published var coops: [PublicCoop] = []
+    @Published private var results = CommunityResults()
     @Published var loading = false
     @Published var message: String?
     @Published var loaded = false
-    func refresh() async {
-        guard !loading else { return }
+    private var query = ""
+    private var generation = UUID()
+    private var failedNextPage = false
+    var coops: [PublicCoop] { results.coops }
+    var hasMore: Bool { results.next != nil }
+    func refresh(query: String? = nil) async {
+        if let query, query != self.query {
+            self.query = query; results = CommunityResults(); loaded = false
+        }
+        let generation = UUID(); self.generation = generation
         loading = true; message = nil
-        defer { loading = false }
-        do { coops = try await CommunityClient().recent().coops; loaded = true }
+        failedNextPage = false
+        defer { if self.generation == generation { loading = false } }
+        do {
+            let page = try await CommunityClient().recent(query: self.query)
+            guard self.generation == generation, !Task.isCancelled else { return }
+            results.replace(page); loaded = true
+        }
         catch {
-            coops = []; loaded = false
+            guard self.generation == generation, !Task.isCancelled else { return }
             message = (error as? CommunityError)?.localizedDescription ?? "Couldn’t load communities. Check your connection and try again."
         }
     }
+    func loadMore() async {
+        guard !loading, let before = results.next else { return }
+        let generation = self.generation
+        loading = true; message = nil; failedNextPage = true
+        defer { if self.generation == generation { loading = false } }
+        do {
+            let page = try await CommunityClient().recent(query: query, before: before, beforeId: results.nextId)
+            guard self.generation == generation, !Task.isCancelled else { return }
+            try results.append(page); failedNextPage = false
+        } catch {
+            guard self.generation == generation, !Task.isCancelled else { return }
+            message = "Couldn’t load the next page. Your loaded communities are still available. Try again."
+        }
+    }
+    func retry() async { if failedNextPage { await loadMore() } else { await refresh() } }
 }
 struct CommunityDiscovery: View {
     @EnvironmentObject var safety: PublicSafetyStore
     @StateObject private var model = CommunityModel()
+    @State private var query = ""
     var body: some View {
         NavigationStack {
             List {
@@ -211,13 +248,15 @@ struct CommunityDiscovery: View {
                 if let message = model.message {
                     Section("Unable to load communities") {
                         Text(message)
-                        Button("Try again") { Task { await model.refresh() } }
+                        Button("Try again") { Task { await model.retry() } }.disabled(model.loading)
                         Link("Check access on the website", destination: CommunityService.page("network/"))
                     }
                 }
-                if model.loaded && model.coops.isEmpty { ContentUnavailableView("No public co-ops yet", systemImage: "person.3", description: Text("Private co-ops are not listed. Open the website to start a co-op or use your invitation.")) }
+                if model.loaded && model.coops.isEmpty {
+                    ContentUnavailableView(model.hasMore ? "No matches in this portion" : query.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? "No public co-ops yet" : "No matching public co-ops", systemImage: "person.3", description: Text(model.hasMore ? "Load more communities to search the next part of the public directory, or try another name, region or conservation interest." : "Try a co-op name, region or conservation interest. Private co-ops are not listed; use their invitation to join."))
+                }
                 if model.loaded && !model.coops.isEmpty && PublicSafety.visible(model.coops, hidden: safety.hidden).isEmpty {
-                    Text("The recently updated co-ops are hidden on this device. Open Hidden co-ops to show them again.").foregroundStyle(.secondary)
+                    Text("The loaded co-ops are hidden on this device. Load more communities or open Hidden co-ops to show them again.").foregroundStyle(.secondary)
                 }
                 ForEach(PublicSafety.visible(model.coops, hidden: safety.hidden)) { coop in
                     NavigationLink {
@@ -232,13 +271,19 @@ struct CommunityDiscovery: View {
                     }
                 }
                 if model.loaded {
-                    Section { Text("Recently updated public co-ops. Details reflect the last refresh.").font(.subheadline).foregroundStyle(.secondary)
+                    Section {
+                        if model.hasMore { Button("Load more communities") { Task { await model.loadMore() } }.disabled(model.loading) }
+                        Text("\(model.coops.count) matching public co-ops loaded, ordered by most recently updated. Search checks each portion as you load it. Details reflect the last refresh.").font(.subheadline).foregroundStyle(.secondary)
                         Link("Browse the full network", destination: CommunityService.page("network/")) }
                 }
             }
             .navigationTitle("Discover")
+            .searchable(text: $query, prompt: "Name, region or conservation interest")
             .refreshable { await model.refresh() }
-            .task { if !model.loaded { await model.refresh() } }
+            .task(id: query) {
+                do { try await Task.sleep(for: .milliseconds(300)) } catch { return }
+                await model.refresh(query: query)
+            }
         }
     }
 }
@@ -273,7 +318,7 @@ struct CommunityDetail: View {
             }
             Section("Safety") {
                 PublicReportLink(coopID: coop.id, kind: .coop, itemID: nil)
-                Text("Report links open your email app with only public item identifiers. Add your concern and send it yourself. If email is not configured, contact \(PublicSafety.supportEmail) using the support page.").font(.caption).foregroundStyle(.secondary)
+                Text("Reports go directly to the project operator after you describe the concern and confirm Send. Check their status from Support → Report receipts. For other help, contact \(PublicSafety.supportEmail).").font(.caption).foregroundStyle(.secondary)
                 Button("Hide this co-op on this device") { confirmingHide = true }
                     .accessibilityHint("Removes this co-op from Discover. You can show it again from Hidden co-ops.")
                 Text("Hiding affects Discover on this device only. It does not block an author or change a public website. Member blocking is available inside your co-op workspace.").font(.caption).foregroundStyle(.secondary)

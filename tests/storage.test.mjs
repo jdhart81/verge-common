@@ -129,7 +129,7 @@ await test('SQLite migration runs once, enables safety settings, and survives cl
   try {
     assert.equal(
       db.prepare('SELECT count(*) AS n FROM schema_migrations').get().n,
-      1,
+      2,
     );
     assert.equal(
       db.prepare('SELECT name FROM workspaces').get().name,
@@ -297,7 +297,10 @@ await test('backup receipt and disposable restore check verify database and evid
   const databasePath = join(f.backup, 'vergecommon.sqlite'),
     before = hash(await readFile(databasePath));
   assert.equal(f.receipt.databaseSha256, before);
-  assert.deepEqual(f.receipt.schemaMigrations, ['0000_famous_nighthawk']);
+  assert.deepEqual(f.receipt.schemaMigrations, [
+    '0000_famous_nighthawk',
+    '0001_evidence_upload_lifecycle',
+  ]);
   const filesBefore = await readdir(f.dir);
   const report = await checkBackup(f.backup, { temporaryRoot: f.dir });
   assert.equal(report.status, 'passed');

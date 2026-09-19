@@ -28,7 +28,7 @@ The bundled Caddyfile redirects `www.vergecommon.com` to the canonical HTTPS dom
 
 The dedicated droplet uses Docker container `vergecommon-app` on private bridge network `vergecommon`. Its `/data` mount is `/opt/vergecommon/data` on the host; `/backups` is `/opt/vergecommon/backups`. Release source/image inputs are retained under `/opt/vergecommon/releases/<UTC>-app`. Caddy keeps its existing certificate volumes and reaches the app only through the private network. Do not publish the app's port directly on the host.
 
-The deployment includes `vergecommon-backup.service` and `vergecommon-backup.timer`, scheduled daily at **03:15 UTC**. Confirm installation and the last successful receipt on the actual host before relying on this schedule. The owner’s Mac now has an hourly encrypted pull and isolated restore rehearsal; see [operations](../docs/OPERATIONS_BETA.md) for its actual status, sleep/offline limits, approved paths and remaining independent key-custody requirement.
+The deployment includes `vergecommon-backup.service` and `vergecommon-backup.timer`, scheduled daily at **03:15 UTC**. Confirm installation and the last successful receipt on the actual host before relying on this schedule. The owner’s Mac has hourly encrypted-pull and isolated-restore tooling, but recurring production transfer remains paused pending explicit approval; see [operations](../docs/OPERATIONS_BETA.md) for its actual status, sleep/offline limits, approved paths and remaining independent key-custody requirement.
 
 ## Build and isolated acceptance
 

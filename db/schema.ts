@@ -33,3 +33,9 @@ export const assets = sqliteTable(
   },
   (t) => [index('assets_workspace').on(t.workspaceId)],
 );
+
+// Retains failed object deletions until the storage provider confirms removal.
+export const evidenceFileDeletions = sqliteTable('evidence_file_deletions', {
+  objectKey: text('object_key').primaryKey(),
+  requestedAt: integer('requested_at').notNull(),
+});

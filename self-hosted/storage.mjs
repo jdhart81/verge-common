@@ -22,15 +22,15 @@ export function openDatabase(path = resolve(dataDir, 'vergecommon.sqlite')) {
   db.exec(
     `CREATE TABLE IF NOT EXISTS schema_migrations (name TEXT PRIMARY KEY);`,
   );
-  const name = '0000_famous_nighthawk';
-  if (
-    !db.prepare('SELECT name FROM schema_migrations WHERE name=?').get(name)
-  ) {
+  for (const name of [
+    '0000_famous_nighthawk',
+    '0001_evidence_upload_lifecycle',
+  ]) {
+    if (db.prepare('SELECT name FROM schema_migrations WHERE name=?').get(name))
+      continue;
     db.exec('BEGIN IMMEDIATE');
     try {
-      db.exec(
-        readFileSync(resolve('drizzle/0000_famous_nighthawk.sql'), 'utf8'),
-      );
+      db.exec(readFileSync(resolve(`drizzle/${name}.sql`), 'utf8'));
       db.prepare('INSERT INTO schema_migrations VALUES (?)').run(name);
       db.exec('COMMIT');
     } catch (e) {

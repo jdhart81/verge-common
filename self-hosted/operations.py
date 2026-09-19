@@ -15,6 +15,8 @@ import tarfile
 import tempfile
 import time
 import urllib.request
+import urllib.parse
+import uuid
 
 HERE = Path(__file__).resolve().parent
 
@@ -210,25 +212,193 @@ def freshness(created_at, maximum_hours=30, now=None):
     return -300 <= age <= maximum_hours * 3600
 
 
-def run(config):
+PROBLEMS = {
+    'PUBLIC_HEALTH_FAILED': 'Public HTTPS health check failed',
+    'REMOTE_INSPECTION_FAILED': 'Server operational inspection failed',
+    'CONTAINER_UNHEALTHY': 'App container health is not healthy',
+    'DISK_HIGH': 'Server disk use exceeds the configured threshold',
+    'BACKUP_MISSING': 'No completed server backup is available',
+    'BACKUP_STALE': 'Server backup is older than the configured recovery target',
+    'ERASURE_LEDGER_UNAVAILABLE': 'Live deletion ledger is unavailable or incomplete',
+    'CAPACITY_UNAVAILABLE': 'Read-only capacity totals are unavailable',
+    'DATABASE_HIGH': 'Database and journal size exceeds the configured threshold',
+    'EVIDENCE_STORAGE_HIGH': 'Private evidence storage exceeds the configured threshold',
+    'BACKUP_STORAGE_HIGH': 'Server backup storage exceeds the configured threshold',
+    'WORKSPACE_FILES_HIGH': 'A co-op is approaching the evidence file limit',
+    'WORKSPACE_MEMBERS_HIGH': 'A co-op is approaching the member record limit',
+    'FILE_CLEANUP_PENDING': 'Private file cleanup remains queued',
+    'SAFETY_QUEUE_UNAVAILABLE': 'Operator report queue totals are unavailable',
+    'SAFETY_QUEUE_HIGH': 'Open operator reports exceed the configured threshold',
+    'SAFETY_REPORT_OVERDUE': 'An open operator report exceeds the response-age target',
+    'LOCAL_SPACE_LOW': 'Local free space is insufficient for the recovery rehearsal',
+    'ARCHIVE_TRANSFER_FAILED': 'Encrypted backup transfer failed',
+    'RECOVERY_REHEARSAL_FAILED': 'Isolated recovery verification failed',
+    'LEDGER_CHANGED': 'Deletion ledger changed during recovery verification',
+    'CONFIGURATION_INVALID': 'Operational configuration is invalid',
+    'NOTIFICATION_DELIVERY_FAILED': 'Configured notification delivery failed',
+}
+
+
+def add_problem(status, code):
+    if code not in PROBLEMS:
+        code = 'CONFIGURATION_INVALID'
+    if code not in status['problemCodes']:
+        status['problemCodes'].append(code)
+        status['problems'].append(PROBLEMS[code])
+
+
+def threshold(config, name, default):
+    value = config.get('thresholds', {}).get(name, default)
+    if isinstance(value, bool) or not isinstance(value, (int, float)) or not 0 < value < float('inf'):
+        raise ValueError('Invalid operational threshold')
+    return value
+
+
+def remote_problem_codes(remote, config, now=None):
+    codes = []
+    if not remote.get('containerHealthy'):
+        codes.append('CONTAINER_UNHEALTHY')
+    disk = remote.get('disk', {})
+    if not disk.get('total') or disk.get('used', 0) / disk['total'] >= threshold(config, 'diskUsedFraction', .85):
+        codes.append('DISK_HIGH')
+    snapshot = remote.get('snapshot', {})
+    if not snapshot.get('createdAt') or snapshot.get('available') is False:
+        codes.append('BACKUP_MISSING')
+    elif not freshness(snapshot['createdAt'], config.get('maximumBackupAgeHours', 30), now=now):
+        codes.append('BACKUP_STALE')
+    if not remote.get('erasureLedger', {}).get('available'):
+        codes.append('ERASURE_LEDGER_UNAVAILABLE')
+    capacity = remote.get('capacity', {})
+    if not capacity.get('available'):
+        codes.append('CAPACITY_UNAVAILABLE')
+    else:
+        for value, setting, default, code in [
+            (capacity['databaseBytes'] + capacity['walBytes'], 'databaseBytes', 1_000_000_000, 'DATABASE_HIGH'),
+            (capacity['evidence']['bytes'], 'evidenceBytes', 5_000_000_000, 'EVIDENCE_STORAGE_HIGH'),
+            (capacity['backups']['bytes'], 'backupBytes', 10_000_000_000, 'BACKUP_STORAGE_HIGH'),
+            (capacity['maxWorkspaceFiles'], 'workspaceFiles', 180, 'WORKSPACE_FILES_HIGH'),
+            (capacity['maxWorkspaceMembers'], 'workspaceMembers', 450, 'WORKSPACE_MEMBERS_HIGH'),
+        ]:
+            if value >= threshold(config, setting, default):
+                codes.append(code)
+        if capacity.get('pendingEvidenceDeletions') or capacity.get('pendingErasureFiles'):
+            codes.append('FILE_CLEANUP_PENDING')
+    safety = remote.get('safetyQueue', {})
+    if not safety.get('available'):
+        codes.append('SAFETY_QUEUE_UNAVAILABLE')
+    else:
+        if safety['openReports'] >= threshold(config, 'openSafetyReports', 50):
+            codes.append('SAFETY_QUEUE_HIGH')
+        if safety['openReports'] and safety['oldestOpenAgeSeconds'] >= threshold(config, 'safetyReportAgeHours', 24) * 3600:
+            codes.append('SAFETY_REPORT_OVERDUE')
+    return sorted(codes)
+
+
+class NoRedirect(urllib.request.HTTPRedirectHandler):
+    def redirect_request(self, request, response, code, message, headers, new_url):
+        return None
+
+
+def webhook_post(url, payload, event_id, timeout):
+    request = urllib.request.Request(url, data=json.dumps(payload, sort_keys=True).encode(), method='POST',
+                                     headers={'Content-Type': 'application/json', 'Idempotency-Key': event_id,
+                                              'User-Agent': 'VergeCommon-Operations/1'})
+    # TLS verification stays enabled. Redirects cannot move the configured
+    # webhook secret or payload to a different destination.
+    with urllib.request.build_opener(NoRedirect()).open(request, timeout=timeout) as response:
+        if not 200 <= response.status < 300:
+            raise ValueError('Notification was not accepted')
+
+
+def deliver_notification(config, status, state, transport=webhook_post):
+    """Opt-in, redacted, transition-only delivery with durable retry identity."""
+    settings = config.get('notifications', {})
+    if not isinstance(settings, dict):
+        return {'status': 'failed', 'problemCode': 'NOTIFICATION_DELIVERY_FAILED'}
+    if settings.get('enabled') is not True:
+        return {'status': 'disabled'}
+    try:
+        url = settings['webhookUrl']
+        parsed = urllib.parse.urlsplit(url)
+        timeout = settings.get('timeoutSeconds', 10)
+        if parsed.scheme != 'https' or not parsed.hostname or parsed.username or parsed.password or parsed.fragment or any(c.isspace() for c in url):
+            raise ValueError('Invalid webhook destination')
+        if isinstance(timeout, bool) or not isinstance(timeout, (int, float)) or not 1 <= timeout <= 30:
+            raise ValueError('Invalid webhook timeout')
+        normalized_status = status['status'] if status['status'] in ('healthy', 'attention', 'failed') else 'failed'
+        codes = sorted({code for code in status.get('problemCodes', []) if code in PROBLEMS and code != 'NOTIFICATION_DELIVERY_FAILED'})
+        if normalized_status != 'healthy' and not codes:
+            codes = ['REMOTE_INSPECTION_FAILED']
+        payload = {'schema': 1, 'service': 'vergecommon', 'event': 'recovery' if normalized_status == 'healthy' else 'failure',
+                   'status': normalized_status, 'problemCodes': codes}
+        fingerprint = hashlib.sha256(json.dumps(payload, sort_keys=True).encode()).hexdigest()
+        destination_hash = hashlib.sha256(url.encode()).hexdigest()
+        receipt_path = Path(state) / 'notification-state.json'
+        receipt = json.loads(private_path(receipt_path).read_text()) if receipt_path.exists() else {}
+        if receipt.get('destinationHash') != destination_hash:
+            receipt = {'destinationHash': destination_hash}
+        if receipt.get('deliveredFingerprint') == fingerprint and not receipt.get('pending'):
+            return {'status': 'unchanged'}
+        if normalized_status == 'healthy' and receipt.get('deliveredStatus') not in ('failed', 'attention') and not receipt.get('pending'):
+            # Stay quiet initially. A pending timed-out alert may have reached
+            # the receiver, so a later recovery still needs a corrective event.
+            save_json(receipt_path, {'destinationHash': destination_hash, 'deliveredStatus': 'healthy', 'deliveredFingerprint': fingerprint})
+            return {'status': 'healthy_baseline'}
+        pending = receipt.get('pending', {})
+        event_id = pending.get('eventId') if pending.get('fingerprint') == fingerprint else str(uuid.uuid4())
+        receipt['pending'] = {'fingerprint': fingerprint, 'eventId': event_id}
+        save_json(receipt_path, receipt)
+        transport(url, payload, event_id, timeout)
+        save_json(receipt_path, {'destinationHash': destination_hash, 'deliveredStatus': normalized_status,
+                                 'deliveredFingerprint': fingerprint, 'deliveredAt': utc_now()})
+        return {'status': 'delivered', 'event': payload['event']}
+    except Exception:
+        # Provider exception text can contain the URL/token. Never persist it.
+        return {'status': 'failed', 'problemCode': 'NOTIFICATION_DELIVERY_FAILED'}
+
+
+def retention_plan(destination, keep_days, keep_at_least, now=None):
+    """List candidates only. Ledger archives and unrecognized entries are held."""
+    if isinstance(keep_days, bool) or not isinstance(keep_days, int) or keep_days < 1 or isinstance(keep_at_least, bool) or not isinstance(keep_at_least, int) or keep_at_least < 2:
+        raise ValueError('Choose at least one retention day and at least two retained snapshots')
+    destination = private_path(destination, directory=True)
+    current = time.time() if now is None else now
+    snapshots, held = [], []
+    pattern = re.compile(r'^snapshot-(\d{4}-\d{2}-\d{2}T\d{2}-\d{2}-\d{2}-\d{3}Z)-[A-Za-z0-9]+\.tar\.gz\.gpg$')
+    for path in sorted(destination.iterdir()):
+        match = pattern.fullmatch(path.name)
+        if not match or path.is_symlink() or not path.is_file():
+            held.append({'name': path.name, 'reason': 'ledger_or_unrecognized_entry'})
+            continue
+        try:
+            created = datetime.strptime(match[1], '%Y-%m-%dT%H-%M-%S-%fZ').replace(tzinfo=timezone.utc).timestamp()
+        except ValueError:
+            held.append({'name': path.name, 'reason': 'invalid_snapshot_timestamp'})
+            continue
+        snapshots.append({'name': path.name, 'createdAt': created, 'bytes': path.stat().st_size})
+    snapshots.sort(key=lambda item: (item['createdAt'], item['name']), reverse=True)
+    candidates = []
+    for index, item in enumerate(snapshots):
+        if index >= keep_at_least and item['createdAt'] < current - keep_days * 86400:
+            candidates.append(item)
+        else:
+            held.append({'name': item['name'], 'reason': 'newest_minimum_or_within_retention_window'})
+    return {'schema': 1, 'mode': 'plan_only', 'filesDeleted': 0, 'policy': {'keepDays': keep_days, 'keepAtLeast': keep_at_least},
+            'candidateBytes': sum(item['bytes'] for item in candidates), 'candidates': candidates, 'held': held,
+            'requiresBeforeDeletion': ['Explicit owner retention approval', 'Verified independent recovery copy', 'Latest independently retained deletion ledger', 'Any preservation requirement review']}
+
+
+def run(config, check_only=False):
     os.umask(0o077)
     state = private_path(config['stateDirectory'], directory=True)
-    destination = private_path(config['destination'], directory=True)
-    private_path(config['keyFile'])
-    if Path(config['keyFile']).resolve().is_relative_to(destination.resolve()):
-        raise ValueError('Recovery key must be separate from the backup destination')
     with open(state / 'run.lock', 'a') as lock:
         try:
             fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
         except BlockingIOError:
             return {'status': 'already_running'}
-        # A killed rehearsal may leave its private plaintext working directory.
-        # Only this tool's restricted, named temporary trees are eligible here.
-        for leftover in state.glob('restore-*'):
-            if re.fullmatch(r'restore-[a-z0-9_]{8}', leftover.name):
-                private_path(leftover, directory=True)
-                shutil.rmtree(leftover)
-        status = {'schema': 1, 'checkedAt': utc_now(), 'status': 'failed', 'problems': [], 'notificationDelivery': 'local receipts only'}
+        status = {'schema': 1, 'checkedAt': utc_now(), 'status': 'failed', 'problems': [], 'problemCodes': [],
+                  'mode': 'inspection_only' if check_only else 'encrypted_recovery', 'productionChanged': False}
+        phase = 'CONFIGURATION_INVALID'
         try:
             try:
                 with urllib.request.urlopen('https://vergecommon.com/healthz', timeout=20) as response:
@@ -236,45 +406,80 @@ def run(config):
                     if health.get('status') != 'ok' or health.get('service') != 'vergecommon':
                         raise ValueError('Public health check failed')
             except Exception:
-                status['problems'].append('Public HTTPS health check failed')
+                add_problem(status, 'PUBLIC_HEALTH_FAILED')
+            phase = 'REMOTE_INSPECTION_FAILED'
             remote = remote_inspect(config)
             status['remote'] = remote
-            if not remote['containerHealthy']:
-                status['problems'].append('App container health is not healthy')
-            if remote['disk']['used'] / remote['disk']['total'] >= 0.85:
-                status['problems'].append('Server disk is at least 85% full')
-            if not freshness(remote['snapshot']['createdAt'], config.get('maximumBackupAgeHours', 30)):
-                status['problems'].append('Server backup is older than the 30-hour recovery target')
-            if not remote['erasureLedger']['available']:
-                raise ValueError('Live erasure ledger must be deployed before recovery can be qualified')
-            if shutil.disk_usage(destination).free < config.get('minimumLocalFreeBytes', 5_000_000_000):
-                raise ValueError('Mac has insufficient free space for recovery rehearsal')
-            snapshot = destination / ('snapshot-' + remote['snapshot']['name'] + '.tar.gz.gpg')
-            ledger = destination / ('ledger-' + remote['erasureLedger']['sha256'] + '.tar.gz.gpg')
-            for mode, path, name in [('snapshot', snapshot, remote['snapshot']['name']), ('ledger', ledger, None)]:
-                if not path.exists():
-                    pull_archive(config, mode, name, path)
-                private_path(path)
-            recovery = rehearse(config, snapshot, ledger, remote['erasureLedger']['sha256'])
-            # A changing live ledger invalidates this check; retry on the next run.
-            after = remote_inspect(config)
-            if after['erasureLedger'] != remote['erasureLedger']:
-                raise ValueError('Erasure ledger changed during verification; rerun required')
-            status.update({'status': 'healthy' if not status['problems'] else 'attention', 'archive': str(snapshot), 'archiveSha256': digest_file(snapshot), 'latestLedgerArchive': str(ledger), 'ledgerArchiveSha256': digest_file(ledger), 'recovery': recovery, 'completedAt': utc_now()})
-            save_json(state / 'last-success.json', status)
-        except Exception as error:
-            # Only our bounded operational messages enter the receipt.
-            status['problems'].append(str(error) if isinstance(error, ValueError) else type(error).__name__)
-        save_json(state / 'status.json', status)
+            phase = 'CONFIGURATION_INVALID'
+            for code in remote_problem_codes(remote, config):
+                add_problem(status, code)
+            if check_only:
+                status.update({'status': 'healthy' if not status['problems'] else 'attention', 'completedAt': utc_now(), 'archiveTransferPerformed': False})
+            else:
+                destination = private_path(config['destination'], directory=True)
+                private_path(config['keyFile'])
+                if Path(config['keyFile']).resolve().is_relative_to(destination.resolve()):
+                    raise ValueError('Recovery key must be separate from the backup destination')
+                # Cleanup is limited to this tool's private rehearsal directories.
+                for leftover in state.glob('restore-*'):
+                    if re.fullmatch(r'restore-[a-z0-9_]{8}', leftover.name):
+                        private_path(leftover, directory=True)
+                        shutil.rmtree(leftover)
+                phase = 'BACKUP_MISSING'
+                if not remote['snapshot'].get('createdAt'):
+                    raise ValueError('No completed backup')
+                phase = 'ERASURE_LEDGER_UNAVAILABLE'
+                if not remote['erasureLedger']['available']:
+                    raise ValueError('Incomplete deletion ledger')
+                phase = 'LOCAL_SPACE_LOW'
+                if shutil.disk_usage(destination).free < config.get('minimumLocalFreeBytes', 5_000_000_000):
+                    raise ValueError('Insufficient local space')
+                snapshot = destination / ('snapshot-' + remote['snapshot']['name'] + '.tar.gz.gpg')
+                ledger = destination / ('ledger-' + remote['erasureLedger']['sha256'] + '.tar.gz.gpg')
+                phase = 'ARCHIVE_TRANSFER_FAILED'
+                for mode, path, name in [('snapshot', snapshot, remote['snapshot']['name']), ('ledger', ledger, None)]:
+                    if not path.exists():
+                        pull_archive(config, mode, name, path)
+                    private_path(path)
+                phase = 'RECOVERY_REHEARSAL_FAILED'
+                recovery = rehearse(config, snapshot, ledger, remote['erasureLedger']['sha256'])
+                phase = 'REMOTE_INSPECTION_FAILED'
+                after = remote_inspect(config)
+                phase = 'LEDGER_CHANGED'
+                if after['erasureLedger'] != remote['erasureLedger']:
+                    raise ValueError('Deletion ledger changed')
+                status.update({'status': 'healthy' if not status['problems'] else 'attention', 'archive': str(snapshot), 'archiveSha256': digest_file(snapshot),
+                               'latestLedgerArchive': str(ledger), 'ledgerArchiveSha256': digest_file(ledger), 'recovery': recovery, 'completedAt': utc_now()})
+                save_json(state / 'last-success.json', status)
+        except Exception:
+            add_problem(status, phase)
+        status['notificationDelivery'] = deliver_notification(config, status, state)
+        if status['notificationDelivery']['status'] == 'failed':
+            add_problem(status, 'NOTIFICATION_DELIVERY_FAILED')
+            if status['status'] == 'healthy':
+                status['status'] = 'attention'
+        save_json(state / ('inspection-status.json' if check_only else 'status.json'), status)
         return status
 
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--config', required=True)
-    parser.add_argument('--status', action='store_true', help='Read status and detect a stopped/sleeping scheduler without networking')
+    mode = parser.add_mutually_exclusive_group()
+    mode.add_argument('--status', action='store_true', help='Read recovery status without networking')
+    mode.add_argument('--check-only', action='store_true', help='Read health and aggregate counts without copying backups or reading the recovery key')
+    mode.add_argument('--retention-plan', action='store_true', help='Preview local encrypted snapshot candidates; never deletes files or contacts the server')
+    parser.add_argument('--keep-days', type=int)
+    parser.add_argument('--keep-at-least', type=int)
     args = parser.parse_args()
     config = json.loads(private_path(args.config).read_text())
+    if args.retention_plan:
+        if args.keep_days is None or args.keep_at_least is None:
+            parser.error('--retention-plan requires --keep-days and --keep-at-least')
+        print(json.dumps(retention_plan(config['destination'], args.keep_days, args.keep_at_least), indent=2))
+        return 0
+    if args.keep_days is not None or args.keep_at_least is not None:
+        parser.error('Retention settings require --retention-plan')
     if args.status:
         status_path = Path(config['stateDirectory']) / 'status.json'
         status = json.loads(status_path.read_text()) if status_path.exists() else {'status': 'missing', 'problems': ['No operational check has completed']}
@@ -282,7 +487,7 @@ def main():
             status['status'] = 'stale'
             status.setdefault('problems', []).append('Mac operational check is older than two hours; it may be asleep, offline or stopped')
     else:
-        status = run(config)
+        status = run(config, check_only=args.check_only)
     print(json.dumps(status, indent=2))
     return 0 if status['status'] in ('healthy', 'already_running') else 1
 

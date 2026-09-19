@@ -1,17 +1,17 @@
 # Roadmap
 
-## Built through 0.7.0
+## Implemented foundation and current candidate
 
 - Public conservation discovery and self-reported organization profiles; private co-ops and expiring invitations.
 - Guided setup, country/currency settings, land-unit conversion, and local trial launcher.
 - Community events, capacity-aware RSVPs, calendar downloads, discussions, reports, and steward moderation.
 - Private parcels, consent references, agreement/evidence review, and pooling-assessment snapshots.
 - Reviewed GeoJSON boundary versions, live satellite-scene discovery with consent, source receipts, and field observations.
-- Local mapping candidate: optional MapLibre/OpenFreeMap basemap, boundary drawing and corner editing, undo/redo, bounded GeoJSON imports/exports, and reuse of historical geometry through the existing review workflow.
+- Boundary mapping: optional MapLibre/OpenFreeMap basemap, boundary drawing and corner editing, undo/redo, bounded GeoJSON imports/exports, and reuse of historical geometry through the existing review workflow.
 - Charter proposals and member voting, exact allocations, and independently reviewed external credit/payment records.
 - Audit history, scoped exports, membership removal, and archival.
 
-These capabilities are technically implemented. No real partner adoption or verified environmental impact is claimed.
+The [19 September launch candidate](docs/LAUNCH_BUILD_2026-09-19.md) additionally implements same-tab invitation continuity, safe upload discard/expiry/retry, current setup indicators, an independent operator report queue with private receipts, event editing/calendar revisions, pending-work notices, a private steward parcel overview, public directory search with stable pagination, and native calendar-date/reporting/search improvements. Candidate implementation is not a deployment or Apple distribution receipt. No real partner adoption or verified environmental impact is claimed.
 
 ## 1. Prove one complete local participation loop
 
@@ -23,7 +23,8 @@ Recruit one consenting organizer and a small real group. Use two stewards, creat
 
 - Independent authentication/authorization review and multi-person browser/accessibility testing.
 - Backup and restoration rehearsal covering database records and private files.
-- Retention/deletion requests, incident response, moderation escalation beyond a co-op, and production anti-abuse/rate limits.
+- Exercise implemented account erasure, incident procedures, operator-level report escalation and rate limits with the responsible humans. Establish retention periods, coverage and response expectations.
+- Resolve the paused offhost-transfer authorization and independently secured recovery-key custody; test notification delivery without treating source tooling as active monitoring.
 - Verify public account sign-in and obtain explicit approval for the hosted website's public audience.
 
 **Exit evidence:** reviewed access boundaries, a successful restore, accountable operators, and an approved launch audience. The current bounded JSON store is a pilot architecture, not a proven global-scale service.
@@ -32,7 +33,7 @@ Recruit one consenting organizer and a small real group. Use two stewards, creat
 
 - Extract all interface text into translation catalogs; recruit native-language reviewers and test right-to-left layouts.
 - Low-bandwidth mobile design and accessibility testing with real participants.
-- Search across all organizations/co-ops, stable pagination, opt-in location filtering, and independently verified organization claims.
+- Expand implemented public co-op text search and stable pagination as pilot use requires; add opt-in geographic filtering and independently verified organization claims. Nonprofit-controlled enrollment/acceptance and affiliation verification remain to build.
 - Replace the bounded co-op JSON aggregate with scalable storage while preserving audit and transaction rules.
 - Document regional hosting/data-residency options and provide a production deployment installer with trusted identity configuration.
 
@@ -52,4 +53,4 @@ Registry provenance and cross-co-op serial reconciliation; authenticated settlem
 
 ## Next monitoring increment
 
-A separately runnable paired-NDVI worker and import/review workflow are now implemented. An experimental operator-run CDSE download adapter now retrieves selected bands and prepares local crops. Next: validate authenticated retrieval with an authorized operator, then repeatable orchestration, stronger provenance, statistical uncertainty, and field-validation links. The website itself still discovers catalogue metadata and imports worker results; it does not run imagery jobs. Select the first real monitored parcel and methodology before presenting ecological or carbon conclusions. Add area/overlap validation, complex polygons, and antimeridian support before broader geospatial intake.
+A separately runnable paired-NDVI worker and import/review workflow are now implemented. An experimental operator-run CDSE download adapter now retrieves selected bands and prepares local crops. Next: validate authenticated retrieval with an authorized operator, then repeatable orchestration, stronger provenance, statistical uncertainty, and field-validation links. The website itself still discovers catalogue metadata and imports worker results; it does not run imagery jobs. Select the first real monitored parcel and methodology before presenting ecological or carbon conclusions. The supported single-ring dataset already has geodesic area and within-co-op overlap checks. Complex polygons, antimeridian support and authoritative cross-installation/cadastral checks remain before broader geospatial intake.

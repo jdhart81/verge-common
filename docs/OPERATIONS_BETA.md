@@ -1,6 +1,6 @@
 # Beta recovery and monitoring
 
-The dedicated VergeCommon server remains a single-server deployment. This runbook adds an encrypted copy on the owner's existing Mac and local monitoring receipts. It does not add a paid service, contact another person, send alerts or provide high availability.
+The dedicated VergeCommon server remains a single-server deployment. The repository includes encrypted backup/recovery tooling, aggregate health checks and optional redacted webhook delivery. **Recurring encrypted backup transfer remains paused; no webhook destination is configured or active.** This update changes source code and isolated tests, not the installed Mac scheduler, recovery key, production data or external accounts.
 
 ## Verified starting point
 
@@ -8,7 +8,7 @@ Read-only inspection on 19 September 2026 found the dedicated `codex-keen-forge-
 
 ## Encrypted recurring pull
 
-`self-hosted/operations.py` runs hourly through a user LaunchAgent. It uses the existing SSH alias and requires the previously verified host key. The remote helper is sent over SSH and reads only the completed backup directories, live erasure ledger, container health and disk totals. It installs no remote agent and does not modify production data.
+`self-hosted/operations.py` can run hourly through a user LaunchAgent; the existing installed agent is currently unloaded pending the production-transfer authorization described below. It uses the existing SSH alias and requires the previously verified host key. The remote helper is sent over SSH and reads only completed backup directories, the live erasure ledger, container health, file-size totals and database aggregate counts. Operator-report bodies, member identities and private evidence contents never enter the inspection response. It installs no remote agent and does not modify production data.
 
 New archives use the already installed GnuPG with AES-256 symmetric encryption and a machine-generated 384-bit random recovery secret. The secret is read from its restricted file by GnuPG, never written into a command, log, repository or production server. See the official [GnuPG passphrase/input options](https://www.gnupg.org/documentation/manuals/gnupg/GPG-Input-and-Output.html) and [encryption options](https://www.gnupg.org/documentation/manuals/gnupg/GPG-Esoteric-Options.html). Real tests verify round-trip decryption and rejection of corrupted ciphertext or a wrong key.
 
@@ -41,7 +41,54 @@ Each check records canonical HTTPS gateway health, Docker application health, se
 
 The check requires a completed server backup no older than **30 hours**, warns at **85% server disk usage**, and requires **5 GB local free space** for a rehearsal. The local `--status` command changes the result to stale when the last operational check is more than **two hours** old. These are explicit monitoring targets, not an availability promise. A healthy `/healthz` only proves the gateway is reachable; authenticated acceptance and data mutation checks are separate release work.
 
-The scheduler runs only while this Mac is available in the user's login session. Sleep, logout, loss of Internet, unavailable SSH credentials, denied macOS filesystem access or a removed runtime can delay it. It does not wake the Mac. Local receipts alone cannot alert someone while the Mac is asleep or offline. A staffed response process and externally delivered notifications remain owner decisions; no message delivery is configured by this work.
+The scheduler runs only while this Mac is available in the user's login session. Sleep, logout, loss of Internet, unavailable SSH credentials, denied macOS filesystem access or a removed runtime can delay it. It does not wake the Mac. Local receipts alone cannot alert someone while the Mac is asleep or offline. A staffed response process and a verified notification destination remain owner decisions. Optional webhook delivery is implemented below but disabled; no external message is sent by this source update. An always-on independent monitor is still needed to notice a sleeping or disconnected Mac.
+
+## Aggregate inspection without backup transfer
+
+The new read-only mode checks the canonical public health endpoint and obtains remote operational metadata. It does not read the recovery key, copy a snapshot or deletion ledger, run a restore, or overwrite the last recovery receipt. Its separate result is `inspection-status.json` in the private state directory. This does not qualify offsite recovery.
+
+```sh
+python3 self-hosted/operations.py --config /private/operator/config.json --check-only
+```
+
+The remote helper opens SQLite in read-only/query-only mode with a bounded aggregate-query deadline. It reports co-op and asset counts, the largest member/file counts, database/WAL byte sizes, evidence/backup byte totals, pending file cleanup counts, open operator-report count and oldest open report age. Filesystem inventory does not read file contents or follow symbolic links; incomplete inventory becomes an unavailable condition, not a false zero.
+
+Default configurable warning thresholds are:
+
+| Configuration key inside `thresholds` | Default |
+| --- | --- |
+| `diskUsedFraction` | 0.85 |
+| `databaseBytes` | 1,000,000,000 bytes, including WAL |
+| `evidenceBytes` | 5,000,000,000 bytes |
+| `backupBytes` | 10,000,000,000 bytes |
+| `workspaceFiles` | 180 of the 200-file pilot limit |
+| `workspaceMembers` | 450 of the 500-member-record limit |
+| `openSafetyReports` | 50 open reports |
+| `safetyReportAgeHours` | 24 hours for the oldest open report |
+
+These are initial attention thresholds, not tested capacity guarantees or moderation response promises. A nonempty private-file cleanup queue also requires attention. Review real usage before changing the values.
+
+## Optional failure and recovery delivery — disabled
+
+After the owner approves a destination, an operator can add a private `notifications` object to the source-compatible config. It remains disabled when the object is absent or `enabled` is not exactly `true`:
+
+```json
+{
+  "notifications": {
+    "enabled": false,
+    "webhookUrl": "https://approved-operator-endpoint.example/your-webhook",
+    "timeoutSeconds": 10
+  }
+}
+```
+
+The destination must use HTTPS, with no user-info credentials, fragment or whitespace. Normal TLS verification remains enabled. Delivery refuses redirects and accepts only a 2xx status within a configured 1–30 second timeout. Keep a webhook token embedded in the URL within the existing mode-0600 config; the URL and provider error text are never copied into notification receipts.
+
+The payload contains only `schema`, the fixed service name `vergecommon`, `event` (`failure` or `recovery`), a bounded operational `status` and allowlisted `problemCodes`. It excludes report contents, account identifiers, email addresses, coordinates, evidence, archive paths, hashes, configuration and credentials. Example failure codes include `BACKUP_STALE`, `SAFETY_REPORT_OVERDUE` and `DISK_HIGH`.
+
+The first healthy observation establishes a quiet baseline. Changed failure conditions produce one event; unchanged successfully delivered conditions stay quiet. A healthy observation after a delivered or attempted failure produces one recovery event, since a timed-out request may already have reached the receiver. Failed delivery retains a private pending event identity for retry on the next run. The receiver should honor the `Idempotency-Key` header because a timeout after acceptance can otherwise duplicate a delivery. A new incident after recovery receives a new identity.
+
+Both full recovery checks and `--check-only` support these optional notifications. `--status` and `--retention-plan` never send them. The isolated tests use mocked transports only; a real destination, responder ownership and a confirmed failure/recovery delivery rehearsal are still required before calling alerting active. The current Mac scheduler remains paused. To monitor while the Mac is unavailable, later place read-only checking on an approved always-on independent host without copying the recovery key or enabling a new backup transfer implicitly.
 
 ## Install, inspect and stop
 
@@ -74,11 +121,20 @@ The plist remains available for a later `launchctl bootstrap` or installer rerun
 
 The implementation does not silently delete historical Mac archives or the only recovery copy. The earlier plaintext archives remain unchanged; new archive encryption does not retroactively protect them. Choose their disposition explicitly, together with retention for server and encrypted offhost copies and any valid preservation requirement.
 
+A read-only retention preview is available for the local encrypted archive directory. It requires an explicit hypothetical policy, always preserves at least two newest snapshots, and holds every ledger archive, symbolic link and unrecognized entry. This example only previews 30 days plus seven newest snapshots; it does not adopt that policy:
+
+```sh
+python3 self-hosted/operations.py --config /private/operator/config.json \
+  --retention-plan --keep-days 30 --keep-at-least 7
+```
+
+The report lists potential reclaimable bytes and candidates. **There is no apply or delete mode.** Candidate recognition uses names and timestamps, not proof of successful decryption or independent recovery. Before any separately authorized deletion, verify an independent recoverable copy, latest independently retained committed deletion ledger, the chosen retention policy and any preservation requirements. Server backup deletion is also outside this preview.
+
 Before relying on this arrangement, the owner must keep a second independently secured copy of the recovery secret in an approved password manager or offline custody location and rehearse access to it. The key and current archives reside on the same Mac in separate directories; losing both the droplet and this Mac would defeat recovery without that independent copy. No second key copy has been transmitted or invented. FileVault/device access policy, responder coverage and any future always-on offsite destination remain owner decisions.
 
 ## Tests and installation receipt
 
-The isolated operations suite checks actual GnuPG encryption/decryption, corruption and wrong-key rejection; path traversal, links, duplicate writes and extraction limits; key permissions; committed-versus-pending ledgers; freshness thresholds; and reversible installer configuration without loading a real scheduler. It runs through `tests/operations.test.mjs` in the normal JavaScript suite and requires Python 3 and GnuPG in the test environment.
+The 15-case isolated operations suite additionally checks redacted notification transitions, timeout/status handling, delivery retry identity, disabled-by-default behavior, aggregate-only read queries, capacity/backlog thresholds, transfer-free inspection and retention previews. It also checks actual GnuPG encryption/decryption, corruption and wrong-key rejection; path traversal, links, duplicate writes and extraction limits; key permissions; committed-versus-pending ledgers; freshness thresholds; and reversible installer configuration without loading a real scheduler. It runs through `tests/operations.test.mjs` in the normal JavaScript suite and requires Python 3 and GnuPG in the test environment.
 
 The LaunchAgent was installed and loaded on 19 September 2026. Its first launch at 18:40 UTC completed with exit code 1 and an explicit missing-live-ledger condition, as expected before the erasure-enabled release was deployed. That result is not a completed offsite recovery point.
 

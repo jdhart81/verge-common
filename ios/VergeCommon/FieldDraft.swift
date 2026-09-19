@@ -7,16 +7,34 @@ struct FieldDraft: Codable, Identifiable, Equatable {
     var method: String
     var finding: String
     var reference: String = ""
+    // New notes retain their observation calendar even if the device later travels.
+    // A missing value identifies old drafts, whose original UTC submission is preserved.
+    var timeZone: String? = TimeZone.current.identifier
+
+    var observationTimeZone: TimeZone { timeZone.flatMap(TimeZone.init(identifier:)) ?? TimeZone(secondsFromGMT: 0)! }
+    static func dateFormatter(in timeZone: TimeZone) -> DateFormatter {
+        let formatter = DateFormatter()
+        formatter.locale = Locale(identifier: "en_US_POSIX")
+        formatter.calendar = Calendar(identifier: .gregorian)
+        formatter.timeZone = timeZone
+        formatter.dateFormat = "yyyy-MM-dd"; formatter.isLenient = false
+        return formatter
+    }
+    var observationDay: Date? {
+        let formatter = Self.dateFormatter(in: observationTimeZone)
+        guard let day = formatter.date(from: date), formatter.string(from: day) == date else { return nil }
+        return day
+    }
+    static func today(now: Date = Date(), timeZone: TimeZone = .current) -> String {
+        dateFormatter(in: timeZone).string(from: now)
+    }
 
     func validated() throws -> FieldDraft {
         func check(_ value: String, _ max: Int, required: Bool = true) throws {
             if value.utf16.count > max || (required && value.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty) { throw DraftError.invalid }
         }
         try check(place, 200); try check(method, 1000); try check(finding, 2000); try check(reference, 500, required: false)
-        let formatter = DateFormatter()
-        formatter.locale = Locale(identifier: "en_US_POSIX"); formatter.timeZone = TimeZone(secondsFromGMT: 0)
-        formatter.dateFormat = "yyyy-MM-dd"; formatter.isLenient = false
-        guard let day = formatter.date(from: date), formatter.string(from: day) == date else { throw DraftError.invalid }
+        guard timeZone == nil || TimeZone(identifier: timeZone!) != nil, observationDay != nil else { throw DraftError.invalid }
         if !reference.isEmpty {
             guard let url = URLComponents(string: reference), url.scheme == "https", let host = url.host, !host.isEmpty,
                   url.user == nil, url.password == nil else { throw DraftError.invalid }

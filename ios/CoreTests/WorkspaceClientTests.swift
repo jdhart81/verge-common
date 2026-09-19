@@ -143,7 +143,7 @@ final class WorkspaceClientTests: XCTestCase {
     }
     func testFieldDraftRequiresReviewedBoundaryAndExplicitParcelMapping() throws {
         let state = try workspace()
-        let draft = FieldDraft(place: "North pond", date: "2026-01-12", method: "Transect", finding: "Eight seedlings", reference: "https://example.org/note")
+        let draft = FieldDraft(place: "North pond", date: "2026-01-12", method: "Transect", finding: "Eight seedlings", reference: "https://example.org/note", timeZone: nil)
         let command = try WorkspaceCommand.observation(draft, workspace: state, parcel: state.state.parcels[0])
         let retry = try WorkspaceCommand.observation(draft, workspace: state, parcel: state.state.parcels[0])
         XCTAssertEqual(command.requestId, retry.requestId)
@@ -159,5 +159,32 @@ final class WorkspaceClientTests: XCTestCase {
         XCTAssertThrowsError(try WorkspaceCommand.observation(draft, workspace: state, parcel: unreviewed))
         var future = draft; future.date = "2099-01-01"
         XCTAssertThrowsError(try WorkspaceCommand.observation(future, workspace: state, parcel: state.state.parcels[0]))
+    }
+    func testObservationCalendarDateAcceptsTodayEastOfUTCAndRetainsItsZoneAcrossRetry() throws {
+        let state = try workspace(), parcel = state.state.parcels[0]
+        // Tokyo is already on 20 September while UTC is still on 19 September.
+        let now = ISO8601DateFormatter().date(from: "2026-09-19T16:00:00Z")!
+        let draft = FieldDraft(place: "River", date: "2026-09-20", method: "Walk", finding: "Willow growth", timeZone: "Asia/Tokyo")
+        let command = try WorkspaceCommand.observation(draft, workspace: state, parcel: parcel, now: now)
+        XCTAssertEqual(command.payload["observedAt"], .number(1_789_830_000_000))
+        XCTAssertEqual(command.payload["observedDate"], .text("2026-09-20"))
+        XCTAssertEqual(command.payload["observedTimeZone"], .text("Asia/Tokyo"))
+        let restored = try JSONDecoder().decode(FieldDraft.self, from: JSONEncoder().encode(draft))
+        XCTAssertEqual(try WorkspaceCommand.observation(restored, workspace: state, parcel: parcel, now: now).requestId, command.requestId)
+        var future = draft; future.date = "2026-09-21"
+        XCTAssertThrowsError(try WorkspaceCommand.observation(future, workspace: state, parcel: parcel, now: now))
+    }
+    func testLegacyDraftPreservesUTCInstantAndOriginalRetryIdentity() throws {
+        let state = try workspace(), parcel = state.state.parcels[0]
+        let draft = FieldDraft(place: "North pond", date: "2026-01-12", method: "Transect", finding: "Eight seedlings", timeZone: nil)
+        var object = try XCTUnwrap(JSONSerialization.jsonObject(with: JSONEncoder().encode(draft)) as? [String: Any])
+        object.removeValue(forKey: "timeZone")
+        let decoded = try JSONDecoder().decode(FieldDraft.self, from: JSONSerialization.data(withJSONObject: object))
+        XCTAssertNil(decoded.timeZone)
+        let old = try WorkspaceCommand.observation(draft, workspace: state, parcel: parcel)
+        let recovered = try WorkspaceCommand.observation(decoded, workspace: state, parcel: parcel)
+        XCTAssertEqual(recovered.requestId, old.requestId)
+        XCTAssertEqual(recovered.payload["observedAt"], .number(1_768_176_000_000))
+        XCTAssertNil(recovered.payload["observedDate"])
     }
 }

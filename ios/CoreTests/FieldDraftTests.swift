@@ -11,4 +11,19 @@ final class FieldDraftTests: XCTestCase {
     func testExportSchema() throws { let object = try JSONSerialization.jsonObject(with: FieldExport(example()).data()) as! [String: Any]; XCTAssertEqual(object["format"] as? String, "verge-field-draft"); XCTAssertEqual(object["version"] as? Int, 1) }
     func testUTF16LimitMatchesWebsite() { var d = example(); d.place = String(repeating: "🌱", count: 101); XCTAssertThrowsError(try d.validated()) }
     func testCorruptionRejected() { XCTAssertThrowsError(try JournalFile.read(Data("broken".utf8))) }
+    func testCalendarZoneAndDaylightSavingRoundTrip() throws {
+        var draft = example(); draft.timeZone = "America/New_York"; draft.date = "2026-03-08"
+        XCTAssertEqual(try draft.validated().observationDay, ISO8601DateFormatter().date(from: "2026-03-08T05:00:00Z"))
+        draft.date = "2026-03-09"
+        XCTAssertEqual(try draft.validated().observationDay, ISO8601DateFormatter().date(from: "2026-03-09T04:00:00Z"))
+        draft.timeZone = "Pacific/Apia"; draft.date = "2011-12-30"
+        XCTAssertThrowsError(try draft.validated(), "A calendar date skipped by a time-zone change is not a valid local day")
+        draft = example(); draft.timeZone = "Made/Up"
+        XCTAssertThrowsError(try draft.validated())
+    }
+    func testTodayUsesGregorianCalendarInTheChosenZone() {
+        let instant = ISO8601DateFormatter().date(from: "2026-09-19T16:00:00Z")!
+        XCTAssertEqual(FieldDraft.today(now: instant, timeZone: TimeZone(identifier: "Asia/Tokyo")!), "2026-09-20")
+        XCTAssertEqual(FieldDraft.today(now: instant, timeZone: TimeZone(identifier: "America/Los_Angeles")!), "2026-09-19")
+    }
 }

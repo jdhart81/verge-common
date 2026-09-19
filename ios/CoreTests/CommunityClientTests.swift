@@ -37,8 +37,35 @@ final class CommunityClientTests: XCTestCase {
         XCTAssertEqual(page.coops.count,1)
         let request = try XCTUnwrap(CommunityStub.requestSeen)
         XCTAssertEqual(request.url?.host, CommunityService.origin.host)
-        XCTAssertEqual(request.url?.path,"/api/network"); XCTAssertEqual(request.url?.query,"limit=5")
+        XCTAssertEqual(request.url?.path,"/api/network"); XCTAssertEqual(request.url?.query,"limit=20")
         XCTAssertNil(request.value(forHTTPHeaderField:"Authorization")); XCTAssertNil(request.value(forHTTPHeaderField:"Cookie"))
+    }
+    func testSearchAndTieCursorStayInEncodedQueryWithoutCredentials() async throws {
+        CommunityStub.data = try fixture()
+        let configuration = URLSessionConfiguration.ephemeral; configuration.protocolClasses = [CommunityStub.self]
+        _ = try await CommunityClient().recent(query: "  river & meadow  ", before: 20, beforeId: "coop-b", configuration: configuration)
+        let request = try XCTUnwrap(CommunityStub.requestSeen)
+        let query = try XCTUnwrap(URLComponents(url: request.url!, resolvingAgainstBaseURL: false)?.queryItems)
+        XCTAssertEqual(query, [URLQueryItem(name: "limit", value: "20"), URLQueryItem(name: "q", value: "river & meadow"), URLQueryItem(name: "before", value: "20"), URLQueryItem(name: "beforeId", value: "coop-b")])
+        XCTAssertNil(request.value(forHTTPHeaderField: "Authorization")); XCTAssertNil(request.value(forHTTPHeaderField: "Cookie"))
+    }
+    func testResultsDeduplicateMovingCommunitiesAndRejectStuckPagination() throws {
+        let coop = try CommunityClient.decode(fixture(), status: 200, mimeType: "application/json").coops[0]
+        var results = CommunityResults()
+        results.replace(CommunityPage(coops: [coop], next: 20, nextId: "b"))
+        try results.append(CommunityPage(coops: [coop], next: 20, nextId: "a"))
+        XCTAssertEqual(results.coops.count, 1)
+        XCTAssertThrowsError(try results.append(CommunityPage(coops: [coop], next: 20, nextId: "a")))
+        XCTAssertEqual(results.nextId, "a")
+        try results.append(CommunityPage(coops: [], next: nil, nextId: nil))
+        XCTAssertNil(results.next)
+    }
+    func testInvalidPageCursorsDoNotBecomeEmptySuccess() throws {
+        for object in ["{\"coops\":[],\"next\":20}", "{\"coops\":[],\"next\":null,\"nextId\":\"x\"}"] {
+            XCTAssertThrowsError(try CommunityClient.decode(Data(object.utf8), status: 200, mimeType: "application/json"))
+        }
+        let emptyPortion = try CommunityClient.decode(Data("{\"coops\":[],\"next\":20,\"nextId\":\"x\"}".utf8), status: 200, mimeType: "application/json")
+        XCTAssertEqual(emptyPortion.nextId, "x")
     }
     func testCoopLinksEncodeIdentifiers() {
         let url = CommunityService.coopPage("network/",id:"a&next=evil")

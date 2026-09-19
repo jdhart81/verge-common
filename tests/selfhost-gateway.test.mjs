@@ -6,6 +6,7 @@ import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { StreamableHTTPClientTransport } from '@modelcontextprotocol/sdk/client/streamableHttp.js';
 import { createAuth } from '../self-hosted/auth.mjs';
 import { createGateway } from '../self-hosted/server.mjs';
+import { invitationSignInPath } from '../lib/invitation-handoff.mjs';
 
 const origin = 'https://vergecommon.test';
 const password = 'A careful gateway password 123!';
@@ -157,6 +158,60 @@ await test('router-generated account URLs preserve the gateway destination', asy
   const account = await f.request('/account');
   assert.equal(account.status, 200);
   assert.match(await account.text(), /Welcome back/);
+});
+
+await test('router-normalized authentication aliases preserve the private join handoff and reject unsafe return destinations', async (t) => {
+  const f = await fixture(t);
+  const joinQuery = new URL(invitationSignInPath, origin).search;
+  const privateInvitation = `${aliceCoop}.${'b'.repeat(72)}`;
+  assert.equal(
+    new URL(invitationSignInPath, origin).searchParams.get('return_to'),
+    '/join/',
+  );
+  for (const alias of [
+    'signin-with-chatgpt',
+    'signout-with-chatgpt',
+    'callback',
+  ]) {
+    for (const slash of ['', '/']) {
+      const path = `/${alias}${slash}`;
+      const joined = await f.request(path + joinQuery);
+      assert.equal(joined.status, 303);
+      assert.equal(
+        joined.headers.get('location'),
+        '/account?returnTo=%2Fjoin%2F',
+      );
+      assert.ok(!joined.headers.get('location').includes(privateInvitation));
+      for (const unsafe of [
+        'https://evil.example/steal',
+        '//evil.example/steal',
+        '/account?mode=login',
+        '/auth/login',
+      ]) {
+        const denied = await f.request(
+          `${path}?return_to=${encodeURIComponent(unsafe)}`,
+        );
+        assert.equal(denied.status, 303);
+        assert.equal(
+          denied.headers.get('location'),
+          '/account?returnTo=%2Fworkspace%2F',
+        );
+      }
+    }
+  }
+  // Fragments stay browser-side and never become part of an HTTP auth query.
+  const fragment = await f.request(
+    `/signin-with-chatgpt/${joinQuery}#${privateInvitation}`,
+  );
+  assert.equal(
+    fragment.headers.get('location'),
+    '/account?returnTo=%2Fjoin%2F',
+  );
+  assert.equal(
+    f.seen.length,
+    0,
+    'Aliases are handled by the account gateway, not forwarded to the page router',
+  );
 });
 
 await test('gateway strips spoofed trusted identity/proxy headers and injects only verified session identity', async (t) => {

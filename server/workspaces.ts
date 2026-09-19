@@ -1,4 +1,5 @@
 import { getD1 } from '@/db/d1';
+import { attachmentExistsGuard } from '@/server/evidence-uploads.mjs';
 import { getChatGPTUser } from '@/app/chatgpt-auth';
 import {
   applyCommand,
@@ -114,9 +115,13 @@ export async function command(
   // low-entropy private payloads (for example a block target) from its hash.
   event.commitmentNonce = crypto.randomUUID();
   event.hash = await hash(JSON.stringify(event));
+  const attachedAsset =
+    input.op === 'submit_evidence'
+      ? ((input.payload.asset as { id?: string } | undefined)?.id ?? null)
+      : null;
   const result = await getD1()
     .prepare(
-      'UPDATE workspaces SET state_json = ?, owner_id = ?, name = ?, region = ?, summary = ?, visibility = ?, updated_at = ?, version = version + 1 WHERE id = ? AND version = ? RETURNING version',
+      `UPDATE workspaces SET state_json = ?, owner_id = ?, name = ?, region = ?, summary = ?, visibility = ?, updated_at = ?, version = version + 1 WHERE id = ? AND version = ? ${attachmentExistsGuard} RETURNING version`,
     )
     .bind(
       JSON.stringify(next),
@@ -128,6 +133,9 @@ export async function command(
       next.updatedAt,
       id,
       row.version,
+      attachedAsset,
+      attachedAsset,
+      user.id,
     )
     .first<{ version: number }>();
   if (!result)

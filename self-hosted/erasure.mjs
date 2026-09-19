@@ -113,7 +113,7 @@ export function eraseWorkspaceState(
   );
   const ownEventIds = new Set(
     rows(s, 'events')
-      .filter((r) => authored(r, userId))
+      .filter((r) => authored(r, userId) || r.updatedBy === userId)
       .map((r) => r.id),
   );
   const privateAsset = (r) => ownedAssetIds.has(r.asset?.id);
@@ -208,7 +208,7 @@ export function eraseWorkspaceState(
   );
   s.comments = rows(s, 'comments').filter((r) => !authored(r, userId));
   s.events = rows(s, 'events').map((e) => ({
-    ...(authored(e, userId)
+    ...(authored(e, userId) || e.updatedBy === userId
       ? {
           ...pick(e, [...common, 'startsAt', 'endsAt', 'capacity']),
           title: 'Deleted event',
@@ -218,6 +218,8 @@ export function eraseWorkspaceState(
           visibility: 'members',
           status: 'cancelled',
           hidden: true,
+          calendarSequence: (e.calendarSequence ?? 0) + 1,
+          cancelledAt: now,
         }
       : e),
     rsvps: rows(e, 'rsvps').filter((r) => r.userId !== userId),

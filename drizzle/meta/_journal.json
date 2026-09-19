@@ -8,6 +8,13 @@
       "when": 1788920135807,
       "tag": "0000_famous_nighthawk",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "6",
+      "when": 1789850000000,
+      "tag": "0001_evidence_upload_lifecycle",
+      "breakpoints": true
     }
   ]
 }

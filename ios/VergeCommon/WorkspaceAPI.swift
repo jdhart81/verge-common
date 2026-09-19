@@ -126,6 +126,8 @@ struct MemberObservation: Decodable, Identifiable {
     let method: String
     let finding: String
     let status: String
+    let observedDate: String?
+    let observedTimeZone: String?
 }
 enum WorkspaceError: Error, LocalizedError {
     case unauthorized, denied, inactive(String), conflict, invalid, oversized, unavailable, rejected(String)
@@ -175,14 +177,15 @@ struct WorkspaceCommand: Encodable {
         }
         return WorkspaceCommand(id: workspace.state.id, version: workspace.version, op: blocked ? "block_member" : "unblock_member", payload: ["id": .text(memberId)])
     }
-    static func observation(_ draft: FieldDraft, workspace: WorkspaceView, parcel: MemberParcel) throws -> WorkspaceCommand {
+    static func observation(_ draft: FieldDraft, workspace: WorkspaceView, parcel: MemberParcel, now: Date = Date()) throws -> WorkspaceCommand {
         _ = try draft.validated()
         guard parcel.acceptsObservation, workspace.state.parcels.contains(where: { $0.id == parcel.id }) else { throw WorkspaceError.rejected("Select a parcel with a reviewed current boundary.") }
-        let formatter = DateFormatter()
-        formatter.locale = Locale(identifier: "en_US_POSIX"); formatter.timeZone = TimeZone(secondsFromGMT: 0)
-        formatter.dateFormat = "yyyy-MM-dd"; formatter.isLenient = false
-        guard let date = formatter.date(from: draft.date), date <= Date() else { throw WorkspaceError.rejected("Observation dates cannot be in the future.") }
-        let payload: [String: CommandValue] = ["parcelId": .text(parcel.id), "observedAt": .number(Int64(date.timeIntervalSince1970 * 1000)), "method": .text(draft.method), "finding": .text(draft.finding), "reference": .text(draft.reference)]
+        guard let date = draft.observationDay, date <= now else { throw WorkspaceError.rejected("Observation dates cannot be in the future in this note’s time zone.") }
+        var payload: [String: CommandValue] = ["parcelId": .text(parcel.id), "observedAt": .number(Int64(date.timeIntervalSince1970 * 1000)), "method": .text(draft.method), "finding": .text(draft.finding), "reference": .text(draft.reference)]
+        if let timeZone = draft.timeZone {
+            payload["observedDate"] = .text(draft.date)
+            payload["observedTimeZone"] = .text(timeZone)
+        }
         // A repeat of this exact local note/parcel is the same request across app restarts.
         // A changed note or boundary requires a fresh explicit submission.
         let encoder = JSONEncoder(); encoder.outputFormatting = [.sortedKeys]
