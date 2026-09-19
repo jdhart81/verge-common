@@ -219,7 +219,7 @@ export default function Home({ publicPreview = false }: { publicPreview?: boolea
         <span>Open code. Cooperative conservation.</span>
         <div>
           <a href={`${repo}/blob/main/LICENSE`}>AGPL-3.0</a>
-          <a href={`${repo}/blob/main/PRIVACY.md`}>Privacy</a>
+          <a href={`${repo}/blob/build/coop-launch-readiness/PRIVACY.md`}>Privacy</a>
           <a href={repo}>GitHub ↗</a>
         </div>
       </footer>
