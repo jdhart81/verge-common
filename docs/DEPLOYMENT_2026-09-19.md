@@ -1,5 +1,7 @@
 # VergeCommon deployment receipt — September 19, 2026
 
+> This records the shared-platform launch and recovery qualification. A later mission/UI release supersedes its running image; see the [current interface deployment receipt](UI_REVIEW_2026-09-19.md#deployment-receipt). The database architecture and external launch requirements below still apply.
+
 ## Result and scope
 
 The shared cooperative web application is deployed at **https://vergecommon.com** on its dedicated DigitalOcean server. Browser accounts, membership-controlled workspaces, private evidence storage, native device tokens and authenticated agent MCP are connected to the same service and durable database. This replaces the earlier public-only website deployment.
