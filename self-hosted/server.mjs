@@ -185,6 +185,13 @@ export function createGateway({
           return json(403, {
             error: 'Use browser sign-in to manage your account.',
           });
+        // The web router adds trailing slashes to links. Account pages belong
+        // to this gateway, so normalize their GET/HEAD URLs before dispatch.
+        if (
+          ['/account/', '/account/export/'].includes(url.pathname) &&
+          ['GET', 'HEAD'].includes(req.method)
+        )
+          return redirect(url.pathname.slice(0, -1) + url.search);
         if (url.pathname === '/account/export' && req.method === 'GET') {
           if (!principal) return json(401, { error: 'Sign in first.' });
           const list = await internal(principal, '/api/workspaces');

@@ -14,6 +14,7 @@ const bobCoop = 'f9cacbc9-ae4a-4f40-9385-32e11d01b471';
 const projectId = '98329113-e8a1-49a3-8d68-50a73e425fd0';
 const cookieFor = (registration) => `vc_session=${registration.session}`;
 
+
 async function listen(server) {
   await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
   return server.address().port;
@@ -140,6 +141,21 @@ async function fixture(t) {
     });
   return { auth, db, alice, bob, seen, request, form, url };
 }
+
+await test('router-generated account URLs preserve the gateway destination', async (t) => {
+  const f = await fixture(t);
+  for (const [path, location] of [
+    ['/account/?mode=register&returnTo=%2Fworkspace%2F', '/account?mode=register&returnTo=%2Fworkspace%2F'],
+    ['/account/export/', '/account/export'],
+  ]) {
+    const response = await f.request(path);
+    assert.equal(response.status, 303);
+    assert.equal(response.headers.get('location'), location);
+  }
+  const account = await f.request('/account');
+  assert.equal(account.status, 200);
+  assert.match(await account.text(), /Welcome back/);
+});
 
 await test('gateway strips spoofed trusted identity/proxy headers and injects only verified session identity', async (t) => {
   const f = await fixture(t);
