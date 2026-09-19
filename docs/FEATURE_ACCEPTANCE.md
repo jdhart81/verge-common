@@ -1,6 +1,6 @@
 # Launch acceptance — September 19, 2026
 
-This is the earlier feature inventory. See [the current beta release receipt](BETA_RELEASE_2026-09-19.md) for newer native account/deletion controls, support, moderation and encrypted operations evidence.
+This is a historical feature inventory, not the latest candidate verdict. See [current beta readiness](BETA_READINESS_2026-09-19.md) and [last deployed build](LAUNCH_BUILD_2026-09-19.md). See [the current beta release receipt](BETA_RELEASE_2026-09-19.md) for newer native account/deletion controls, support, moderation and encrypted operations evidence.
 
 ## Target
 

@@ -273,9 +273,40 @@ export function eraseWorkspaceState(
   const jobIds = new Set(s.analysisJobs.map((j) => j.id));
   s.analysisResults = s.analysisResults.filter((r) => jobIds.has(r.jobId));
   s.evidence = rows(s, 'evidence').filter((e) => !deletedEvidenceIds.has(e.id));
-  s.partnerships = rows(s, 'partnerships').filter(
-    (p) => !authored(p, userId) && !deletedEvidenceIds.has(p.evidenceId),
-  );
+  s.partnerships = rows(s, 'partnerships')
+    .filter(
+      (p) => !authored(p, userId) && !deletedEvidenceIds.has(p.evidenceId),
+    )
+    .map((p) => ({
+      ...p,
+      participation: (p.participation ?? [])
+        .filter(
+          (invitation) =>
+            !memberIds.has(invitation.memberId) &&
+            invitation.invitedBy !== userId &&
+            invitation.respondedBy !== userId &&
+            invitation.endedBy !== userId,
+        )
+        .map((invitation) => {
+          if (
+            invitation.reviewedBy !== userId &&
+            !deletedEvidenceIds.has(invitation.authorityEvidenceId)
+          )
+            return invitation;
+          const {
+            reviewedBy: _reviewer,
+            reviewedAt: _reviewedAt,
+            reviewNote: _note,
+            authorityEvidenceId: _evidence,
+            ...clean
+          } = invitation;
+          return {
+            ...clean,
+            status:
+              invitation.status === 'reviewed' ? 'accepted' : invitation.status,
+          };
+        }),
+    }));
   s.assessments = rows(s, 'assessments').filter(
     (a) => !authored(a, userId) && !affectedLand(a),
   );

@@ -1,4 +1,10 @@
-import { integer, sqliteTable, text, index } from 'drizzle-orm/sqlite-core';
+import {
+  integer,
+  sqliteTable,
+  text,
+  index,
+  uniqueIndex,
+} from 'drizzle-orm/sqlite-core';
 export const workspaces = sqliteTable(
   'workspaces',
   {
@@ -38,4 +44,29 @@ export const assets = sqliteTable(
 export const evidenceFileDeletions = sqliteTable('evidence_file_deletions', {
   objectKey: text('object_key').primaryKey(),
   requestedAt: integer('requested_at').notNull(),
+});
+
+// Retired requests retain only a scoped hash, status and time, never file data.
+export const evidenceUploadReceipts = sqliteTable(
+  'evidence_upload_receipts',
+  {
+    requestKey: text('request_key').primaryKey(),
+    fingerprint: text('fingerprint'),
+    assetId: text('asset_id'),
+    status: text('status').notNull(),
+    createdAt: integer('created_at').notNull(),
+  },
+  (t) => [
+    uniqueIndex('evidence_upload_receipts_asset').on(t.assetId),
+    index('evidence_upload_receipts_expiry').on(t.status, t.createdAt),
+  ],
+);
+
+// Each simultaneous attempt uses its own canonical private object key. Commit
+// selects one asset and trigger-backed cleanup retires unsuccessful attempts.
+export const evidenceUploadAttempts = sqliteTable('evidence_upload_attempts', {
+  assetId: text('asset_id').primaryKey(),
+  requestKey: text('request_key').notNull(),
+  objectKey: text('object_key').notNull(),
+  createdAt: integer('created_at').notNull(),
 });

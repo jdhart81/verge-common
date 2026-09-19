@@ -68,6 +68,34 @@ Default configurable warning thresholds are:
 
 These are initial attention thresholds, not tested capacity guarantees or moderation response promises. A nonempty private-file cleanup queue also requires attention. Review real usage before changing the values.
 
+### Workspace growth and the safety reserve
+
+Each workspace retains its existing records and audit receipts. Ordinary commands may fill up to **4,500 audit entries or 650,000 UTF-8 bytes**, whichever comes first. At that point ordinary activity pauses. A finite reserve remains up to **5,000 entries and 750,000 bytes** for authorized safety work: reporting and report decisions; blocking/unblocking; hiding or removing social content; member rejection/removal and steward demotion; revoking invitations, partnerships, agreements and land/satellite consent; parcel withdrawal; ending or declining a partner invitation; event cancellation; existing RSVP withdrawal; private-only project cancellation; unchanged-profile listing withdrawal; founder transfer, leaving and archiving. These are still subject to every normal ownership, membership and review rule. Revocation never waives the underlying legal agreement.
+
+The byte measurement includes the full stored application receipt (request/state hashes, previous receipt, commitment nonce and final hash). The server checks the actual final serialized state again before its atomic update. A command that crosses a limit fails without changing the saved snapshot. Nothing silently trims history, records, evidence or earlier reports. Existing snapshots already above a new growth threshold can still use available safety reserve. Existing snapshots at or above a hard threshold require operator help; there is no automatic migration or bypass for ordinary members.
+
+Members receive only a coarse status (`normal`, `near_limit`, `safety_only` or `full`), never another member's private record counts or byte totals. `near_limit` begins at 90% of either growth threshold. The workspace banner links directly to the independent operator report form and account controls. A remaining reserve is not a promise that every action will fit: a long report or revocation reason may exhaust bytes before the audit count limit. The existing per-collection limits still apply. Archived workspaces accept authorized safety actions while keeping ordinary activity and republication blocked.
+
+When a co-op approaches the limit:
+
+1. Inspect its capacity using authorized operator access. Arrange a reviewed archival migration before the reserve fills. Agree with the stewards on the records that must remain accessible and on a recovery/rollback plan. Do not simply raise limits, trim JSON or remove audit rows in production.
+2. Until a migration is qualified, keep the bounded state available for reading and use the reserve for necessary safety changes. The co-op archive action changes its operational status; it does **not** free storage or remove history.
+3. If a workspace command is blocked, accept the concern through `/report/`. Operator intake/status and the SSH-only action journal use separate tables, so an exhausted workspace audit does not prevent intake or operator hiding/restriction. Operator decisions still have their own bounded input validation and durable audit journal. Account export/deletion use the separate account gateway and are not gated by the workspace command limits.
+4. After an operator restriction or a new safety policy is used, qualify rollback against those policies. An older image that ignores the restriction or the reserve is not a safe rollback merely because it can open the database.
+
+`tests/workspace-capacity.test.mjs` covers both thresholds, full receipt overhead, UTF-8, state preservation on rejection, conditional actions and authorization, archived safety actions, projection privacy, and separate operator reporting/moderation when a workspace audit is full.
+
+The reproducible `node scripts/workspace-capacity-benchmark.mjs` check uses local synthetic social records with full receipts and does no network or storage I/O. On 2026-09-19, Node 24.19.0 on Apple M4 Pro measured 30 samples per case after five warmups:
+
+| Snapshot bytes | Updates / audit entries | Median | p95 |
+| --- | --- | --- | --- |
+| 24,544 | 10 / 10 | 0.089 ms | 0.194 ms |
+| 299,929 | 127 / 127 | 0.930 ms | 1.182 ms |
+| 639,193 | 271 / 271 | 1.956 ms | 2.259 ms |
+| 738,145 | 313 / 313 | 2.162 ms | 2.753 ms |
+
+This measures synchronous domain validation, receipt hashing and final JSON serialization for one safety command. It is not an HTTP latency, database, concurrency, droplet or scale qualification. Real workspaces can hit the byte limit well before their audit-count limit; capacity should be assessed in both units.
+
 ## Optional failure and recovery delivery — disabled
 
 After the owner approves a destination, an operator can add a private `notifications` object to the source-compatible config. It remains disabled when the object is absent or `enabled` is not exactly `true`:

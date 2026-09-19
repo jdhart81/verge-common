@@ -7,6 +7,7 @@ import SwiftUI
     @Published var message: String?
     @Published private(set) var pendingRecovery: NativeAccountSession?
     @Published private(set) var displayName: String?
+    @Published private(set) var userID: String?
     @Published private(set) var accountDeleted = false
     private var token: String?
     private let tokenStore: DeviceTokenStore
@@ -21,6 +22,10 @@ import SwiftUI
         guard let token else { throw WorkspaceError.unauthorized }
         return WorkspaceClient(token: token)
     }
+    func evidenceClient() throws -> EvidenceClient {
+        guard let token else { throw WorkspaceError.unauthorized }
+        return EvidenceClient(token: token)
+    }
     private func begin() -> UUID? {
         guard !loading else { return nil }
         let operation = UUID(); operationID = operation; loading = true; message = nil
@@ -29,10 +34,10 @@ import SwiftUI
     private func finish(_ operation: UUID) {
         if operationID == operation { operationID = nil; loading = false }
     }
-    private func install(_ credential: String, name: String? = nil, list: [WorkspaceSummary] = []) throws {
+    private func install(_ credential: String, name: String? = nil, userID: String? = nil, list: [WorkspaceSummary] = []) throws {
         try tokenStore.save(credential)
         token = credential; sessionID = UUID(); connected = true; workspaces = list
-        displayName = name; pendingRecovery = nil; accountDeleted = false
+        displayName = name; self.userID = userID; pendingRecovery = nil; accountDeleted = false
     }
     func authenticate(_ action: NativeAccountAction, username: String, displayName: String, password: String, recoveryCode: String) async {
         guard !connected, pendingRecovery == nil, let operation = begin() else { return }
@@ -41,12 +46,12 @@ import SwiftUI
             let result = try await NativeAccountClient().authenticate(action, username: username, displayName: displayName, password: password, recoveryCode: recoveryCode)
             guard operationID == operation else { return }
             if result.recoveryCode != nil { pendingRecovery = result }
-            else { try install(result.token, name: result.user.displayName); finish(operation); await refresh() }
+            else { try install(result.token, name: result.user.displayName, userID: result.user.id); finish(operation); await refresh() }
         } catch { if operationID == operation { message = error.localizedDescription } }
     }
     func confirmRecoverySaved() {
         guard !loading, let result = pendingRecovery else { return }
-        do { try install(result.token, name: result.user.displayName); message = nil }
+        do { try install(result.token, name: result.user.displayName, userID: result.user.id); message = nil }
         catch { message = error.localizedDescription }
     }
     func connect(_ input: String) async {
@@ -54,9 +59,10 @@ import SwiftUI
         defer { finish(operation) }
         do {
             let credential = try DeviceCredential.validate(input)
+            let identity = try await EvidenceClient(token: credential).identity()
             let list = try await WorkspaceClient(token: credential).list()
             guard operationID == operation else { return }
-            try install(credential, list: list)
+            try install(credential, name: identity.displayName, userID: identity.id, list: list)
         } catch { if operationID == operation { message = error.localizedDescription } }
     }
     func refresh() async {
@@ -64,9 +70,10 @@ import SwiftUI
         let current = sessionID
         defer { finish(operation) }
         do {
+            let identity = try await evidenceClient().identity()
             let list = try await client().list()
             guard operationID == operation, current == sessionID else { return }
-            workspaces = list
+            workspaces = list; userID = identity.id; displayName = identity.displayName
         } catch {
             guard operationID == operation, current == sessionID else { return }
             workspaces = []; message = error.localizedDescription
@@ -93,7 +100,7 @@ import SwiftUI
     }
     func disconnect() {
         operationID = nil; loading = false; sessionID = UUID()
-        token = nil; connected = false; workspaces = []; message = nil; pendingRecovery = nil; displayName = nil
+        token = nil; connected = false; workspaces = []; message = nil; pendingRecovery = nil; displayName = nil; userID = nil
         do { try tokenStore.remove() }
         catch { message = "This session is disconnected, but the saved sign-in could not be removed. Unlock the device, tap Remove saved sign-in again, and revoke device access on the website. Your local journal is preserved." }
     }
@@ -111,7 +118,7 @@ struct MyCoops: View {
                     Section("Your account") {
                         Text(account.displayName.map { "Signed in as \($0)." } ?? "You’re signed in on this device.")
                         Button("Sign out") { Task { await account.signOut() } }.disabled(account.loading)
-                        Text("Sign-out revokes this device’s access and clears its saved sign-in. Your local field journal stays on this device.").font(.caption).foregroundStyle(.secondary)
+                        Text("Sign-out revokes this device’s access and clears its saved sign-in. Your local field journal and prepared evidence stay on this device.").font(.caption).foregroundStyle(.secondary)
                         DisclosureGroup("Device access") {
                             Button("Remove saved sign-in", role: .destructive) { account.disconnect() }
                             Text("Use this if you are offline. It does not revoke copies of the sign-in credential; revoke those from your website account.").font(.caption).foregroundStyle(.secondary)
@@ -121,13 +128,17 @@ struct MyCoops: View {
                 } else {
                     if account.accountDeleted {
                         Section("Account deleted") {
-                            Text("Your online account has been deleted. Your local field journal is still on this device. Delete its drafts separately in Journal tools if you want to remove them too.")
+                            Text("Your online account has been deleted. Your local field journal is still on this device. Delete its drafts separately in Journal tools if you want to remove them too. Prepared evidence is also retained privately, but the deleted account can no longer resume it. Use Evidence queue to erase all local copies if you want to remove them.")
                         }
                     }
                     NativeSignInForm()
                 }
                 if account.loading { ProgressView("Working…") }
                 if let message = account.message { Section { Text(message).foregroundStyle(.red) } }
+                Section("Prepared evidence") {
+                    NavigationLink("Evidence queue") { EvidenceQueueView() }
+                    Text("Files stay on this device until you choose Send. No background uploads.").font(.caption).foregroundStyle(.secondary)
+                }
                 if account.connected {
                     Section("Your co-ops") {
                         if account.workspaces.isEmpty && !account.loading {
@@ -169,6 +180,7 @@ struct PrivateWorkspace: View {
     @State private var message: String?
     @State private var composing = false
     @State private var submittingDraft = false
+    @State private var preparingEvidence = false
     @State private var safetyAction: MemberSafetyAction?
     @State private var operatorReporting = false
     var body: some View {
@@ -185,6 +197,8 @@ struct PrivateWorkspace: View {
                     Section("Participate") {
                         Button("Post an update to members") { composing = true }.disabled(workspace.state.projects.isEmpty)
                         Button("Submit a field journal draft") { submittingDraft = true }
+                        Button("Prepare a photo or evidence file") { preparingEvidence = true }.disabled(account.userID == nil || workspace.state.projects.isEmpty)
+                        NavigationLink("Open evidence queue") { EvidenceQueueView() }
                         Text("Submitted observations need steward review. Nothing is uploaded automatically.").font(.caption).foregroundStyle(.secondary)
                     }
                 }
@@ -248,6 +262,9 @@ struct PrivateWorkspace: View {
             .onChange(of: account.connected) { _, connected in if !connected { workspace = nil; composing = false; submittingDraft = false; safetyAction = nil } }
             .sheet(isPresented: $composing) {
                 if let workspace { MemberPostComposer(workspace: workspace) { self.workspace = $0 } }
+            }
+            .sheet(isPresented: $preparingEvidence) {
+                if let workspace, let owner = account.userID { EvidenceComposer(workspace: workspace, ownerID: owner) }
             }
             .sheet(isPresented: $submittingDraft) {
                 if let workspace { FieldSubmission(workspace: workspace) { self.workspace = $0 } }

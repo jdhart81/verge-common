@@ -6,7 +6,7 @@
 
 Organize a local conservation project, document the work, and make decisions together. From hedgerows and woodlots to larger landscapes, communities should be able to inspect, adapt, and improve the tools they depend on.
 
-**Early cooperative pilot.** The shared website is live with browser accounts, private co-ops and scoped agent access. The repository also includes the self-hosted account/storage runtime and native participation source. This is an invitation to build and test with us. Real partner adoption and verified environmental impact have not yet been demonstrated. See [feature acceptance](docs/FEATURE_ACCEPTANCE.md) for implementation evidence and remaining release requirements.
+**Early cooperative pilot.** The shared website is live with browser accounts, private co-ops and scoped agent access. The repository also includes the self-hosted account/storage runtime and native participation source. This is an invitation to build and test with us. Real partner adoption and verified environmental impact have not yet been demonstrated. See [current beta readiness](docs/BETA_READINESS_2026-09-19.md) for the next candidate, verification and remaining release requirements.
 
 ## Find your first contribution
 
@@ -23,7 +23,7 @@ Organize a local conservation project, document the work, and make decisions tog
 
 [Website](https://vergecommon.com) · [Conservation network](https://vergecommon.com/network/) · [Member workspace](https://vergecommon.com/workspace/) · [Account and device access](https://vergecommon.com/account) · [Contribute](CONTRIBUTING.md)
 
-`vergecommon.com` is the canonical service address. The shared application passed live HTTPS acceptance on September 19, 2026, using three independent synthetic accounts. The pilot source is on `build/coop-launch-readiness` while [PR #2](https://github.com/jdhart81/verge-common/pull/2) remains under review. See the [deployment receipt](docs/DEPLOYMENT_2026-09-19.md) for the exact release and operational limits before inviting participants. Co-op and project publication is opt-in; member records and private land evidence retain their server-side access rules.
+`vergecommon.com` is the canonical service address. The shared application passed live HTTPS acceptance on September 19, 2026, using three independent synthetic accounts. The pilot source is on `build/coop-launch-readiness` while [PR #2](https://github.com/jdhart81/verge-common/pull/2) remains under review. See the [latest deployed build receipt](docs/LAUNCH_BUILD_2026-09-19.md) and [next candidate readiness](docs/BETA_READINESS_2026-09-19.md) for exact revisions and operational limits before inviting participants. Co-op and project publication is opt-in; member records and private land evidence retain their server-side access rules.
 
 ## Start your own community
 
@@ -41,7 +41,7 @@ Create a personal agent token from `/account`, store it in the client's secret s
 
 - A single-server Node runtime with durable SQLite and private evidence files, an authenticated gateway, username/password accounts, recovery codes, account export/closure, and revocable device/agent tokens.
 - Boundary-derived area estimates, overlap screening, reviewed parcel-specific consent, scoped agreement coverage, stale-record detection, and withdrawal/revocation history. [Pooling safeguards](docs/POOLING_SAFEGUARDS.md).
-- iPhone/iPad source for authenticated member workspaces, member posts, and explicit field-draft submission, alongside public discovery and the protected offline journal. Apple distribution remains a separate release step.
+- iPhone/iPad source for authenticated member workspaces, member posts, explicit field-draft submission and deliberate photo/PDF/text evidence submission. A protected, account-bound queue retains exact retry requests through interrupted connections. Public discovery and the protected offline journal remain available; signing, device acceptance and Apple distribution are separate release steps.
 
 - Exportable imagery jobs and an independent NDVI screening worker, with validated result imports and human review. [Worker instructions](workers/imagery/README.md).
 
@@ -61,7 +61,9 @@ Create a personal agent token from `/account`, store it in the client's secret s
 - Opt-in co-op/project discovery, general-region search, shareable links, updates and moderation.
 - Projects, assigned conservation actions, completion records, and private parcel/consent intake.
 - Private agreement submissions with independent review and externally executed instrument references.
-- Private PDF/image/text uploads, SHA-256 file digests, evidence submissions, and independent review.
+- Private PDF/image/text uploads, SHA-256 file digests, evidence submissions and independent review; exact upload retries, cancellation, expiry and durable cleanup.
+- Partner representative invitations, acceptance, own authority evidence, independent co-op review and withdrawal. This grants no extra permissions and does not independently verify an organization.
+- Coarse capacity warnings and a finite reserve for authorized safety actions; ordinary additions pause before the hard limit.
 - Versioned allocation-charter proposals with frozen electorates, member votes, quorum, and tallies.
 - External legal authority, serialized credit holding, settlement, allocation, payment receipt, and retirement records.
 - Two-person reviews, integer-cent allocations, per-co-op quantity caps, duplicate references, and linked audit history.
@@ -136,7 +138,7 @@ The self-hosted adapter applies the existing initial SQL migration transactional
 
 Public profiles show only explicitly public project summaries/updates, general regions, and active member counts. Agreements, land references and evidence are restricted to their submitters and stewards. Members can inspect co-op governance and financial records; payout bank details are not collected. Files download as attachments. Review the [privacy policy](PRIVACY.md).
 
-The self-hosted runtime supports one application process and one local SQLite database; it is not a replicated/high-availability deployment. Daily local backups are active, staging and production restore verification passed, and an initial matching production archive was copied offhost. See the deployment receipt for the exact recovery results. A recurring encrypted offsite schedule and recovery-key custody still require operator configuration. Each co-op is an atomically versioned aggregate with a 750 KB application limit, 500 member records, and 5,000 audit events. File storage is limited to 200 files per co-op, 4 MB each. This architecture favors correctness for initial partner co-ops; a normalized event/record store is required before larger deployment. Cross-co-op or cross-installation registry claims still need the external registry's authoritative duplicate/custody checks.
+The self-hosted runtime supports one application process and one local SQLite database; it is not a replicated/high-availability deployment. Daily local backups are active, staging and production restore verification passed, and an initial matching production archive was copied offhost. See the deployment receipt for the exact recovery results. A recurring encrypted offsite schedule and recovery-key custody still require operator configuration. Each co-op is an atomically versioned aggregate with a 750 KB hard application limit, 500 member records and 5,000 audit events. In the next candidate, ordinary growth pauses at 650 KB or 4,500 audit events to reserve finite space for authorized safety actions; a private capacity banner warns members. File storage is limited to 200 files per co-op, 4 MB each. This architecture favors correctness for initial partner co-ops; a normalized event/record store is required before larger deployment. Cross-co-op or cross-installation registry claims still need the external registry's authoritative duplicate/custody checks.
 
 ## Mission and sustainability
 

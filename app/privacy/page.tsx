@@ -74,18 +74,27 @@ export default function PrivacyPage() {
           information or confidential evidence. The software cannot establish
           that you have someone else’s consent to publish.
         </p>
+        <p>
+          A partner invitation shares the organization’s name, website and
+          agreed role with the selected member. Their response, role and
+          authority reference are visible to that representative and the co-op’s
+          stewards. Private agreement files are not shared with them by the
+          invitation. Participation does not verify the organization or give the
+          representative additional permissions.
+        </p>
       </section>
       <section>
         <h2>Reports, blocking and stewardship</h2>
         <p>
           The separate operator report form stores your description, category,
-          referenced item and review status privately on the hosting server.
-          A signed-in browser report is associated with your account and removed
+          referenced item and review status privately on the hosting server. A
+          signed-in browser report is associated with your account and removed
           when that account is deleted. Reports sent without sign-in are linked
           only to a private receipt; contact the operator with that receipt for
           a privacy request. No email address is required. The receipt reveals
-          status only, not report text. Operator decisions are recorded separately
-          for accountability; reports and decisions also follow backup retention.
+          status only, not report text. Operator decisions are recorded
+          separately for accountability; reports and decisions also follow
+          backup retention.
         </p>
         <p>
           Reports are visible to the reporting member and co-op stewards. Hidden
@@ -134,7 +143,7 @@ export default function PrivacyPage() {
           Deletion revokes access and removes your authored personal content,
           private land records, associated evidence and uploaded files. The
           native app also offers account deletion. It has a separate control for
-          deleting journal drafts stored on your device.
+          deleting journal drafts and prepared evidence stored on your device.
         </p>
         <p>
           Transfer founder responsibility from the co-op’s Members area before
@@ -169,6 +178,25 @@ export default function PrivacyPage() {
               <Link href="/support/">See the current help options.</Link>
             </>
           )}
+        </p>
+      </section>
+      <section>
+        <h2>Photos and files in the iPhone app</h2>
+        <p>
+          The native beta build lets you choose a photo, PDF or text file and
+          review its destination before sharing it. Photos are resized and
+          reencoded without the source metadata. PDF and text files keep their
+          contents and metadata; check them for private details before sharing.
+          The app does not capture your camera or location automatically.
+        </p>
+        <p>
+          Prepared evidence is saved in protected storage on your device,
+          excluded from device backups, until you submit or remove it. Pending
+          attempts belong to the account that prepared them. An interrupted
+          attempt can be retried explicitly without creating another upload.
+          Signing out or deleting your account does not erase local drafts; use
+          the app’s separate local removal controls. Removing a local copy does
+          not withdraw evidence already received by a co-op.
         </p>
       </section>
     </InformationPage>

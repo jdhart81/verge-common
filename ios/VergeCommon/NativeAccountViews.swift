@@ -97,7 +97,7 @@ struct DeleteAccountForm: View {
                     Link("Privacy and deletion policy", destination: CommunityService.page("privacy/"))
                 }
                 Section("Your local journal is separate") {
-                    Text("Your drafts on this device and any exported copies are kept. After deleting your account, you can remove local drafts in Journal tools. Exports and device backups must be managed separately.")
+                    Text("Your journal drafts and exported copies are kept. Prepared evidence is tied to this account and cannot be resumed by a different one. You can erase all local prepared copies from Evidence queue even after account deletion. After deleting your account, you can remove local journal drafts in Journal tools. Exports and device backups must be managed separately.")
                 }
                 Section("Confirm deletion") {
                     SecureField("Current password", text: $password).textContentType(.password).textInputAutocapitalization(.never).autocorrectionDisabled().disabled(account.loading)

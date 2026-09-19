@@ -60,7 +60,22 @@ assert a.call('/api/workspaces',{'id':id},headers={'Origin':'https://wrong.examp
 # Actual private object bytes and cross-account download authorization.
 content=b'Synthetic evidence for production acceptance.';boundary='vc'+uuid.uuid4().hex
 multipart=(f'--{boundary}\r\nContent-Disposition: form-data; name="file"; filename="test.txt"\r\nContent-Type: text/plain\r\n\r\n'.encode()+content+f'\r\n--{boundary}--\r\n'.encode())
-with a.open.open(urllib.request.Request(base+'/api/files?workspace='+id,data=multipart,headers={'Origin':base,'Content-Type':'multipart/form-data; boundary='+boundary})) as r:asset=json.load(r)
+def upload(client,upload_id,body=multipart,headers=None):
+ path=base+'/api/files?'+urllib.parse.urlencode({'workspace':id,'uploadId':upload_id})
+ try:
+  with client.open.open(urllib.request.Request(path,data=body,headers={'Origin':base,'Content-Type':'multipart/form-data; boundary='+boundary,**(headers or {})})) as r:return r.status,json.load(r)
+ except urllib.error.HTTPError as e:return e.code,json.load(e)
+upload_id=str(uuid.uuid4());code,asset=upload(a,upload_id);assert code==201,(code,asset)
+code,retry=upload(a,upload_id);assert code==200 and retry['id']==asset['id'],(code,retry)
+native_upload_token=a.token('app:write');native_upload_client=Client()
+code,retry=upload(native_upload_client,upload_id,headers={'Authorization':'Bearer '+native_upload_token});assert code==200 and retry['id']==asset['id'],(code,retry)
+read_upload_token=a.token('app:read')
+assert upload(native_upload_client,upload_id,headers={'Authorization':'Bearer '+read_upload_token})[0]==403
+assert upload(a,upload_id,multipart.replace(content,content+b' changed'))[0]==409
+assert upload(a,upload_id.upper())[0]==400
+assert upload(eve,upload_id)[0]==403
+code,independent=upload(b,upload_id);assert code==201 and independent['id']!=asset['id'],(code,independent)
+assert b.call('/api/files?id='+independent['id'],method='DELETE')[0]==200
 assert asset['sha256']==hashlib.sha256(content).hexdigest()
 with a.open.open(base+'/api/files?id='+asset['id']) as r:assert r.read()==content
 assert b.call('/api/files?id='+asset['id'])[0]==404
@@ -71,11 +86,18 @@ assert a.call('/api/files?id='+asset['id'],headers={'Origin':'https://wrong.exam
 assert a.call('/api/files?id='+asset['id'],method='DELETE')[0]==200
 assert a.call('/api/files?id='+asset['id'],method='DELETE')[0]==200
 assert a.call('/api/files?id='+asset['id'])[0]==404
+assert upload(a,upload_id)[0]==409
 assert command(a,'submit_evidence',{'projectId':project,'title':'Discarded evidence','method':'Inspection','period':'Test','notes':'Synthetic','assetId':asset['id']})[0]==404
-with a.open.open(urllib.request.Request(base+'/api/files?workspace='+id,data=multipart,headers={'Origin':base,'Content-Type':'multipart/form-data; boundary='+boundary})) as r:asset=json.load(r)
+upload_id=str(uuid.uuid4())
+with concurrent.futures.ThreadPoolExecutor(max_workers=2) as pool:
+ duplicates=list(pool.map(lambda _:upload(a,upload_id),range(2)))
+assert sorted(result[0] for result in duplicates)==[200,201],duplicates
+assert duplicates[0][1]['id']==duplicates[1][1]['id'],duplicates
+asset=duplicates[0][1]
 code,current=command(a,'submit_evidence',{'projectId':project,'title':'Attached evidence','method':'Inspection','period':'Test','notes':'Synthetic','assetId':asset['id']})
 assert code==200,(code,current)
 assert a.call('/api/files?id='+asset['id'],method='DELETE')[0]==409
+code,retry=upload(a,upload_id);assert code==200 and retry['id']==asset['id'],(code,retry)
 with a.open.open(base+'/api/files?id='+asset['id']) as r:assert r.read()==content
 # Native scoped access and revocation.
 token=b.token('app:read');anonymous=Client()
@@ -116,6 +138,52 @@ code,current=command(b,'unblock_member',{'id':founder['id']});assert code==200,(
 assert any(u['id']==blocked_update for u in current['state']['updates'])
 # Founder transfer must persist both the shared state and relational owner ID.
 code,_=command(a,'member_role',{'id':member['id'],'role':'steward'});assert code==200,code
+# A partner's named representative participates without gaining stewardship or
+# access to agreement files. A separate active member cannot see this workflow.
+representative=Client();representative.register('representative')
+def join_member(client,name):
+ code,invitation=a.call('/api/invitations',{'id':id,'action':'create','label':name});assert code==200,(code,invitation)
+ workspace,secret=invitation['link'].split('#')[1].split('.')
+ code,accepted=client.call('/api/invitations',{'id':workspace,'token':secret,'action':'accept','name':name,'requestId':str(uuid.uuid4())});assert code==200,(code,accepted)
+ record=next(m for m in state(a)['state']['members'] if m['name']==name)
+ code,result=command(a,'member_status',{'id':record['id'],'status':'active'});assert code==200,(code,result)
+ return record['id']
+representative_member=join_member(representative,'Synthetic partner representative')
+join_member(eve,'Synthetic unrelated member')
+agreement_evidence=next(e for e in state(a)['state']['evidence'] if e['title']=='Attached evidence')['id']
+code,result=command(b,'review_evidence',{'id':agreement_evidence,'decision':'approve','note':'Synthetic independent agreement review.'});assert code==200,(code,result)
+agreement_reference='Synthetic private agreement reference not shared with representatives'
+code,result=command(a,'record_partnership',{'projectId':project,'name':'Synthetic conservation partner','website':'https://example.org','role':'Field review and mentoring','agreementReference':agreement_reference,'evidenceId':agreement_evidence});assert code==200,(code,result)
+partner_id=result['state']['partnerships'][-1]['id']
+code,result=command(b,'review_partnership',{'id':partner_id,'decision':'approve'});assert code==200,(code,result)
+assert state(representative)['state']['partnerships']==[]
+assert state(eve)['state']['partnerships']==[]
+assert command(representative,'invite_partner_representative',{'id':partner_id,'memberId':representative_member})[0]==403
+code,result=command(a,'invite_partner_representative',{'id':partner_id,'memberId':representative_member});assert code==200,(code,result)
+def participation(client):return next(p for p in state(client)['state']['partnerships'] if p['id']==partner_id)
+offered=participation(representative);invitation_id=offered['representative']['id']
+assert offered['participationStatus']=='invited' and offered['representative']['isRepresentative']
+assert not {'agreementReference','evidenceId','participation','createdBy'} & offered.keys()
+assert agreement_reference not in json.dumps(state(representative))
+assert state(eve)['state']['partnerships']==[]
+response={'id':partner_id,'invitationId':invitation_id,'decision':'accept','roleTitle':'Conservation coordinator','authorityReference':'Synthetic board authorization reference'}
+assert command(b,'respond_partner_invitation',response)[0]==403
+code,result=command(representative,'respond_partner_invitation',response);assert code==200,(code,result)
+assert participation(representative)['participationStatus']=='accepted'
+review={'id':partner_id,'invitationId':invitation_id,'decision':'approve','evidenceId':agreement_evidence,'note':'Synthetic independent authority review.'}
+assert command(a,'review_partner_representative',review)[0]==403
+assert command(representative,'review_partner_representative',review)[0]==403
+assert command(b,'review_partner_representative',review)[0]==400
+authority_upload_id=str(uuid.uuid4());code,authority_asset=upload(representative,authority_upload_id);assert code==201,(code,authority_asset)
+code,result=command(representative,'submit_evidence',{'projectId':project,'title':'Synthetic representative authority','method':'Supplied authorization','period':'Test','notes':'Synthetic authority evidence; no real organization claim.','assetId':authority_asset['id']});assert code==200,(code,result)
+authority_id=next(e for e in result['state']['evidence'] if e['title']=='Synthetic representative authority')['id']
+code,result=command(b,'review_evidence',{'id':authority_id,'decision':'approve','note':'Synthetic review of supplied authority.'});assert code==200,(code,result)
+code,result=command(b,'review_partner_representative',{**review,'evidenceId':authority_id});assert code==200,(code,result)
+assert participation(representative)['participationStatus']=='reviewed'
+assert state(representative)['role']=='member'
+assert state(eve)['state']['partnerships']==[]
+assert representative.call('/api/files?id='+asset['id'])[0]==404
+assert state(a)['state']['organization'] is None
 code,current=command(a,'transfer_stewardship',{'id':member['id'],'confirmation':'TRANSFER'});assert code==200,(code,current)
 assert not current['isOwner'] and state(b)['isOwner']
 assert a.call('/api/workspaces',{'op':'create','requestId':id,'payload':{}})[0]==409
@@ -123,9 +191,14 @@ assert b.call('/api/workspaces',{'op':'create','requestId':id,'payload':{}})[0]=
 assert command(a,'archive',{})[0]==403
 code,current=command(b,'archive',{});assert code==200,(code,current)
 # Remove synthetic personal records and accounts after archive.
+code,result=representative.call('/auth/close',{'password':representative.password,'confirmation':'DELETE'},form=True);assert code==200,(code,result)
+assert participation(a)['representative'] is None
+assert participation(a)['participationStatus']=='not_invited'
+assert a.call('/api/files?id='+authority_asset['id'])[0]==404
+assert upload(representative,authority_upload_id)[0]==401
 for c in [a,b,eve]:
  code,_=c.call('/auth/close',{'password':c.password,'confirmation':'DELETE'},form=True);assert code==200,code
-print(json.dumps({'status':'passed','workspace':id,'checks':['distinct mission homepage and app route','three independent accounts','forged identity denied','private invitation and membership','member post','idempotency and conflict','outsider denial','CSRF rejection','evidence upload/hash/private download/discard and attached-file protection','native read scope and token revocation','real hosted MCP handshake/read/write','agent financial denial','encoded scope bypass denied','private blocking and interaction denial','persisted founder transfer and authority change','archive','account and associated-data deletion']}))
+print(json.dumps({'status':'passed','workspace':id,'checks':['distinct mission homepage and app route','four independent accounts','forged identity denied','private invitation and membership','member post','idempotency and conflict','outsider denial','CSRF rejection','idempotent evidence upload/hash/private download/discard and attached-file protection','native read scope and token revocation','real hosted MCP handshake/read/write','agent financial denial','encoded scope bypass denied','private blocking and interaction denial','reviewed partnership invitation, acceptance and independent authority review','representative and unrelated member privacy without privilege changes','representative erasure removes authority files and participation','persisted founder transfer and authority change','archive','account and associated-data deletion']}))
 
 # Native consumer auth: no browser cookie, manual token creation or redirect.
 native=Client();native_name=prefix+'native';native_password=uuid.uuid4().hex+'!'

@@ -40,9 +40,10 @@ struct DraftDocument: FileDocument {
 @main struct VergeCommonApp: App {
     @StateObject private var store = JournalStore()
     @StateObject private var account = DeviceAccount()
+    @StateObject private var evidence = EvidenceQueueStore()
     @StateObject private var safety = PublicSafetyStore()
     @StateObject private var receipts = SafetyReceiptStore()
-    var body: some Scene { WindowGroup { JournalHome().environmentObject(store).environmentObject(account).environmentObject(safety).environmentObject(receipts).tint(Color(red: 0.09, green: 0.32, blue: 0.23)) } }
+    var body: some Scene { WindowGroup { JournalHome().environmentObject(store).environmentObject(account).environmentObject(safety).environmentObject(receipts).environmentObject(evidence).tint(Color(red: 0.09, green: 0.32, blue: 0.23)) } }
 }
 struct JournalHome: View {
     @EnvironmentObject var store: JournalStore

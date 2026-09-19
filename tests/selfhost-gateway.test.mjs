@@ -142,6 +142,57 @@ async function fixture(t, lifecycle = {}) {
   return { auth, db, alice, bob, seen, request, form, url };
 }
 
+await test('native identity is token-bound, private and revocation-aware', async (t) => {
+  const f = await fixture(t);
+  assert.equal((await f.request('/auth/native/me')).status, 401);
+  assert.equal(
+    (
+      await f.request('/auth/native/me', {
+        headers: { cookie: cookieFor(f.alice) },
+      })
+    ).status,
+    401,
+  );
+  const token = f.auth.createToken(
+    f.alice.user.id,
+    'Identity fixture',
+    'app:read',
+  );
+  const headers = {
+    authorization: `Bearer ${token}`,
+    cookie: cookieFor(f.bob),
+  };
+  const response = await f.request('/auth/native/me', { headers });
+  assert.equal(response.status, 200);
+  assert.equal(response.headers.get('cache-control'), 'no-store');
+  assert.equal(response.headers.get('set-cookie'), null);
+  assert.deepEqual(await response.json(), { user: f.alice.user });
+  const mcp = f.auth.createToken(f.alice.user.id, 'Agent fixture', 'mcp:read');
+  assert.equal(
+    (
+      await f.request('/auth/native/me', {
+        headers: { authorization: `Bearer ${mcp}` },
+      })
+    ).status,
+    403,
+  );
+  assert.equal(
+    (
+      await f.request('/auth/native/me', {
+        method: 'POST',
+        headers: { ...headers, origin },
+      })
+    ).status,
+    403,
+  );
+  const stored = f.auth
+    .tokens(f.alice.user.id)
+    .find((t) => t.label === 'Identity fixture');
+  f.auth.revokeToken(f.alice.user.id, stored.id);
+  assert.equal((await f.request('/auth/native/me', { headers })).status, 401);
+  assert.equal(f.seen.length, 0);
+});
+
 await test('router-generated account URLs preserve the gateway destination', async (t) => {
   const f = await fixture(t);
   for (const [path, location] of [

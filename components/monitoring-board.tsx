@@ -116,12 +116,14 @@ export function MonitoringBoard({
   state,
   steward,
   busy,
+  growthPaused = false,
   mutate,
   refresh,
 }: {
   state: MonitoringState;
   steward: boolean;
   busy: boolean;
+  growthPaused?: boolean;
   mutate: Save;
   refresh: () => Promise<void>;
 }) {
@@ -134,7 +136,7 @@ export function MonitoringBoard({
     [fileError, setFileError] = useState('');
   const parcel = state.parcels.find((p) => p.id === selected),
     boundary = parcel?.boundaries?.at(-1);
-  const disabled = busy || state.visibility === 'archived';
+  const disabled = busy || state.visibility === 'archived' || growthPaused;
   let preview: PolygonGeometry | null = null;
   try {
     preview = validateBoundary(JSON.parse(geometry)).geometry;
@@ -254,7 +256,7 @@ export function MonitoringBoard({
                   <Button
                     className="mt-4"
                     variant="outline"
-                    disabled={disabled}
+                    disabled={busy}
                     onClick={async () => {
                       try {
                         await mutate('revoke_satellite_consent', {

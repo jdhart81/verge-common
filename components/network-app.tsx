@@ -22,6 +22,14 @@ import { CooperativeParcelMap } from '@/components/cooperative-parcel-map';
 import { onboardingProgress } from '@/lib/onboarding.mjs';
 import { PendingWork } from '@/components/pending-work';
 import {
+  PartnerParticipation,
+  type ParticipationPartner,
+} from '@/components/partner-participation';
+import {
+  WorkspaceCapacityBanner,
+  type WorkspaceCapacityStatus,
+} from '@/components/workspace-capacity-banner';
+import {
   assessmentIsCurrent,
   projectReadiness,
   parcelConsentIsCurrent,
@@ -153,12 +161,13 @@ type Workspace = Omit<CommunityState, 'projects' | 'members' | 'tasks'> &
     parcels: Parcel[];
     evidence: Evidence[];
     organization: Organization | null;
-    partnerships?: (ReviewRecord & {
-      name: string;
-      role: string;
-      agreementReference: string;
-      website: string;
-    })[];
+    partnerships?: (ReviewRecord &
+      ParticipationPartner & {
+        name: string;
+        role: string;
+        agreementReference: string;
+        website: string;
+      })[];
     assessments?: (ReviewRecord & {
       program: string;
       methodology: string;
@@ -267,6 +276,7 @@ type WorkspaceResponse = {
   id: string;
   error: string;
   state?: Workspace;
+  capacity?: WorkspaceCapacityStatus;
   coop?: PublicCoop;
   role?: string;
   memberId?: string;
@@ -500,7 +510,8 @@ export function NetworkApp({
           } else setMine(value.workspaces);
         }
       } catch (e) {
-        if (generation === loadGeneration.current) setError((e as Error).message);
+        if (generation === loadGeneration.current)
+          setError((e as Error).message);
       } finally {
         if (generation === loadGeneration.current) setLoading(false);
       }
@@ -578,19 +589,33 @@ export function NetworkApp({
     const generation = loadGeneration.current;
     setLoadingMore(true);
     try {
-      const query = new URLSearchParams({ before: String(next), q: appliedSearch });
+      const query = new URLSearchParams({
+        before: String(next),
+        q: appliedSearch,
+      });
       if (nextId) query.set('beforeId', nextId);
       const r = await fetch(`/api/network?${query}`);
-      const v: { error: string; coops: PublicCoop[]; next: number | null; nextId: string | null } =
-        await r.json();
+      const v: {
+        error: string;
+        coops: PublicCoop[];
+        next: number | null;
+        nextId: string | null;
+      } = await r.json();
       if (!r.ok) throw new Error(v.error);
       if (generation !== loadGeneration.current) return;
-      setCoops((c) => [...c, ...v.coops.filter(item => !c.some(existing => existing.id === item.id))]);
+      setCoops((c) => [
+        ...c,
+        ...v.coops.filter(
+          (item) => !c.some((existing) => existing.id === item.id),
+        ),
+      ]);
       setNext(v.next);
       setNextId(v.nextId);
     } catch (e) {
       if (generation === loadGeneration.current) setError((e as Error).message);
-    } finally { setLoadingMore(false); }
+    } finally {
+      setLoadingMore(false);
+    }
   }
   async function copyLink() {
     const url = `${location.origin}/network/?coop=${selected}`;
@@ -722,7 +747,15 @@ export function NetworkApp({
             </Link>
           )}
         </div>
-        {selected && <p className="small mb-4"><Link href={`/report/?kind=coop&coop=${encodeURIComponent(selected)}`}>Report a concern to the operator</Link></p>}
+        {selected && (
+          <p className="small mb-4">
+            <Link
+              href={`/report/?kind=coop&coop=${encodeURIComponent(selected)}`}
+            >
+              Report a concern to the operator
+            </Link>
+          </p>
+        )}
         {!selected && (
           <p className="intro">
             Bring an EcoHedge corridor, a woodlot, or a larger conservation
@@ -845,17 +878,24 @@ export function NetworkApp({
             ) : (
               <>
                 <OrganizationDiscovery coops={coops} />
-                <form onSubmit={event => { event.preventDefault(); void load('', search.trim()); }}>
-                <ControlLabel className="search-label">
-                  Search the public co-op directory
-                  <Input
-                    placeholder="Search by name or general region…"
-                    value={search}
-                    maxLength={160}
-                    onChange={(e) => setSearch(e.target.value)}
-                  />
-                </ControlLabel>
-                <Button type="submit" className="mb-4">Search</Button>
+                <form
+                  onSubmit={(event) => {
+                    event.preventDefault();
+                    void load('', search.trim());
+                  }}
+                >
+                  <ControlLabel className="search-label">
+                    Search the public co-op directory
+                    <Input
+                      placeholder="Search by name or general region…"
+                      value={search}
+                      maxLength={160}
+                      onChange={(e) => setSearch(e.target.value)}
+                    />
+                  </ControlLabel>
+                  <Button type="submit" className="mb-4">
+                    Search
+                  </Button>
                 </form>
                 <div className="network-grid">
                   {visibleCoops.map((c) => (
@@ -881,11 +921,22 @@ export function NetworkApp({
                 </div>
                 {appliedSearch && visibleCoops.length === 0 && (
                   <Empty>
-                    <h2>{next !== null ? 'Keep exploring the directory' : 'No matching co-ops'}</h2>
+                    <h2>
+                      {next !== null
+                        ? 'Keep exploring the directory'
+                        : 'No matching co-ops'}
+                    </h2>
                     <output className="block mb-4">
-                      {next !== null ? `No matches for “${appliedSearch}” in this part of the directory. Load more to continue searching.` : `No public co-ops match “${appliedSearch}” in the current results. Try another name or general region.`}
+                      {next !== null
+                        ? `No matches for “${appliedSearch}” in this part of the directory. Load more to continue searching.`
+                        : `No public co-ops match “${appliedSearch}” in the current results. Try another name or general region.`}
                     </output>
-                    <Button variant="outline" onClick={() => { void load(); }}>
+                    <Button
+                      variant="outline"
+                      onClick={() => {
+                        void load();
+                      }}
+                    >
                       Clear search
                     </Button>
                   </Empty>
@@ -909,7 +960,11 @@ export function NetworkApp({
                   </Empty>
                 )}
                 {next !== null && (
-                  <Button variant="outline" onClick={more} disabled={loadingMore}>
+                  <Button
+                    variant="outline"
+                    onClick={more}
+                    disabled={loadingMore}
+                  >
                     {loadingMore ? 'Loading…' : 'Load more co-ops'}
                   </Button>
                 )}
@@ -948,9 +1003,15 @@ export function NetworkApp({
             {state.visibility === 'archived' && (
               <div className="notice">
                 Archived. Existing records and authorized downloads remain
-                available; changes are disabled.
+                available. New activity is disabled; authorized reports, blocks,
+                removals and consent withdrawals remain available within the
+                safety storage limit.
               </div>
             )}
+            <WorkspaceCapacityBanner
+              capacity={data.capacity}
+              coopId={selected}
+            />
             <PendingWork
               state={state}
               steward={steward}
@@ -990,6 +1051,7 @@ export function NetworkApp({
                   state={state}
                   steward={steward}
                   busy={busy}
+                  growthPaused={data.capacity?.growthPaused}
                   mutate={mutate}
                 />
               </TabsContent>
@@ -1072,6 +1134,18 @@ export function NetworkApp({
                       </Empty>
                     )}
                     <OrganizationDiscovery coops={[]} />
+                    <PartnerParticipation
+                      records={state.partnerships ?? []}
+                      steward={steward}
+                      members={state.members}
+                      projects={state.projects}
+                      disabled={busy}
+                      growthPaused={
+                        state.visibility === 'archived' ||
+                        data.capacity?.growthPaused
+                      }
+                      mutate={mutate}
+                    />
                     {steward &&
                       (state.partnerships ?? []).map((partner) => (
                         <article className="network-card" key={partner.id}>
@@ -1233,6 +1307,7 @@ export function NetworkApp({
                   state={state}
                   steward={steward}
                   busy={busy}
+                  growthPaused={data.capacity?.growthPaused}
                   mutate={mutate}
                   refresh={() => load(selected)}
                 />
@@ -1244,7 +1319,14 @@ export function NetworkApp({
                   program and methodology. An area total is a planning measure,
                   not a carbon-credit approval.
                 </p>
-                {steward && <CooperativeParcelMap key={selected} parcels={state.parcels} projects={state.projects} steward={steward} />}
+                {steward && (
+                  <CooperativeParcelMap
+                    key={selected}
+                    parcels={state.parcels}
+                    projects={state.projects}
+                    steward={steward}
+                  />
+                )}
                 {steward ? (
                   <div className="network-columns">
                     <section>
@@ -1978,7 +2060,7 @@ export function NetworkApp({
                         {!m.isYou && m.status === 'active' && (
                           <Button
                             variant="outline"
-                            disabled={busy || state.visibility === 'archived'}
+                            disabled={busy}
                             onClick={() =>
                               quick(
                                 state.blocks?.some((b) => b.memberId === m.id)
@@ -1996,7 +2078,11 @@ export function NetworkApp({
                         {steward && m.status === 'pending' && (
                           <>
                             <Button
-                              disabled={busy}
+                              disabled={
+                                busy ||
+                                state.visibility === 'archived' ||
+                                data.capacity?.growthPaused
+                              }
                               onClick={() =>
                                 quick('member_status', {
                                   id: m.id,
@@ -2023,7 +2109,12 @@ export function NetworkApp({
                         {data.isOwner && !m.isYou && m.status === 'active' && (
                           <Button
                             variant="outline"
-                            disabled={busy}
+                            disabled={
+                              busy ||
+                              (m.role !== 'steward' &&
+                                (state.visibility === 'archived' ||
+                                  data.capacity?.growthPaused))
+                            }
                             onClick={() =>
                               quick('member_role', {
                                 id: m.id,
@@ -2059,7 +2150,7 @@ export function NetworkApp({
                               title={`Transfer responsibility to ${m.name}?`}
                               description="Confirm this steward has agreed to take over. They will control steward appointments and co-op archival. You remain a steward but cannot reverse the transfer yourself. Land rights, legal authority and financial records do not change."
                               label="Transfer responsibility"
-                              disabled={busy || state.visibility === 'archived'}
+                              disabled={busy}
                               onConfirm={() =>
                                 quick('transfer_stewardship', {
                                   id: m.id,
@@ -2079,7 +2170,7 @@ export function NetworkApp({
                           <span>{b.name}</span>
                           <Button
                             variant="outline"
-                            disabled={busy || state.visibility === 'archived'}
+                            disabled={busy}
                             onClick={() =>
                               quick('unblock_member', { id: b.memberId })
                             }
@@ -2690,7 +2781,7 @@ export function NetworkApp({
                     {data.isOwner ? (
                       <ConfirmAction
                         title="Archive this co-op?"
-                        description="This stops all further changes and removes the co-op from discovery. Authorized members can still read and export retained records. Archival is permanent in this release."
+                        description="This stops new activity and removes the co-op from discovery. Authorized members can still read and export retained records and make safety changes while storage remains. Archival is permanent in this release and does not erase history or free storage."
                         label="Archive co-op"
                         disabled={busy || state.visibility === 'archived'}
                         onConfirm={() => quick('archive', {})}
@@ -2812,10 +2903,16 @@ function EvidenceForm({
   });
 
   async function discard(id: string) {
-    const response = await fetch(`/api/files?id=${encodeURIComponent(id)}`, { method: 'DELETE' });
+    const response = await fetch(`/api/files?id=${encodeURIComponent(id)}`, {
+      method: 'DELETE',
+    });
     if (!response.ok) {
-      const result = await response.json() as PendingAsset & { error?: string };
-      throw new Error(result.error || 'Could not discard the file. Please retry.');
+      const result = (await response.json()) as PendingAsset & {
+        error?: string;
+      };
+      throw new Error(
+        result.error || 'Could not discard the file. Please retry.',
+      );
     }
   }
 
@@ -2870,12 +2967,22 @@ function EvidenceForm({
       }
       const form = new FormData();
       form.append('file', file);
-      const response = await fetch(`/api/files?workspace=${encodeURIComponent(workspaceId)}`, {
-        method: 'POST', body: form,
-      });
-      const result = await response.json() as PendingAsset & { error?: string };
-      if (!response.ok) throw new Error(result.error || 'Upload failed. Please retry.');
-      if (transfer.current.cancelled || transfer.current.generation !== current) {
+      const response = await fetch(
+        `/api/files?workspace=${encodeURIComponent(workspaceId)}`,
+        {
+          method: 'POST',
+          body: form,
+        },
+      );
+      const result = (await response.json()) as PendingAsset & {
+        error?: string;
+      };
+      if (!response.ok)
+        throw new Error(result.error || 'Upload failed. Please retry.');
+      if (
+        transfer.current.cancelled ||
+        transfer.current.generation !== current
+      ) {
         // Wait for the server receipt before discarding; aborting the browser
         // request alone cannot cancel a server write already in progress.
         if (transfer.current.generation === current) {
@@ -2893,11 +3000,15 @@ function EvidenceForm({
       }
       transfer.current.asset = result;
       setAsset(result);
-      setMessage(`Uploaded ${result.filename}. Complete the evidence form to attach it.`);
+      setMessage(
+        `Uploaded ${result.filename}. Complete the evidence form to attach it.`,
+      );
     } catch (error) {
       if (transfer.current.generation === current) {
         if (!transfer.current.cancelled) setRetryFile(file);
-        setMessage(`${(error as Error).message} Any unattached upload expires after 24 hours.`);
+        setMessage(
+          `${(error as Error).message} Any unattached upload expires after 24 hours.`,
+        );
       }
     } finally {
       if (transfer.current.generation === current) setUploading(false);
@@ -2924,18 +3035,44 @@ function EvidenceForm({
       <output className="small" aria-live="polite">
         {uploading ? message || 'Uploading…' : message}
       </output>
-      <p className="small">Unsubmitted files expire after 24 hours. Attached evidence is retained.</p>
+      <p className="small">
+        Unsubmitted files expire after 24 hours. Attached evidence is retained.
+      </p>
       {uploading ? (
-        <Button type="button" variant="outline" onClick={() => {
-          transfer.current.cancelled = true;
-          setMessage('Cancelling… Waiting for the upload receipt so the file can be discarded.');
-        }}>Cancel upload</Button>
+        <Button
+          type="button"
+          variant="outline"
+          onClick={() => {
+            transfer.current.cancelled = true;
+            setMessage(
+              'Cancelling… Waiting for the upload receipt so the file can be discarded.',
+            );
+          }}
+        >
+          Cancel upload
+        </Button>
       ) : (
         <div className="flex gap-2">
-          {retryFile && <Button type="button" variant="outline" disabled={disabled || discarding}
-            onClick={() => void upload(retryFile)}>Retry upload</Button>}
-          {(asset || retryFile) && <Button type="button" variant="outline" disabled={disabled || discarding}
-            onClick={() => void removeFile()}>Discard file</Button>}
+          {retryFile && (
+            <Button
+              type="button"
+              variant="outline"
+              disabled={disabled || discarding}
+              onClick={() => void upload(retryFile)}
+            >
+              Retry upload
+            </Button>
+          )}
+          {(asset || retryFile) && (
+            <Button
+              type="button"
+              variant="outline"
+              disabled={disabled || discarding}
+              onClick={() => void removeFile()}
+            >
+              Discard file
+            </Button>
+          )}
         </div>
       )}
       <ActionForm
@@ -2953,7 +3090,9 @@ function EvidenceForm({
           field('notes', 'What does this evidence establish?', 'textarea'),
         ]}
         submit="Submit evidence"
-        disabled={disabled || uploading || discarding || !projects.length || !!retryFile}
+        disabled={
+          disabled || uploading || discarding || !projects.length || !!retryFile
+        }
         onSubmit={async (p) => {
           transfer.current.attaching = true;
           const current = transfer.current.generation;
@@ -2965,7 +3104,10 @@ function EvidenceForm({
               setAsset(null);
               if (inputRef.current) inputRef.current.value = '';
               setMessage('Evidence submitted.');
-            } else if (transfer.current.generation !== current && submittedAsset) {
+            } else if (
+              transfer.current.generation !== current &&
+              submittedAsset
+            ) {
               void discard(submittedAsset.id).catch(() => {});
             }
             return ok;

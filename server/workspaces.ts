@@ -1,5 +1,6 @@
 import { getD1 } from '@/db/d1';
 import { attachmentExistsGuard } from '@/server/evidence-uploads.mjs';
+import { workspaceCapacityIssue } from '@/lib/workspace-capacity.mjs';
 import { getChatGPTUser } from '@/app/chatgpt-auth';
 import {
   applyCommand,
@@ -115,6 +116,10 @@ export async function command(
   // low-entropy private payloads (for example a block target) from its hash.
   event.commitmentNonce = crypto.randomUUID();
   event.hash = await hash(JSON.stringify(event));
+  // Enforce the actual persisted size, including all receipt metadata. The
+  // domain check reserves its upper bound, and this also protects future fields.
+  const capacityIssue = workspaceCapacityIssue(state, next, user, input);
+  if (capacityIssue) throw new DomainError(capacityIssue, 409);
   const attachedAsset =
     input.op === 'submit_evidence'
       ? ((input.payload.asset as { id?: string } | undefined)?.id ?? null)

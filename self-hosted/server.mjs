@@ -193,24 +193,69 @@ export function createGateway({
             error: 'This token does not grant the required app permission.',
           });
       }
-      if (['/api/safety-reports', '/api/safety-reports/status'].includes(url.pathname)) {
-        if (req.method !== 'POST') return json(405, { error: 'Use the private report form.' });
-        if (!safety) return json(503, { error: 'Reporting is unavailable. Contact justin@viridisconservation.com.' });
-        if (req.headers.origin !== origin || String(req.headers['content-type']).split(';')[0].trim() !== 'application/json')
+      if (
+        ['/api/safety-reports', '/api/safety-reports/status'].includes(
+          url.pathname,
+        )
+      ) {
+        if (req.method !== 'POST')
+          return json(405, { error: 'Use the private report form.' });
+        if (!safety)
+          return json(503, {
+            error:
+              'Reporting is unavailable. Contact justin@viridisconservation.com.',
+          });
+        if (
+          req.headers.origin !== origin ||
+          String(req.headers['content-type']).split(';')[0].trim() !==
+            'application/json'
+        )
           return json(403, { error: 'Submit this report from VergeCommon.' });
         const statusCheck = url.pathname.endsWith('/status');
-        if (!auth.rateLimit(`safety:${statusCheck ? 'status' : 'submit'}:${client}`, statusCheck ? 60 : 10, 15 * 60000) ||
-          !auth.rateLimit('safety:global', 100, 60000)) return json(429, { error: 'Too many report requests. Try again later or contact support.' });
+        if (
+          !auth.rateLimit(
+            `safety:${statusCheck ? 'status' : 'submit'}:${client}`,
+            statusCheck ? 60 : 10,
+            15 * 60000,
+          ) ||
+          !auth.rateLimit('safety:global', 100, 60000)
+        )
+          return json(429, {
+            error:
+              'Too many report requests. Try again later or contact support.',
+          });
         let input;
         // Four thousand UTF-16 characters can need 12 KB of UTF-8 before JSON
         // field overhead. Keep the body bounded without rejecting valid text.
-        try { input = JSON.parse((await readBody(req, 20 * 1024)).toString()); }
-        catch (error) { if (error.status) throw error; return json(400, { error: 'Send a valid report.' }); }
-        if (!input || typeof input !== 'object' || Array.isArray(input)) return json(400, { error: 'Send a valid report.' });
-        const result = statusCheck ? safety.status(input) : safety.submit(input, principal);
+        try {
+          input = JSON.parse((await readBody(req, 20 * 1024)).toString());
+        } catch (error) {
+          if (error.status) throw error;
+          return json(400, { error: 'Send a valid report.' });
+        }
+        if (!input || typeof input !== 'object' || Array.isArray(input))
+          return json(400, { error: 'Send a valid report.' });
+        const result = statusCheck
+          ? safety.status(input)
+          : safety.submit(input, principal);
         return json(statusCheck || result.repeated ? 200 : 201, result);
       }
       if (url.pathname.startsWith('/auth/native/')) {
+        if (url.pathname === '/auth/native/me') {
+          if (req.method !== 'GET')
+            return json(405, {
+              error: 'Use GET to check this device identity.',
+            });
+          if (principal?.kind !== 'token')
+            return json(401, { error: 'Sign in with the app first.' });
+          return json(200, {
+            user: {
+              id: principal.id,
+              username: principal.username,
+              displayName: principal.displayName,
+            },
+          });
+        }
         if (req.method !== 'POST')
           return json(405, { error: 'Method not allowed.' });
         if (
@@ -291,7 +336,11 @@ export function createGateway({
           return json(error.status || 400, { error: error.message });
         }
       }
-      if (/^\/(?:signin-with-chatgpt|signout-with-chatgpt|callback)\/?$/.test(url.pathname))
+      if (
+        /^\/(?:signin-with-chatgpt|signout-with-chatgpt|callback)\/?$/.test(
+          url.pathname,
+        )
+      )
         return redirect(
           '/account?returnTo=' +
             encodeURIComponent(safeReturn(url.searchParams.get('return_to'))),
@@ -548,14 +597,24 @@ export async function start() {
   db.exec('PRAGMA wal_checkpoint(TRUNCATE)');
   let maintenanceFailed = false;
   let maintenanceBusy = false;
-  const upkeep = setInterval(() => {
-    if (maintenanceBusy) return;
-    maintenanceBusy = true;
-    void cleanupExpiredUploads(d1Adapter(db), store)
-      .then(() => { maintenanceFailed = false; })
-      .catch(() => { maintenanceFailed = true; console.error('Evidence maintenance needs operator attention'); })
-      .finally(() => { maintenanceBusy = false; });
-  }, 60 * 60 * 1000);
+  const upkeep = setInterval(
+    () => {
+      if (maintenanceBusy) return;
+      maintenanceBusy = true;
+      void cleanupExpiredUploads(d1Adapter(db), store)
+        .then(() => {
+          maintenanceFailed = false;
+        })
+        .catch(() => {
+          maintenanceFailed = true;
+          console.error('Evidence maintenance needs operator attention');
+        })
+        .finally(() => {
+          maintenanceBusy = false;
+        });
+    },
+    60 * 60 * 1000,
+  );
   upkeep.unref();
   const { startProdServer } = await import('vinext/server/prod-server');
   const internal = await startProdServer({

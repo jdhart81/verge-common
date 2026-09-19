@@ -1,5 +1,7 @@
 # Launch build checklist — 19 September 2026
 
+For the subsequent candidate with native photo/file evidence, upload retry receipts, partner participation and capacity reserves, see [beta readiness](BETA_READINESS_2026-09-19.md). This document preserves the earlier deployed build’s receipt.
+
 **Implemented, pushed and deployed at approximately 21:19 UTC on 19 September 2026.** This build addresses the owner's request to work through the launch-gap list. It does not establish a real community pilot, Apple distribution, funded conservation outcomes or active offhost recovery. The [previous deployed receipt](BETA_RELEASE_2026-09-19.md) remains historical evidence. Web/backend features below are live; native source is checked but not distributed, and the optional operator notification/scheduler configuration remains inactive.
 
 ## Implemented in this release

@@ -230,11 +230,13 @@ export function CommunityBoard({
   state,
   steward,
   busy,
+  growthPaused = false,
   mutate,
 }: {
   state: CommunityState;
   steward: boolean;
   busy: boolean;
+  growthPaused?: boolean;
   mutate: Save;
 }) {
   const zone = useSyncExternalStore(
@@ -245,7 +247,7 @@ export function CommunityBoard({
   const now = useSyncExternalStore(subscribeClock, clockSnapshot, serverClock);
   const [showPast, setShowPast] = useState(false),
     [notice, setNotice] = useState('');
-  const disabled = busy || state.visibility === 'archived';
+  const disabled = busy || state.visibility === 'archived' || growthPaused;
   const events: CommunityEvent[] = state.events ?? [],
     comments: CommunityComment[] = state.comments ?? [],
     reports: CommunityReport[] = state.reports ?? [];
@@ -376,7 +378,7 @@ export function CommunityBoard({
                       ].map(([response, title]) => (
                         <Button
                           key={response}
-                          disabled={disabled}
+                          disabled={response === 'not_going' && !!e.yourResponse ? busy : disabled}
                           variant={
                             e.yourResponse === response ? 'default' : 'outline'
                           }
@@ -530,7 +532,7 @@ export function CommunityBoard({
                     <details className="mt-4">
                       <summary>Cancel event</summary>
                       <Form
-                        disabled={disabled}
+                        disabled={busy}
                         submit="Cancel event"
                         save={(v) => mutate('cancel_event', { ...v, id: e.id })}
                       >
@@ -546,7 +548,7 @@ export function CommunityBoard({
                       kind="event"
                       targetId={e.id}
                       save={mutate}
-                      disabled={disabled}
+                      disabled={busy}
                     />
                   )}
                 </article>
@@ -656,7 +658,7 @@ export function CommunityBoard({
                               {(c.isYou || steward) && (
                                 <Button
                                   variant="outline"
-                                  disabled={disabled}
+                                  disabled={busy}
                                   onClick={() =>
                                     act('remove_comment', { id: c.id })
                                   }
@@ -668,7 +670,7 @@ export function CommunityBoard({
                                 kind="comment"
                                 targetId={c.id}
                                 save={mutate}
-                                disabled={disabled}
+                                disabled={busy}
                               />
                             </>
                           )}
@@ -692,7 +694,7 @@ export function CommunityBoard({
                           kind="update"
                           targetId={u.id}
                           save={mutate}
-                          disabled={disabled}
+                          disabled={busy}
                         />
                       </>
                     )}
@@ -759,7 +761,7 @@ export function CommunityBoard({
                 {r.note && <p>Review note: {r.note}</p>}
                 {steward && r.status === 'open' && (
                   <Form
-                    disabled={disabled}
+                    disabled={busy}
                     submit="Save review decision"
                     save={(v) => mutate('resolve_report', { ...v, id: r.id })}
                   >

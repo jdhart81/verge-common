@@ -25,6 +25,7 @@ export function openDatabase(path = resolve(dataDir, 'vergecommon.sqlite')) {
   for (const name of [
     '0000_famous_nighthawk',
     '0001_evidence_upload_lifecycle',
+    '0002_idempotent_evidence_uploads',
   ]) {
     if (db.prepare('SELECT name FROM schema_migrations WHERE name=?').get(name))
       continue;

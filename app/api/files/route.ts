@@ -11,8 +11,8 @@ import {
 import {
   cleanupExpiredUploads,
   discardUpload,
-  drainUploadDeletions,
-  saveUploadMetadata,
+  persistUpload,
+  validateUploadId,
 } from '@/server/evidence-uploads.mjs';
 import { requireMember, isSteward } from '@/lib/network.mjs';
 export const dynamic = 'force-dynamic';
@@ -21,6 +21,8 @@ export async function POST(request: Request) {
     guardOrigin(request);
     const user = await authenticated();
     const id = new URL(request.url).searchParams.get('workspace') ?? '';
+    const uploadId = new URL(request.url).searchParams.get('uploadId');
+    validateUploadId(uploadId);
     const { state } = await load(id);
     requireMember(state, user.id);
     if (state.visibility === 'archived')
@@ -47,32 +49,25 @@ export async function POST(request: Request) {
       new Uint8Array(await crypto.subtle.digest('SHA-256', bytes)),
       (b) => b.toString(16).padStart(2, '0'),
     ).join('');
-    const assetId = crypto.randomUUID(),
-      key = `private/${id}/${assetId}`,
-      filename = file.name.replace(/[^a-zA-Z0-9._-]/g, '_').slice(0, 100);
-    await env.EVIDENCE.put(key, bytes);
-    try {
-      await saveUploadMetadata(db, {
-        id: assetId,
+    const filename =
+      file.name.replace(/[^a-zA-Z0-9._-]/g, '_').slice(0, 100) || 'evidence';
+    const receipt = await persistUpload(
+      db,
+      env.EVIDENCE,
+      {
         workspaceId: id,
         uploaderId: user.id,
-        objectKey: key,
         filename,
+        originalFilename: file.name,
         contentType: file.type,
         sha256,
         size: file.size,
         createdAt: Date.now(),
-      });
-    } catch (e) {
-      // Keep durable retry state even when private storage cannot delete now.
-      await db
-        .prepare('INSERT OR IGNORE INTO evidence_file_deletions VALUES (?,?)')
-        .bind(key, Date.now())
-        .run();
-      await drainUploadDeletions(db, env.EVIDENCE);
-      throw e;
-    }
-    return json({ id: assetId, filename, sha256 }, 201);
+      },
+      bytes,
+      uploadId,
+    );
+    return json(receipt, receipt.repeated ? 200 : 201);
   } catch (e) {
     return failure(e);
   }

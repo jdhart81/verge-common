@@ -219,6 +219,7 @@ struct WorkspaceClient {
         let credential = try DeviceCredential.validate(token)
         var request = URLRequest(url: CommunityService.page("api/workspaces", id: id))
         request.httpMethod = method
+        request.setValue(CommunityService.origin.absoluteString, forHTTPHeaderField: "Origin")
         request.setValue("Bearer \(credential)", forHTTPHeaderField: "Authorization")
         request.setValue("application/json", forHTTPHeaderField: "Accept")
         request.cachePolicy = .reloadIgnoringLocalCacheData
