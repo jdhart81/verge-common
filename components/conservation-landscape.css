@@ -1,0 +1,323 @@
+.vc-landscape {
+  width: 100%;
+  min-width: 0;
+  margin: 0;
+  color: #294a34;
+}
+
+.vc-landscape-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 0.5rem 1rem;
+  margin-bottom: 0.85rem;
+  font-size: 0.78rem;
+  font-weight: 600;
+  letter-spacing: 0.025em;
+}
+
+.vc-landscape-motion {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.45rem;
+  min-height: 44px;
+  padding: 0.45rem 0.65rem;
+  border: 1px solid #c4ceb9;
+  border-radius: 100px;
+  color: #294a34;
+  background: #f9f7ee;
+  font: inherit;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.vc-landscape-motion:hover {
+  background: #e9eddc;
+  border-color: #728269;
+}
+
+.vc-landscape-motion:focus-visible {
+  outline: 3px solid #567a45;
+  outline-offset: 3px;
+}
+
+.vc-landscape-motion svg {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.6;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.vc-landscape-art {
+  display: block;
+  width: 100%;
+  height: auto;
+  overflow: visible;
+}
+
+.vc-landscape-art path,
+.vc-landscape-art circle {
+  stroke-linejoin: round;
+  stroke-linecap: round;
+}
+
+.vc-landscape-frame {
+  fill: none;
+  stroke: #d8ddca;
+  stroke-width: 1.25;
+}
+
+.vc-landscape-contours {
+  fill: none;
+  stroke: #d8d9c8;
+  stroke-width: 1;
+}
+
+.vc-landscape-creek-bank,
+.vc-landscape-creek,
+.vc-landscape-water-line {
+  fill: none;
+}
+
+.vc-landscape-creek-bank {
+  stroke: #e4e8d8;
+  stroke-width: 27;
+}
+.vc-landscape-creek {
+  stroke: #b2cdc7;
+  stroke-width: 14;
+}
+.vc-landscape-water-line {
+  stroke: #e7f0e7;
+  stroke-width: 1.5;
+  stroke-dasharray: 32 48;
+}
+
+.vc-landscape-parcels {
+  stroke: #73886a;
+  stroke-width: 1.5;
+}
+.vc-landscape-footpath {
+  fill: none;
+  stroke: #ded3b5;
+  stroke-width: 9;
+}
+.vc-landscape-driveways {
+  fill: none;
+  stroke: #e9dfc4;
+  stroke-width: 5;
+}
+.vc-landscape-garden-lines {
+  fill: none;
+  stroke: #8a9b76;
+  stroke-width: 2;
+  opacity: 0.65;
+}
+.vc-landscape-habitat {
+  fill: none;
+}
+.vc-landscape-habitat-bed {
+  stroke: #d0dca8;
+  stroke-width: 24;
+}
+.vc-landscape-habitat-line {
+  stroke: #456e49;
+  stroke-width: 2;
+  stroke-dasharray: 2 6;
+}
+.vc-landscape-habitat-travel {
+  stroke: #315a3b;
+  stroke-width: 4;
+  stroke-dasharray: 1 44;
+}
+
+.vc-landscape-tree-trunk {
+  fill: none;
+  stroke: #456244;
+  stroke-width: 1.5;
+}
+.vc-landscape-canopy {
+  fill: #8fa879;
+  stroke: #486946;
+  stroke-width: 1.25;
+  transform-origin: 0 8px;
+}
+.vc-landscape-leaf-line {
+  fill: none;
+  stroke: #56754e;
+  stroke-width: 1;
+}
+.vc-landscape-home {
+  stroke: #456244;
+  stroke-width: 1.4;
+}
+.vc-landscape-nodes {
+  fill: #f7f5e7;
+  stroke: #3e6441;
+  stroke-width: 1.5;
+}
+.vc-landscape-node-core {
+  fill: #3e6441;
+  stroke: none;
+}
+.vc-landscape-partner-path {
+  fill: none;
+  stroke: #54764b;
+  stroke-width: 1.5;
+  stroke-dasharray: 3 5;
+}
+.vc-landscape-partner {
+  fill: none;
+  stroke: #37583c;
+  stroke-width: 1.7;
+}
+.vc-landscape-partner-halo {
+  fill: #c8d8a7;
+  stroke: none;
+  opacity: 0.5;
+}
+
+.vc-landscape-label rect {
+  fill: #faf7ed;
+  stroke: #d2dac5;
+  stroke-width: 1;
+}
+.vc-landscape-label text {
+  font:
+    500 14px system-ui,
+    sans-serif;
+  fill: #33513a;
+}
+.vc-landscape-label-leader {
+  fill: none;
+  stroke: #899b7c;
+  stroke-width: 1;
+}
+.vc-landscape-notebook {
+  stroke: #687d59;
+  stroke-width: 1.2;
+}
+.vc-landscape-check {
+  fill: none;
+  stroke: #42643d;
+  stroke-width: 1.8;
+}
+.vc-landscape-note {
+  fill: #5f7158;
+  font:
+    14px system-ui,
+    sans-serif;
+}
+.vc-landscape-note path {
+  fill: none;
+  stroke: #9ca88b;
+  stroke-width: 1;
+}
+.vc-landscape-compass {
+  fill: #77876c;
+  stroke: #8a987e;
+  stroke-width: 1;
+  font:
+    14px system-ui,
+    sans-serif;
+}
+.vc-landscape-compass text {
+  stroke: none;
+}
+
+.vc-landscape-caption {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 0.45rem 1rem;
+  margin-top: 0.8rem;
+  color: #66735d;
+  font-size: 0.75rem;
+  line-height: 1.6;
+}
+
+.vc-landscape-key {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  color: #3e5b3e;
+  font-weight: 500;
+}
+
+.vc-landscape-key > span {
+  display: inline-block;
+  width: 1rem;
+  border-top: 2px dashed #5d7c4a;
+}
+
+/* Movement follows existing lines: the complete map is always visible. */
+.vc-landscape-habitat-travel {
+  animation: vc-landscape-path-flow 18s linear infinite;
+}
+
+.vc-landscape-water-line {
+  animation: vc-landscape-water-flow 22s linear infinite;
+}
+
+.vc-landscape-canopy {
+  animation: vc-landscape-leaf-sway 9s ease-in-out infinite alternate;
+}
+
+.vc-landscape-partner-halo {
+  animation: vc-landscape-community-breath 8s ease-in-out infinite;
+}
+
+.vc-landscape [class*='vc-landscape-'] {
+  animation-play-state: paused;
+}
+
+.vc-landscape[data-motion='running'] [class*='vc-landscape-'] {
+  animation-play-state: running;
+}
+
+@keyframes vc-landscape-path-flow {
+  to {
+    stroke-dashoffset: -180;
+  }
+}
+
+@keyframes vc-landscape-water-flow {
+  to {
+    stroke-dashoffset: -160;
+  }
+}
+
+@keyframes vc-landscape-leaf-sway {
+  from {
+    transform: rotate(-1.8deg);
+  }
+  to {
+    transform: rotate(1.8deg);
+  }
+}
+
+@keyframes vc-landscape-community-breath {
+  0%,
+  100% {
+    opacity: 0.35;
+  }
+  50% {
+    opacity: 0.65;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .vc-landscape:not([data-explicit-motion='true']) [class*='vc-landscape-'] {
+    animation: none;
+  }
+}
+
+@media (max-width: 420px) {
+  .vc-landscape-heading {
+    font-size: 0.72rem;
+  }
+}

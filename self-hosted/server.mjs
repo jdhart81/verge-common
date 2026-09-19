@@ -276,7 +276,11 @@ export function createGateway({
             const p = auth.authenticate({
               cookie: `vc_session=${result.session}`,
             });
-            return page(200, { user: p, recoveryCode: result.recoveryCode });
+            return page(200, {
+              user: p,
+              recoveryCode: result.recoveryCode,
+              returnTo: safeReturn(data.returnTo),
+            });
           }
           if (!principal) return json(401, { error: 'Sign in first.' });
           if (action === 'logout') {

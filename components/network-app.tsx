@@ -620,6 +620,11 @@ export function NetworkApp({
       state?.evidence.filter((e) => e.status === 'reviewed') ?? [],
       'title',
     );
+  const visibleCoops = coops.filter((c) =>
+    `${c.name} ${c.country ?? ''} ${c.region} ${c.summary}`
+      .toLowerCase()
+      .includes(search.trim().toLowerCase()),
+  );
   return (
     <>
       <a className="skip" href="#main">
@@ -832,33 +837,39 @@ export function NetworkApp({
                   />
                 </ControlLabel>
                 <div className="network-grid">
-                  {coops
-                    .filter((c) =>
-                      `${c.name} ${c.country ?? ''} ${c.region} ${c.summary}`
-                        .toLowerCase()
-                        .includes(search.toLowerCase()),
-                    )
-                    .map((c) => (
-                      <article className="network-card" key={c.id}>
-                        <p className="eyebrow">
-                          <MapPin size={14} />
-                          {c.region}
-                        </p>
-                        <h2>{c.name}</h2>
-                        <p>{c.summary}</p>
-                        <div className="network-meta">
-                          <span>{c.projects.length} public projects</span>
-                          <span>{c.memberCount} members</span>
-                        </div>
-                        <Button
-                          className="mt-5 h-11"
-                          onClick={() => chooseCoop(c.id)}
-                        >
-                          Explore this co-op <ArrowUpRight />
-                        </Button>
-                      </article>
-                    ))}
+                  {visibleCoops.map((c) => (
+                    <article className="network-card" key={c.id}>
+                      <p className="eyebrow">
+                        <MapPin size={14} />
+                        {c.region}
+                      </p>
+                      <h2>{c.name}</h2>
+                      <p>{c.summary}</p>
+                      <div className="network-meta">
+                        <span>{c.projects.length} public projects</span>
+                        <span>{c.memberCount} members</span>
+                      </div>
+                      <Button
+                        className="mt-5 h-11"
+                        onClick={() => chooseCoop(c.id)}
+                      >
+                        Explore this co-op <ArrowUpRight />
+                      </Button>
+                    </article>
+                  ))}
                 </div>
+                {coops.length > 0 && visibleCoops.length === 0 && (
+                  <Empty>
+                    <h2>No matching co-ops</h2>
+                    <output className="block mb-4">
+                      No co-ops match “{search}” in the loaded results. Try
+                      another name or general region.
+                    </output>
+                    <Button variant="outline" onClick={() => setSearch('')}>
+                      Clear search
+                    </Button>
+                  </Empty>
+                )}
                 {!coops.length && (
                   <Empty>
                     <Sprout size={36} className="mx-auto mb-4" />

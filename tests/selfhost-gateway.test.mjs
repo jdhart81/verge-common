@@ -348,6 +348,74 @@ await test('account registration and login set protected cookies and reject exte
   );
 });
 
+await test('account mode links, registration, and recovery preserve the intended co-op destination', async (t) => {
+  const f = await fixture(t);
+  const returnTo = `/network/?coop=${aliceCoop}&from=invitation`;
+  const escapedReturnTo = returnTo.replaceAll('&', '&amp;');
+  const modeLink = (html, mode) => {
+    const href = [...html.matchAll(/href="([^"]+)"/g)]
+      .map((match) => match[1].replaceAll('&amp;', '&'))
+      .find((href) => new URL(href, origin).searchParams.get('mode') === mode);
+    assert.ok(href, `The ${mode} link is available`);
+    assert.equal(new URL(href, origin).searchParams.get('returnTo'), returnTo);
+    return href;
+  };
+  const assertDestination = (html) => {
+    assert.ok(html.includes(`name="returnTo" value="${escapedReturnTo}"`));
+  };
+  const login = await f.request(
+    `/account?returnTo=${encodeURIComponent(returnTo)}`,
+  );
+  const loginHtml = await login.text();
+  assertDestination(loginHtml);
+  const register = await f.request(modeLink(loginHtml, 'register'));
+  const registerHtml = await register.text();
+  assertDestination(registerHtml);
+  modeLink(registerHtml, 'login');
+  const registered = await f.form('/auth/register', {
+    username: 'invited_neighbor',
+    displayName: 'Invited neighbor',
+    password,
+    returnTo,
+  });
+  assert.equal(registered.status, 201);
+  assert.ok((await registered.text()).includes(`href="${escapedReturnTo}"`));
+
+  const recover = await f.request(modeLink(loginHtml, 'recover'));
+  const recoverHtml = await recover.text();
+  assertDestination(recoverHtml);
+  modeLink(recoverHtml, 'login');
+  const failedRecovery = await f.form('/auth/recover', {
+    username: 'alice',
+    recoveryCode: 'invalid',
+    password,
+    returnTo,
+  });
+  assert.equal(failedRecovery.status, 400);
+  const failedHtml = await failedRecovery.text();
+  assertDestination(failedHtml);
+  modeLink(failedHtml, 'login');
+  const recovered = await f.form('/auth/recover', {
+    username: 'alice',
+    recoveryCode: f.alice.recoveryCode,
+    password,
+    returnTo,
+  });
+  assert.equal(recovered.status, 200);
+  assert.ok((await recovered.text()).includes(`href="${escapedReturnTo}"`));
+
+  const external = await f.form('/auth/recover', {
+    username: 'bob',
+    recoveryCode: f.bob.recoveryCode,
+    password,
+    returnTo: 'https://evil.example/steal',
+  });
+  const externalHtml = await external.text();
+  assert.equal(external.status, 200);
+  assert.ok(externalHtml.includes('href="/workspace/"'));
+  assert.ok(!externalHtml.includes('https://evil.example'));
+});
+
 await test('account token management requires a browser session and never lists stored token secrets', async (t) => {
   const f = await fixture(t);
   assert.equal(

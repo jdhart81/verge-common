@@ -1,0 +1,539 @@
+/* Public mission page; keep workspace styles independent. */
+.mission-home {
+  --home-ink: #183d2e;
+  --home-paper: #f7f9f6;
+}
+.home-nav .brand {
+  flex-shrink: 0;
+}
+.home-nav .brand > span {
+  white-space: nowrap;
+}
+.home-nav .brand-dot {
+  margin-left: 8px;
+}
+.home-nav nav a {
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+}
+.home-nav .home-signin {
+  border: 1px solid var(--border);
+  padding: 8px 16px;
+  border-radius: 5px;
+}
+.home-hero {
+  padding-top: 60px;
+  padding-bottom: 64px;
+}
+.home-hero .hero-grid {
+  grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr);
+  gap: 38px;
+  align-items: center;
+}
+.home-hero .eyebrow {
+  font-size: 11px;
+  letter-spacing: 1.6px;
+  margin-bottom: 28px;
+}
+.home-hero h1 {
+  font-size: clamp(43px, 4.6vw, 65px);
+  letter-spacing: -2.8px;
+  line-height: 1.08;
+}
+.home-hero .intro {
+  font-size: 18px;
+  line-height: 1.7;
+  max-width: 510px;
+  margin: 25px 0 28px;
+}
+.home-hero .actions {
+  gap: 16px 24px;
+}
+.home-try {
+  margin: 18px 0 0;
+  font-size: 13px;
+  color: var(--muted-foreground);
+}
+.home-try a {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.home-pilot {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  line-height: 1.5;
+  margin: 27px 0 0;
+}
+.home-pilot > span {
+  width: 6px;
+  height: 6px;
+  background: #58774b;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.home-principles {
+  border-top: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+  background: #edf2e8;
+}
+.home-principles > .wrap {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  padding-top: 22px;
+  padding-bottom: 22px;
+}
+.home-principles span,
+.home-principles a {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  font-size: 13px;
+  font-weight: 600;
+}
+.home-principles svg {
+  flex-shrink: 0;
+  color: #4d6f49;
+}
+.home-how {
+  padding-top: 82px;
+  padding-bottom: 82px;
+  scroll-margin-top: 25px;
+}
+.home-section-intro {
+  display: grid;
+  grid-template-columns: 1.1fr 1fr;
+  gap: 75px;
+  align-items: end;
+}
+.mission-home h2 {
+  font-size: clamp(34px, 3.6vw, 47px);
+  letter-spacing: -1.7px;
+  line-height: 1.13;
+}
+.mission-home h2 em {
+  font-family: Georgia, serif;
+  font-weight: 400;
+}
+.home-section-intro > p {
+  color: var(--muted-foreground);
+  font-size: 17px;
+  max-width: 420px;
+  margin: 0 0 4px;
+  line-height: 1.75;
+}
+.home-steps {
+  list-style: none;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 35px;
+  margin: 42px 0 0;
+  padding: 0;
+}
+.home-steps > li {
+  border-top: 1px solid #a8baaa;
+  padding: 22px 0 0;
+}
+.home-step-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  color: #51734b;
+}
+.home-step-top span {
+  font-size: 12px;
+  letter-spacing: 1px;
+}
+.home-step-top svg {
+  width: 21px;
+  height: 21px;
+}
+.home-steps h3 {
+  font-size: 20px;
+  line-height: 1.35;
+  font-weight: 600;
+  margin: 20px 0 12px;
+  letter-spacing: -0.35px;
+}
+.home-steps p {
+  font-size: 15px;
+  color: var(--muted-foreground);
+  line-height: 1.75;
+  margin: 0;
+}
+.home-common-ground {
+  background: #193f30;
+  color: #f1f5e9;
+  padding: 70px 0;
+}
+.home-common-grid {
+  display: grid;
+  grid-template-columns: 1.05fr 1fr;
+  gap: 80px;
+}
+.home-common-grid .eyebrow {
+  color: #c2d5a5;
+}
+.home-common-grid h2 {
+  font-size: clamp(33px, 3.3vw, 43px);
+}
+.home-common-grid > div > p:not(.eyebrow) {
+  max-width: 430px;
+  color: #d3dfcf;
+  font-size: 16px;
+  line-height: 1.8;
+  margin: 25px 0;
+}
+.home-common-grid .text-link {
+  color: #e2efb2;
+  min-height: 44px;
+}
+.home-tools {
+  margin: 0;
+}
+.home-tools > div {
+  border-bottom: 1px solid #446351;
+  padding: 22px 0;
+}
+.home-tools > div:first-child {
+  padding-top: 0;
+}
+.home-tools dt {
+  font-size: 18px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-weight: 600;
+}
+.home-tools svg {
+  color: #d0e1ad;
+  flex-shrink: 0;
+}
+.home-tools dd {
+  color: #d3dfcf;
+  font-size: 15px;
+  line-height: 1.75;
+  margin: 11px 0 0 33px;
+}
+.home-questions {
+  display: grid;
+  grid-template-columns: 0.9fr 1.1fr;
+  gap: 80px;
+  padding-top: 82px;
+  padding-bottom: 82px;
+}
+.home-questions h2 {
+  font-size: clamp(33px, 3.3vw, 43px);
+}
+.home-questions > div > p:not(.eyebrow) {
+  margin: 22px 0 0;
+  max-width: 330px;
+  color: var(--muted-foreground);
+  font-size: 16px;
+  line-height: 1.8;
+}
+.home-faq {
+  border-top: 1px solid var(--border);
+}
+.home-faq details {
+  border-bottom: 1px solid var(--border);
+}
+.home-faq summary {
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  list-style: none;
+  min-height: 70px;
+  padding: 19px 0;
+  font-size: 16px;
+  font-weight: 600;
+}
+.home-faq summary::-webkit-details-marker {
+  display: none;
+}
+.home-faq summary svg {
+  flex-shrink: 0;
+  transition: transform 0.2s;
+}
+.home-faq details[open] summary svg {
+  transform: rotate(45deg);
+}
+.home-faq p {
+  font-size: 15px;
+  line-height: 1.8;
+  color: var(--muted-foreground);
+  margin: 0 28px 23px 0;
+}
+.home-faq a {
+  color: var(--primary);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.home-faq summary:focus-visible {
+  outline: 3px solid #ad6810;
+  outline-offset: 5px;
+}
+.home-invitation {
+  background: #e5edc3;
+  padding: 64px 0 36px;
+}
+.home-invitation h2 {
+  font-size: clamp(38px, 4.5vw, 60px);
+}
+.home-invitation-bottom {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 45px;
+  margin-top: 28px;
+}
+.home-invitation-bottom p {
+  max-width: 570px;
+  color: #42593e;
+  font-size: 17px;
+  line-height: 1.75;
+  margin: 0;
+}
+.home-invitation-bottom .button {
+  flex-shrink: 0;
+}
+.home-contributor {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 22px;
+  padding-top: 26px;
+  margin-top: 42px;
+  border-top: 1px solid #bdc9a0;
+  font-size: 13px;
+  color: #42593e;
+}
+.home-contributor a {
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  color: #183d2e;
+  font-weight: 600;
+  white-space: nowrap;
+}
+.home-footer > div a {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 44px;
+}
+@media (max-width: 1050px) {
+  .home-nav {
+    padding: 20px 32px;
+    gap: 20px;
+  }
+  .home-nav nav {
+    gap: 22px;
+  }
+  .home-hero .hero-grid {
+    gap: 25px;
+  }
+  .home-hero h1 {
+    font-size: 48px;
+  }
+  .home-hero .intro {
+    font-size: 17px;
+  }
+  .home-section-intro,
+  .home-common-grid,
+  .home-questions {
+    gap: 40px;
+  }
+}
+@media (max-width: 820px) {
+  .home-hero .hero-grid {
+    grid-template-columns: 1fr;
+    gap: 34px;
+  }
+  .home-hero {
+    padding-top: 40px;
+    padding-bottom: 40px;
+  }
+  .home-hero-copy {
+    max-width: 650px;
+  }
+  .home-hero h1 {
+    font-size: clamp(43px, 7.5vw, 62px);
+  }
+  .home-hero .intro {
+    max-width: 570px;
+  }
+  .home-hero .vc-landscape {
+    max-width: 570px;
+    width: 100%;
+    margin-inline: auto;
+  }
+  .home-principles > .wrap {
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 14px 28px;
+  }
+  .home-steps {
+    gap: 23px;
+  }
+  .home-steps h3 {
+    font-size: 18px;
+  }
+  .home-section-intro {
+    grid-template-columns: 1fr;
+    gap: 22px;
+  }
+  .home-section-intro > p {
+    max-width: 580px;
+  }
+  .home-common-grid,
+  .home-questions {
+    grid-template-columns: 1fr;
+  }
+  .home-common-grid > div > p:not(.eyebrow),
+  .home-questions > div > p:not(.eyebrow) {
+    max-width: 580px;
+  }
+  .home-invitation-bottom {
+    align-items: start;
+    flex-direction: column;
+    gap: 24px;
+  }
+  .home-contributor {
+    align-items: start;
+    flex-direction: column;
+    gap: 12px;
+  }
+}
+@media (max-width: 600px) {
+  .home-nav {
+    min-height: 80px;
+    padding: 16px 20px;
+    gap: 10px;
+    flex-wrap: wrap;
+  }
+  .home-nav .brand {
+    font-size: 20px;
+    gap: 7px;
+    letter-spacing: -0.7px;
+  }
+  .home-nav .brand svg {
+    width: 23px;
+    height: 23px;
+  }
+  .home-nav nav {
+    gap: 16px;
+    font-size: 13px;
+  }
+  .home-nav nav a:first-child {
+    display: none;
+  }
+  .home-nav .home-signin {
+    padding: 6px 10px;
+  }
+  .home-nav nav a {
+    min-height: 44px;
+  }
+  .home-hero h1 {
+    font-size: clamp(40px, 10.5vw, 57px);
+    letter-spacing: -2px;
+  }
+  .home-hero .intro {
+    font-size: 17px;
+    line-height: 1.7;
+    margin: 22px 0 24px;
+  }
+  .home-hero .eyebrow {
+    font-size: 10px;
+    letter-spacing: 1.2px;
+    margin-bottom: 24px;
+  }
+  .home-hero .actions {
+    gap: 16px 22px;
+  }
+  .home-hero .actions .text-link {
+    min-height: 44px;
+  }
+  .home-pilot {
+    margin-top: 19px;
+  }
+  .home-principles > .wrap {
+    justify-content: start;
+    flex-direction: column;
+    align-items: start;
+    gap: 15px;
+    padding-top: 22px;
+    padding-bottom: 22px;
+  }
+  .home-how,
+  .home-questions {
+    padding-top: 52px;
+    padding-bottom: 52px;
+  }
+  .home-steps {
+    grid-template-columns: 1fr;
+    gap: 28px;
+    margin-top: 30px;
+  }
+  .home-steps h3 {
+    font-size: 21px;
+    margin-top: 12px;
+  }
+  .home-common-ground {
+    padding: 48px 0;
+  }
+  .home-tools dd {
+    margin-left: 0;
+  }
+  .home-tools dt {
+    font-size: 17px;
+  }
+  .home-questions {
+    gap: 30px;
+  }
+  .home-faq summary {
+    min-height: 72px;
+    font-size: 16px;
+  }
+  .home-invitation {
+    padding-top: 48px;
+  }
+  .home-contributor a {
+    white-space: normal;
+  }
+  .home-footer {
+    align-items: start;
+    gap: 14px;
+  }
+  .home-footer > div {
+    gap: 24px;
+  }
+}
+@media (max-width: 400px) {
+  .home-nav nav {
+    width: 100%;
+    justify-content: space-between;
+    gap: 10px;
+  }
+  .home-nav nav a:first-child {
+    display: inline-flex;
+  }
+  .home-nav {
+    gap: 4px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+  .home-faq summary svg {
+    transition: none;
+  }
+}
