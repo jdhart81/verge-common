@@ -1,3 +1,13 @@
+# Deployed cooperative pilot — September 19, 2026
+
+The shared website is live at https://vergecommon.com on its dedicated server, with self-hosted accounts, private co-ops, durable SQLite/evidence storage, and scoped hosted MCP. Native source now includes authenticated participation. Land preparation adds boundary-area and overlap checks, current parcel consent, explicit agreement coverage, and withdrawal/revocation safeguards.
+
+The implementation candidate `2b73c2d` passed 100 JavaScript tests, full-project lint with zero diagnostics, type checking, and [GitHub web, imagery and iOS checks](https://github.com/jdhart81/verge-common/actions/runs/35454137711). Linux Docker and live HTTPS three-account acceptance passed, including private evidence, token scopes/revocation and actual MCP read/write boundaries. Daily local backups are active; staging and production restore checks passed and an initial matching production archive was copied offhost. See [feature acceptance](FEATURE_ACCEPTANCE.md) and the [deployment receipt](DEPLOYMENT_2026-09-19.md) for final release identifiers and limits.
+
+The source remains on the launch branch under [PR #2](https://github.com/jdhart81/verge-common/pull/2). Real participant acceptance, recurring encrypted offsite recovery, Apple signing/distribution and external nonprofit, carbon registry, sale and payment requirements remain separate. Historical entries below describe their checkpoints and are not the current deployment status.
+
+---
+
 # Local candidate — partner preparation and agent MCP (September 19, 2026)
 
 Adds private project-specific conservation partnership records with reviewed evidence, independent approval, and revocation. Adds a preparation checklist and versioned parcel/boundary snapshots: changed land records prevent approval of an outdated assessment. Adds a stdio MCP server with public co-op discovery and local hypothetical pooling/allocation tools, without private access or financial execution.

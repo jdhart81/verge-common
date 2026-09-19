@@ -1,5 +1,5 @@
 """Production-build acceptance using isolated synthetic accounts; no external providers."""
-import os,json,uuid,re,urllib.request,urllib.error,urllib.parse,http.cookiejar,concurrent.futures,hashlib
+import os,json,uuid,re,urllib.request,urllib.error,urllib.parse,http.cookiejar,concurrent.futures,hashlib,html
 base=os.environ.get('VERGE_TEST_ORIGIN','http://127.0.0.1:3100')
 assert base.startswith(('http://127.0.0.1:','http://localhost:')) or (base=='https://vergecommon.com' and os.environ.get('VERGE_ALLOW_PRODUCTION_FIXTURES')=='1'), 'Use local staging, or explicitly opt in to private synthetic production fixtures.'
 prefix='test_'+uuid.uuid4().hex[:12]
@@ -24,6 +24,14 @@ class Client:
  def token(self,scope):
   code,body=self.call('/auth/token',{'label':'Acceptance test','scope':scope},form=True)
   assert code==200,(code,body);return re.search(r'<code>(vc_[A-Za-z0-9_-]+)</code>',body).group(1)
+# Assert rendered route identity before creating any persistent test fixtures.
+# A build rooted at /app previously aliased the homepage to /app/page.tsx.
+for path,heading in [('/', 'What if conservation were open source?'),('/app/', 'Your community. A place to care for.')]:
+ code,body=Client().call(path)
+ assert code==200,(path,code)
+ h1=re.search(r'<h1\b[^>]*>(.*?)</h1>',body,re.S)
+ text=' '.join(html.unescape(re.sub(r'<[^>]+>',' ',h1.group(1))).split()) if h1 else ''
+ assert text==heading,(path,text,heading)
 a,b,eve=Client(),Client(),Client()
 for c,n in [(a,'a'),(b,'b'),(eve,'e')]:c.register(n)
 code,_=Client().call('/api/workspaces',headers={'oai-authenticated-user-id':'forged','oai-authenticated-user-email':'forged'})
@@ -83,4 +91,4 @@ code,current=command(a,'archive',{});assert code==200,(code,current)
 # Preserve archived synthetic co-op receipt, remove synthetic login accounts.
 for c in [a,b,eve]:
  code,_=c.call('/auth/close',{'password':c.password,'confirmation':'CLOSE'},form=True);assert code==200,code
-print(json.dumps({'status':'passed','workspace':id,'checks':['three independent accounts','forged identity denied','private invitation and membership','member post','idempotency and conflict','outsider denial','CSRF rejection','evidence upload/hash/private download','native read scope and token revocation','real hosted MCP handshake/read/write','agent financial denial','encoded scope bypass denied','archive','account closure']}))
+print(json.dumps({'status':'passed','workspace':id,'checks':['distinct mission homepage and app route','three independent accounts','forged identity denied','private invitation and membership','member post','idempotency and conflict','outsider denial','CSRF rejection','evidence upload/hash/private download','native read scope and token revocation','real hosted MCP handshake/read/write','agent financial denial','encoded scope bypass denied','archive','account closure']}))

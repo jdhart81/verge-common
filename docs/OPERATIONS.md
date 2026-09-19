@@ -3,7 +3,7 @@
 ## Start a real co-op workspace
 
 1. Sign in and create a private workspace with a general region and purpose.
-2. Set the profile public when the group consents to its introduction being visible. Website-level access still applies.
+2. Set the profile public when the group consents to its introduction being visible. Private record access remains limited by membership and record-specific permissions.
 3. Copy the public profile link and share it yourself. A signed-in participant requests membership; the steward approves it.
 4. Appoint a second trusted steward. The founding steward is the only person who can grant or remove steward roles.
 5. Add projects. Publish only consented general descriptions; keep exact land references in private parcel records.
@@ -32,7 +32,7 @@ This is a software policy record; applicable legal governance requirements must 
 
 1. Record a real serialized holding supported by reviewed evidence. Only whole one-tonne units are supported. Prefix and numeric range must identify the complete registry serial namespace.
 2. A second steward reviews the record. Overlapping serial ranges within the co-op are rejected.
-3. Record an externally settled sale/transfer receipt in USD cents and units. Submitted records reserve internal quantity until reviewed or rejected.
+3. Record an externally settled sale/transfer receipt in the co-op's accounting currency minor units and whole credit units. Submitted records reserve internal quantity until reviewed or rejected.
 4. Another steward reviews the settlement. The software has not queried a registry or bank; stewards must check those authoritative sources.
 5. Choose an adopted charter to allocate the reviewed receipt. There is exactly one allocation per settlement.
 6. A second steward approves the exact-cent allocation.
@@ -43,13 +43,13 @@ The app never sends payment instructions. Do not mark a scenario as settled cash
 
 ## Data access and retention
 
-- Anonymous discovery, when host access allows it: explicitly public profile/project/update information only.
+- Anonymous discovery: explicitly public profile/project/update information only.
 - Active members: projects, tasks, governance and co-op financial records.
 - Submitter/uploader and active stewards: private land, agreement and evidence records/files.
 - Removed members: no private access. Existing records remain for governance/accounting continuity.
 - Archive: no more mutations, profile disappears from discovery, retained member read/export access remains.
 
-Hard deletion and statutory retention schedules are not automated. Resolve a real co-op's retention obligations before collecting regulated data. Database/R2 operators must establish backups, restoration and deletion procedures appropriate to their deployment; a JSON member export is not a complete file-store backup.
+Hard deletion and statutory retention schedules are not automated. Resolve a real co-op's retention obligations before collecting regulated data. Database and evidence-storage operators must establish backups, restoration and deletion procedures appropriate to their deployment; a JSON member export is not a complete file-store backup.
 
 ## Concurrency, retries and recovery
 

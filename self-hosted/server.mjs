@@ -214,7 +214,7 @@ export function createGateway({
             workspaces,
           });
         }
-        if (url.pathname === '/account' && req.method === 'GET')
+        if (url.pathname === '/account' && ['GET', 'HEAD'].includes(req.method))
           return page(200, {
             user: principal,
             tokens: principal ? auth.tokens(principal.id) : [],

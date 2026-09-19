@@ -45,6 +45,23 @@ jobs:
           python3 tests/selfhost_acceptance.py
           npm run backup:selfhost
 
+  container:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build and verify the actual deployment image
+        run: |
+          docker build -f self-hosted/Dockerfile -t vergecommon:ci .
+          docker run -d --name vergecommon-ci --read-only --tmpfs /tmp:rw,noexec,nosuid,size=128m --tmpfs /data:rw,noexec,nosuid,size=128m,uid=1000,gid=1000 --tmpfs /backups:rw,noexec,nosuid,size=128m,uid=1000,gid=1000 --cap-drop ALL --security-opt no-new-privileges --pids-limit 256 --memory 1g -p 127.0.0.1:3100:3000 -e VERGE_ORIGIN=http://127.0.0.1:3100 -e VERGE_TRUST_CADDY=0 vergecommon:ci
+          trap 'docker logs vergecommon-ci; docker rm -f vergecommon-ci' EXIT
+          for attempt in $(seq 1 45); do
+            if curl -fsS http://127.0.0.1:3100/api/network > /dev/null; then break; fi
+            sleep 1
+          done
+          python3 tests/selfhost_acceptance.py
+          docker exec vergecommon-ci node self-hosted/backup.mjs
+
   imagery:
     runs-on: ubuntu-latest
     timeout-minutes: 15

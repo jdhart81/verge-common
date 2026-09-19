@@ -48,7 +48,9 @@ In a second terminal, with the staging listener running:
 VERGE_TEST_ORIGIN=http://127.0.0.1:3100 python3 tests/selfhost_acceptance.py
 ```
 
-Use an empty dedicated staging directory and the same release image intended for production. The acceptance runner creates synthetic accounts and a private co-op, exercises invitations, membership, posts, request replay/conflicts, uploads and private downloads, token permissions/revocation, and origin/identity rejection. It archives the fixture and closes the synthetic login accounts. It refuses a non-local target; do not disable that guard to create test accounts on the public service.
+Use an empty dedicated staging directory and the same release image intended for production. The acceptance runner creates synthetic accounts and a private co-op, exercises invitations, membership, posts, request replay/conflicts, uploads and private downloads, token permissions/revocation, hosted MCP and origin/identity rejection. It archives the fixture and closes the synthetic login accounts.
+
+The runner permits loopback targets by default. A specifically authorized canonical production check requires both `VERGE_TEST_ORIGIN=https://vergecommon.com` and `VERGE_ALLOW_PRODUCTION_FIXTURES=1`. Use only synthetic identities and evidence, keep the fixture private, and confirm workspace archival and closure of all three test login accounts. If a run fails before cleanup, complete that cleanup before treating acceptance as complete. Do not point it at a real co-op or weaken its target guard. The September 19 deployment used this explicit opt-in after isolated staging acceptance passed.
 
 Also perform a browser check with **two separate accounts or browser profiles**:
 

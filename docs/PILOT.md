@@ -1,6 +1,6 @@
 # First community pilot
 
-Use consenting participants and real conservation work. Do not publish their names, parcel references, or meeting instructions without appropriate consent. The current hosted website is owner-only; a broader pilot needs an approved hosting audience.
+Use consenting participants and real conservation work. Do not publish their names, parcel references, or meeting instructions without appropriate consent. The shared website is live at https://vergecommon.com. Participants create their own accounts; a private invitation still requires steward approval before it grants co-op record access. Begin with a bounded, consenting pilot and the current deployment/recovery limits.
 
 ## Organizer preparation
 

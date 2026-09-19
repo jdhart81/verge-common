@@ -18,7 +18,7 @@ export function mcpDiscovery(origin = 'https://vergecommon.com') {
         'Sign in to VergeCommon and create a personal agent token. Supply it in the Authorization: Bearer header. Revoke it from your account when finished.',
     },
     documentation:
-      'https://github.com/jdhart81/verge-common/blob/main/mcp/README.md',
+      'https://github.com/jdhart81/verge-common/blob/build/coop-launch-readiness/mcp/README.md',
     boundaries:
       'Agent access follows current co-op membership. Financial/legal approvals, role changes, credit issuance and payment execution are unavailable.',
   };

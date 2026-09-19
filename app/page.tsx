@@ -9,6 +9,7 @@ import {
   BookOpen,
 } from 'lucide-react';
 const repo = 'https://github.com/jdhart81/verge-common';
+const sourceRepo = `${repo}/tree/build/coop-launch-readiness`;
 export default function Home({ publicPreview = false }: { publicPreview?: boolean } = {}) {
   return (
     <>
@@ -23,7 +24,7 @@ export default function Home({ publicPreview = false }: { publicPreview?: boolea
         <nav aria-label="Main navigation">
           <Link href={publicPreview ? "/demo/" : "/network/"}>{publicPreview ? "Plan a project" : "Projects"}</Link>
           <Link href={publicPreview ? "#contribute" : "/workspace/"}>{publicPreview ? "Contribute" : "My co-ops"}</Link>
-          <a className="nav-repo" href={repo}>
+          <a className="nav-repo" href={sourceRepo}>
             <Code2 size={18} />
             Source <ArrowUpRight size={16} />
           </a>
@@ -56,8 +57,8 @@ export default function Home({ publicPreview = false }: { publicPreview?: boolea
                 </Link>
               </div>
               <p className="fine">
-                Early contributor preview · AGPL-3.0-only. The planner stores
-                drafts on your device. {publicPreview ? 'Shared community accounts are being prepared and are not available on this site yet.' : 'Hosted community access is currently restricted.'}
+                Early community pilot · AGPL-3.0-only. The planner stores
+                drafts on your device. {publicPreview ? 'Shared community accounts are being prepared and are not available on this site yet.' : 'Shared co-ops require sign-in and membership approval.'}
               </p>
             </div>
             <aside className="field-note">

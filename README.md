@@ -6,7 +6,7 @@
 
 Organize a local conservation project, document the work, and make decisions together. From hedgerows and woodlots to larger landscapes, communities should be able to inspect, adapt, and improve the tools they depend on.
 
-**Early cooperative pilot.** The repository includes the shared application, a self-hosted account/storage runtime, native participation, and agent access. This is an invitation to build and test with us. Real partner adoption and verified environmental impact have not yet been demonstrated. See [feature acceptance](docs/FEATURE_ACCEPTANCE.md) for implementation evidence and remaining release requirements.
+**Early cooperative pilot.** The shared website is live with browser accounts, private co-ops and scoped agent access. The repository also includes the self-hosted account/storage runtime and native participation source. This is an invitation to build and test with us. Real partner adoption and verified environmental impact have not yet been demonstrated. See [feature acceptance](docs/FEATURE_ACCEPTANCE.md) for implementation evidence and remaining release requirements.
 
 ## Find your first contribution
 
@@ -23,7 +23,7 @@ Organize a local conservation project, document the work, and make decisions tog
 
 [Website](https://vergecommon.com) · [Conservation network](https://vergecommon.com/network/) · [Member workspace](https://vergecommon.com/workspace/) · [Account and device access](https://vergecommon.com/account) · [Contribute](CONTRIBUTING.md)
 
-`vergecommon.com` is the canonical service address. The repository includes a complete shared-service deployment path; a source build or test pass does not establish which release is currently deployed. Check the release/deployment receipt before inviting participants. Co-op and project publication is opt-in; member records and private land evidence retain their server-side access rules.
+`vergecommon.com` is the canonical service address. The shared application passed live HTTPS acceptance on September 19, 2026, using three independent synthetic accounts. The pilot source is on `build/coop-launch-readiness` while [PR #2](https://github.com/jdhart81/verge-common/pull/2) remains under review. See the [deployment receipt](docs/DEPLOYMENT_2026-09-19.md) for the exact release and operational limits before inviting participants. Co-op and project publication is opt-in; member records and private land evidence retain their server-side access rules.
 
 ## Start your own community
 
@@ -35,7 +35,7 @@ The original Cloudflare/Sites development path remains available through `npm ru
 
 The [MCP server](mcp/README.md) supports local stdio and authenticated Streamable HTTP at `/mcp` in the self-hosted runtime. Local stdio offers public discovery and hypothetical pooling/allocation drafts. Hosted tokens with `mcp:read` can also read the owner's permitted workspaces; `mcp:write` adds bounded project, member-update, task and RSVP commands. App tokens and MCP tokens are separate scopes.
 
-Create a personal agent token from `/account`, store it in the client's secret settings, and revoke it when finished. The hosted endpoint requires bearer support; OAuth is not implemented. Agents cannot approve legal/financial records, escalate membership, issue credits, execute payments, or publish public updates. The software includes this endpoint; deployment connectivity must be verified separately.
+Create a personal agent token from `/account`, store it in the client's secret settings, and revoke it when finished. The hosted endpoint requires bearer support; OAuth is not implemented. Agents cannot approve legal/financial records, escalate membership, issue credits, execute payments, or publish public updates. The live endpoint passed initialization, private-read, bounded-write and denied-financial-command acceptance checks on September 19, 2026.
 
 ## What is implemented
 
@@ -111,7 +111,7 @@ With a local self-hosted production build running against dedicated synthetic da
 VERGE_TEST_ORIGIN=http://127.0.0.1:3100 python3 tests/selfhost_acceptance.py
 ```
 
-This checks independent accounts, invitations and access boundaries, version conflicts/retries, evidence storage, token scopes/revocation, and account closure. The runner refuses non-local hosts. Check [feature acceptance](docs/FEATURE_ACCEPTANCE.md) and the release receipt for actual results.
+This checks independent accounts, invitations and access boundaries, version conflicts/retries, evidence storage, token scopes/revocation, hosted MCP and account closure. The runner defaults to local services and requires explicit opt-in for private synthetic fixtures on the canonical production service. Check [feature acceptance](docs/FEATURE_ACCEPTANCE.md) and the [deployment receipt](docs/DEPLOYMENT_2026-09-19.md) for actual results.
 
 With the original Cloudflare development server running, run its HTTP persistence/concurrency checks:
 
@@ -119,7 +119,7 @@ With the original Cloudflare development server running, run its HTTP persistenc
 python3 tests/http_integration.py
 ```
 
-Tests use synthetic local records and archive their workspaces. No test writes to the hosted service.
+Local tests use synthetic records and archive their workspaces. The separately authorized production acceptance run also used private synthetic records, archived its workspace and closed its test login accounts.
 
 ## Hosting and authentication
 
@@ -136,7 +136,7 @@ The self-hosted adapter applies the existing initial SQL migration transactional
 
 Public profiles show only explicitly public project summaries/updates, general regions, and active member counts. Agreements, land references and evidence are restricted to their submitters and stewards. Members can inspect co-op governance and financial records; payout bank details are not collected. Files download as attachments. Review the [privacy policy](PRIVACY.md).
 
-The self-hosted runtime supports one application process and one local SQLite database; it is not a replicated/high-availability deployment. Backup creation and restore verification are implemented, but a working schedule, encrypted offsite copies and recovery-key custody require operator configuration. Each co-op is an atomically versioned aggregate with a 750 KB application limit, 500 member records, and 5,000 audit events. File storage is limited to 200 files per co-op, 4 MB each. This architecture favors correctness for initial partner co-ops; a normalized event/record store is required before larger deployment. Cross-co-op or cross-installation registry claims still need the external registry's authoritative duplicate/custody checks.
+The self-hosted runtime supports one application process and one local SQLite database; it is not a replicated/high-availability deployment. Daily local backups are active, staging and production restore verification passed, and an initial matching production archive was copied offhost. See the deployment receipt for the exact recovery results. A recurring encrypted offsite schedule and recovery-key custody still require operator configuration. Each co-op is an atomically versioned aggregate with a 750 KB application limit, 500 member records, and 5,000 audit events. File storage is limited to 200 files per co-op, 4 MB each. This architecture favors correctness for initial partner co-ops; a normalized event/record store is required before larger deployment. Cross-co-op or cross-installation registry claims still need the external registry's authoritative duplicate/custody checks.
 
 ## Mission and sustainability
 
