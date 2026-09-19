@@ -1,0 +1,12 @@
+.git
+node_modules
+dist
+dist-public
+.wrangler
+.verge-data
+.env*
+ios/.build
+self-hosted/backups
+*.tar.gz
+outputs
+work

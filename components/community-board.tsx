@@ -1,5 +1,6 @@
 'use client';
-import { useEffect, useState } from 'react';
+import { ControlLabel } from '@/components/ui/label';
+import { useState, useSyncExternalStore } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -9,8 +10,93 @@ import {
 } from '@/components/ui/native-select';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { eventCalendar } from '@/lib/calendar.mjs';
-type RecordItem = { id: string; [key: string]: any };
-type Save = (op: string, payload: any) => Promise<boolean>;
+type CommunityProject = { id: string; name: string; status: string };
+export type CommunityEvent = {
+  id: string;
+  title: string;
+  summary: string;
+  startsAt: number;
+  endsAt: number;
+  timeZone: string;
+  status: string;
+  projectId?: string;
+  createdAt?: number;
+  updatedAt?: number;
+  cancelledAt?: number;
+  calendarSequence?: number;
+  hidden?: boolean;
+  blocked?: boolean;
+  visibility?: string;
+  meetingDetails?: string;
+  cancelReason?: string;
+  capacity?: number;
+  goingCount?: number;
+  yourResponse?: string;
+  isOrganizer?: boolean;
+  attendees?: { name: string; response: string }[];
+};
+type CommunityUpdate = {
+  id: string;
+  projectId: string;
+  hidden: boolean;
+  visibility: string;
+  author: string;
+  createdAt: number;
+  text: string;
+  blocked?: boolean;
+};
+type CommunityComment = {
+  id: string;
+  updateId: string;
+  author: string;
+  text: string;
+  hidden: boolean;
+  isYou: boolean;
+  blocked?: boolean;
+};
+type CommunityReport = {
+  id: string;
+  targetId: string;
+  kind: string;
+  status: string;
+  reason: string;
+  note?: string;
+};
+export type CommunityState = {
+  visibility: string;
+  members: { status: string }[];
+  tasks: { status: string }[];
+  projects: CommunityProject[];
+  updates: CommunityUpdate[];
+  events?: CommunityEvent[];
+  comments?: CommunityComment[];
+  reports?: CommunityReport[];
+};
+type Save = (op: string, payload: Record<string, unknown>) => Promise<boolean>;
+function subscribeClock(onChange: () => void) {
+  const timer = window.setInterval(onChange, 1000);
+  return () => window.clearInterval(timer);
+}
+const clockSnapshot = () => Math.floor(Date.now() / 60_000) * 60_000;
+const serverClock = () => 0;
+function subscribeTimeZone(onChange: () => void) {
+  window.addEventListener('focus', onChange);
+  return () => window.removeEventListener('focus', onChange);
+}
+const timeZoneSnapshot = () => Intl.DateTimeFormat().resolvedOptions().timeZone;
+const serverTimeZone = () => '';
+function localDateTime(value: number) {
+  const date = new Date(value);
+  return new Date(value - date.getTimezoneOffset() * 60_000)
+    .toISOString()
+    .slice(0, 16);
+}
+function eventInstant(value: string, original: number) {
+  // Preserve the original instant when an unchanged local time falls in a DST fold.
+  return value === localDateTime(original)
+    ? original
+    : new Date(value).getTime();
+}
 function Form({
   children,
   submit,
@@ -60,9 +146,9 @@ function Form({
     </form>
   );
 }
-function ProjectSelect({ projects }: { projects: RecordItem[] }) {
+function ProjectSelect({ projects }: { projects: CommunityProject[] }) {
   return (
-    <label>
+    <ControlLabel>
       Project
       <NativeSelect name="projectId" required>
         <NativeSelectOption value="">Choose a project</NativeSelectOption>
@@ -74,7 +160,7 @@ function ProjectSelect({ projects }: { projects: RecordItem[] }) {
             </NativeSelectOption>
           ))}
       </NativeSelect>
-    </label>
+    </ControlLabel>
   );
 }
 function Report({
@@ -96,10 +182,10 @@ function Report({
         submit="Send to co-op stewards"
         save={(v) => save('report_content', { ...v, kind, targetId })}
       >
-        <label>
+        <ControlLabel>
           What should a steward review?
           <Textarea name="reason" required maxLength={2000} />
-        </label>
+        </ControlLabel>
         <p className="small">
           Your report is visible to you and the co-op’s stewards.
         </p>
@@ -107,7 +193,8 @@ function Report({
     </details>
   );
 }
-export function PublicEvents({ events }: { events: RecordItem[] }) {
+export function PublicEvents({ events }: { events: CommunityEvent[] }) {
+  const now = useSyncExternalStore(subscribeClock, clockSnapshot, serverClock);
   if (!events?.length) return null;
   return (
     <section className="mt-6">
@@ -119,7 +206,7 @@ export function PublicEvents({ events }: { events: RecordItem[] }) {
             <p className="eyebrow">
               {e.status === 'cancelled'
                 ? 'Cancelled'
-                : e.endsAt < Date.now()
+                : e.endsAt < now
                   ? 'Past event'
                   : 'Coming up'}
             </p>
@@ -143,28 +230,31 @@ export function CommunityBoard({
   state,
   steward,
   busy,
+  growthPaused = false,
   mutate,
 }: {
-  state: any;
+  state: CommunityState;
   steward: boolean;
   busy: boolean;
+  growthPaused?: boolean;
   mutate: Save;
 }) {
-  const [zone, setZone] = useState(''),
-    [showPast, setShowPast] = useState(false),
-    [notice, setNotice] = useState('');
-  useEffect(
-    () => setZone(Intl.DateTimeFormat().resolvedOptions().timeZone),
-    [],
+  const zone = useSyncExternalStore(
+    subscribeTimeZone,
+    timeZoneSnapshot,
+    serverTimeZone,
   );
-  const disabled = busy || state.visibility === 'archived';
-  const events: RecordItem[] = state.events ?? [],
-    comments: RecordItem[] = state.comments ?? [],
-    reports: RecordItem[] = state.reports ?? [];
+  const now = useSyncExternalStore(subscribeClock, clockSnapshot, serverClock);
+  const [showPast, setShowPast] = useState(false),
+    [notice, setNotice] = useState('');
+  const disabled = busy || state.visibility === 'archived' || growthPaused;
+  const events: CommunityEvent[] = state.events ?? [],
+    comments: CommunityComment[] = state.comments ?? [],
+    reports: CommunityReport[] = state.reports ?? [];
   const visibleEvents = events
-    .filter((e) => showPast || e.endsAt >= Date.now())
+    .filter((e) => !e.blocked && (showPast || e.endsAt >= now))
     .sort((a, b) => a.startsAt - b.startsAt);
-  async function act(op: string, payload: any) {
+  async function act(op: string, payload: Record<string, unknown>) {
     try {
       await mutate(op, payload);
       setNotice('Saved.');
@@ -172,7 +262,7 @@ export function CommunityBoard({
       setNotice((e as Error).message);
     }
   }
-  function calendar(event: RecordItem) {
+  function calendar(event: CommunityEvent) {
     const url = URL.createObjectURL(
       new Blob([eventCalendar(event)], { type: 'text/calendar;charset=utf-8' }),
     );
@@ -182,7 +272,7 @@ export function CommunityBoard({
     link.click();
     setTimeout(() => URL.revokeObjectURL(url), 1000);
     setNotice(
-      'Calendar file downloaded. It includes private meeting instructions; keep it within your group. Re-download after a cancellation.',
+      'Calendar file downloaded. It includes private meeting instructions; keep it within your group. Re-download and import after an edit or cancellation. Your calendar may ask whether to update its existing entry.',
     );
   }
   return (
@@ -193,34 +283,27 @@ export function CommunityBoard({
       </p>
       <div className="network-meta">
         <span>
-          {
-            state.members.filter((m: RecordItem) => m.status === 'active')
-              .length
-          }{' '}
-          active memberships
+          {state.members.filter((m) => m.status === 'active').length} active
+          memberships
         </span>
         <span>
           {
             events.filter(
               (e) =>
-                e.status === 'scheduled' && !e.hidden && e.endsAt > Date.now(),
+                e.status === 'scheduled' &&
+                !e.hidden &&
+                !e.blocked &&
+                e.endsAt > now,
             ).length
           }{' '}
           upcoming events
         </span>
         <span>
-          {
-            state.tasks.filter((t: RecordItem) => t.status === 'completed')
-              .length
-          }{' '}
-          actions marked complete
+          {state.tasks.filter((t) => t.status === 'completed').length} actions
+          marked complete
         </span>
       </div>
-      {notice && (
-        <p role="status" className="notice mt-4">
-          {notice}
-        </p>
-      )}
+      {notice && <output className="notice mt-4">{notice}</output>}
       <Tabs defaultValue="events" className="mt-6">
         <TabsList>
           <TabsTrigger value="events">Events</TabsTrigger>
@@ -272,38 +355,42 @@ export function CommunityBoard({
                     <p className="whitespace-pre-wrap">{e.meetingDetails}</p>
                   </div>
                   {e.cancelReason && <p>Cancellation: {e.cancelReason}</p>}
+                  {!!e.updatedAt && (
+                    <p className="notice">
+                      Event details changed on{' '}
+                      {new Date(e.updatedAt).toLocaleString()}. Please check the
+                      time and meeting instructions, update your response if
+                      needed, and download the latest calendar entry.
+                    </p>
+                  )}
                   <p>
                     {e.goingCount} going
                     {e.capacity ? ` / ${e.capacity} places` : ''} · Your
                     response:{' '}
                     {e.yourResponse?.replace('_', ' ') || 'Not yet responded'}
                   </p>
-                  {e.status === 'scheduled' &&
-                    !e.hidden &&
-                    e.endsAt > Date.now() && (
-                      <div className="button-row">
-                        {[
-                          ['going', 'I’m going'],
-                          ['interested', 'Interested'],
-                          ['not_going', 'Can’t attend'],
-                        ].map(([response, title]) => (
-                          <Button
-                            key={response}
-                            disabled={disabled}
-                            variant={
-                              e.yourResponse === response
-                                ? 'default'
-                                : 'outline'
-                            }
-                            onClick={() =>
-                              act('event_rsvp', { id: e.id, response })
-                            }
-                          >
-                            {title}
-                          </Button>
-                        ))}
-                      </div>
-                    )}
+                  {e.status === 'scheduled' && !e.hidden && e.endsAt > now && (
+                    <div className="button-row">
+                      {[
+                        ['going', 'I’m going'],
+                        ['interested', 'Interested'],
+                        ['not_going', 'Can’t attend'],
+                      ].map(([response, title]) => (
+                        <Button
+                          key={response}
+                          disabled={response === 'not_going' && !!e.yourResponse ? busy : disabled}
+                          variant={
+                            e.yourResponse === response ? 'default' : 'outline'
+                          }
+                          onClick={() =>
+                            act('event_rsvp', { id: e.id, response })
+                          }
+                        >
+                          {title}
+                        </Button>
+                      ))}
+                    </div>
+                  )}
                   <Button
                     className="mt-4"
                     variant="outline"
@@ -314,25 +401,145 @@ export function CommunityBoard({
                   {!!e.attendees?.length && (
                     <details className="mt-4">
                       <summary>Responses · organizer and stewards only</summary>
-                      {e.attendees.map((a: any, i: number) => (
+                      {e.attendees.map((a, i) => (
                         <p key={i}>
                           {a.name}: {a.response.replace('_', ' ')}
                         </p>
                       ))}
                     </details>
                   )}
+                  {(steward || e.isOrganizer) &&
+                    e.status === 'scheduled' &&
+                    !e.hidden &&
+                    e.startsAt > now && (
+                      <details className="mt-4">
+                        <summary>Edit or reschedule event</summary>
+                        <Form
+                          key={e.updatedAt ?? e.createdAt ?? e.id}
+                          disabled={disabled || !zone}
+                          submit="Save event changes"
+                          save={async (v) => {
+                            const startsAt = eventInstant(v.start, e.startsAt);
+                            const endsAt = eventInstant(v.end, e.endsAt);
+                            const saved = await mutate('update_event', {
+                              ...v,
+                              id: e.id,
+                              startsAt,
+                              endsAt,
+                              timeZone:
+                                startsAt === e.startsAt && endsAt === e.endsAt
+                                  ? e.timeZone
+                                  : zone,
+                              capacity: Number(v.capacity),
+                            });
+                            if (saved)
+                              setNotice(
+                                'Event updated. Existing responses are kept. Tell participants about the change and ask them to check their response and calendar.',
+                              );
+                            return saved;
+                          }}
+                        >
+                          <ControlLabel>
+                            Event title
+                            <Input
+                              name="title"
+                              maxLength={160}
+                              required
+                              defaultValue={e.title}
+                            />
+                          </ControlLabel>
+                          <ControlLabel>
+                            Summary
+                            <Textarea
+                              name="summary"
+                              maxLength={2000}
+                              required
+                              defaultValue={e.summary}
+                            />
+                          </ControlLabel>
+                          <ControlLabel>
+                            Start · {zone || 'your local time'}
+                            <Input
+                              name="start"
+                              type="datetime-local"
+                              required
+                              defaultValue={
+                                zone ? localDateTime(e.startsAt) : ''
+                              }
+                            />
+                          </ControlLabel>
+                          <ControlLabel>
+                            End · {zone || 'your local time'}
+                            <Input
+                              name="end"
+                              type="datetime-local"
+                              required
+                              defaultValue={zone ? localDateTime(e.endsAt) : ''}
+                            />
+                          </ControlLabel>
+                          <ControlLabel>
+                            Private meeting instructions
+                            <Textarea
+                              name="meetingDetails"
+                              maxLength={2000}
+                              required
+                              defaultValue={e.meetingDetails}
+                            />
+                          </ControlLabel>
+                          <ControlLabel>
+                            Available places (0 = no cap)
+                            <Input
+                              name="capacity"
+                              type="number"
+                              min="0"
+                              max="500"
+                              required
+                              defaultValue={e.capacity ?? 0}
+                            />
+                          </ControlLabel>
+                          <ControlLabel>
+                            Who can discover this event?
+                            <NativeSelect
+                              name="visibility"
+                              defaultValue={steward ? e.visibility : 'members'}
+                            >
+                              <NativeSelectOption value="members">
+                                Members only
+                              </NativeSelectOption>
+                              {steward && (
+                                <NativeSelectOption value="public">
+                                  Public summary
+                                </NativeSelectOption>
+                              )}
+                            </NativeSelect>
+                          </ControlLabel>
+                          {!steward && e.visibility === 'public' && (
+                            <p>
+                              These changes make the event members-only. Ask a
+                              steward to update its public summary.
+                            </p>
+                          )}
+                          <p className="small">
+                            Existing responses stay recorded. This does not send
+                            notifications: tell participants about time or
+                            location changes and ask them to check their plans.
+                            Re-download the calendar entry after saving.
+                          </p>
+                        </Form>
+                      </details>
+                    )}
                   {(steward || e.isOrganizer) && e.status === 'scheduled' && (
                     <details className="mt-4">
                       <summary>Cancel event</summary>
                       <Form
-                        disabled={disabled}
+                        disabled={busy}
                         submit="Cancel event"
                         save={(v) => mutate('cancel_event', { ...v, id: e.id })}
                       >
-                        <label>
+                        <ControlLabel>
                           Reason for members
                           <Textarea name="reason" required maxLength={500} />
-                        </label>
+                        </ControlLabel>
                       </Form>
                     </details>
                   )}
@@ -341,7 +548,7 @@ export function CommunityBoard({
                       kind="event"
                       targetId={e.id}
                       save={mutate}
-                      disabled={disabled}
+                      disabled={busy}
                     />
                   )}
                 </article>
@@ -363,27 +570,27 @@ export function CommunityBoard({
                 }
               >
                 <ProjectSelect projects={state.projects} />
-                <label>
+                <ControlLabel>
                   Event title
                   <Input name="title" maxLength={160} required />
-                </label>
-                <label>
+                </ControlLabel>
+                <ControlLabel>
                   Summary
                   <Textarea name="summary" maxLength={2000} required />
-                </label>
-                <label>
+                </ControlLabel>
+                <ControlLabel>
                   Start · {zone || 'your local time'}
                   <Input name="start" type="datetime-local" required />
-                </label>
-                <label>
+                </ControlLabel>
+                <ControlLabel>
                   End · {zone || 'your local time'}
                   <Input name="end" type="datetime-local" required />
-                </label>
-                <label>
+                </ControlLabel>
+                <ControlLabel>
                   Private meeting instructions
                   <Textarea name="meetingDetails" required maxLength={2000} />
-                </label>
-                <label>
+                </ControlLabel>
+                <ControlLabel>
                   Available places (0 = no cap)
                   <Input
                     name="capacity"
@@ -393,8 +600,8 @@ export function CommunityBoard({
                     defaultValue="0"
                     required
                   />
-                </label>
-                <label>
+                </ControlLabel>
+                <ControlLabel>
                   Who can discover this event?
                   <NativeSelect name="visibility" defaultValue="members">
                     <NativeSelectOption value="members">
@@ -406,7 +613,7 @@ export function CommunityBoard({
                       </NativeSelectOption>
                     )}
                   </NativeSelect>
-                </label>
+                </ControlLabel>
                 <p className="small">
                   A public summary appears only when both the project and co-op
                   are public. Meeting instructions and responses stay within the
@@ -419,81 +626,80 @@ export function CommunityBoard({
         <TabsContent value="discussion">
           <div className="network-columns">
             <section>
-              {![...state.updates].length && (
+              {!state.updates.some((u) => !u.blocked) && (
                 <p className="empty">
                   Share the first project update or question.
                 </p>
               )}
-              {[...state.updates].reverse().map((u: RecordItem) => (
-                <article className="network-card" key={u.id}>
-                  <p className="eyebrow">
-                    {
-                      state.projects.find(
-                        (p: RecordItem) => p.id === u.projectId,
-                      )?.name
-                    }{' '}
-                    · {u.hidden ? 'Hidden' : u.visibility}
-                  </p>
-                  <h3>{u.author}</h3>
-                  <p className="small">
-                    {new Date(u.createdAt).toLocaleString()}
-                  </p>
-                  <p className="whitespace-pre-wrap">{u.text}</p>
-                  {comments
-                    .filter((c) => c.updateId === u.id)
-                    .map((c) => (
-                      <div className="panel mt-4" key={c.id}>
-                        <strong>{c.author}</strong>
-                        <p className="whitespace-pre-wrap">
-                          {c.hidden ? '[Hidden comment]' : c.text}
-                        </p>
-                        {!c.hidden && (
-                          <>
-                            {(c.isYou || steward) && (
-                              <Button
-                                variant="outline"
-                                disabled={disabled}
-                                onClick={() =>
-                                  act('remove_comment', { id: c.id })
-                                }
-                              >
-                                Hide comment
-                              </Button>
-                            )}
-                            <Report
-                              kind="comment"
-                              targetId={c.id}
-                              save={mutate}
-                              disabled={disabled}
-                            />
-                          </>
-                        )}
-                      </div>
-                    ))}
-                  {!u.hidden && (
-                    <>
-                      <Form
-                        disabled={disabled}
-                        submit="Reply to group"
-                        save={(v) =>
-                          mutate('post_comment', { ...v, updateId: u.id })
-                        }
-                      >
-                        <label>
-                          Member-only reply
-                          <Textarea name="text" maxLength={2000} required />
-                        </label>
-                      </Form>
-                      <Report
-                        kind="update"
-                        targetId={u.id}
-                        save={mutate}
-                        disabled={disabled}
-                      />
-                    </>
-                  )}
-                </article>
-              ))}
+              {state.updates
+                .filter((u) => !u.blocked)
+                .reverse()
+                .map((u) => (
+                  <article className="network-card" key={u.id}>
+                    <p className="eyebrow">
+                      {state.projects.find((p) => p.id === u.projectId)?.name} ·{' '}
+                      {u.hidden ? 'Hidden' : u.visibility}
+                    </p>
+                    <h3>{u.author}</h3>
+                    <p className="small">
+                      {new Date(u.createdAt).toLocaleString()}
+                    </p>
+                    <p className="whitespace-pre-wrap">{u.text}</p>
+                    {comments
+                      .filter((c) => c.updateId === u.id && !c.blocked)
+                      .map((c) => (
+                        <div className="panel mt-4" key={c.id}>
+                          <strong>{c.author}</strong>
+                          <p className="whitespace-pre-wrap">
+                            {c.hidden ? '[Hidden comment]' : c.text}
+                          </p>
+                          {!c.hidden && (
+                            <>
+                              {(c.isYou || steward) && (
+                                <Button
+                                  variant="outline"
+                                  disabled={busy}
+                                  onClick={() =>
+                                    act('remove_comment', { id: c.id })
+                                  }
+                                >
+                                  Hide comment
+                                </Button>
+                              )}
+                              <Report
+                                kind="comment"
+                                targetId={c.id}
+                                save={mutate}
+                                disabled={busy}
+                              />
+                            </>
+                          )}
+                        </div>
+                      ))}
+                    {!u.hidden && (
+                      <>
+                        <Form
+                          disabled={disabled}
+                          submit="Reply to group"
+                          save={(v) =>
+                            mutate('post_comment', { ...v, updateId: u.id })
+                          }
+                        >
+                          <ControlLabel>
+                            Member-only reply
+                            <Textarea name="text" maxLength={2000} required />
+                          </ControlLabel>
+                        </Form>
+                        <Report
+                          kind="update"
+                          targetId={u.id}
+                          save={mutate}
+                          disabled={busy}
+                        />
+                      </>
+                    )}
+                  </article>
+                ))}
             </section>
             <aside className="panel">
               <h3>Share an update</h3>
@@ -503,11 +709,11 @@ export function CommunityBoard({
                 save={(v) => mutate('post_update', v)}
               >
                 <ProjectSelect projects={state.projects} />
-                <label>
+                <ControlLabel>
                   What is happening?
                   <Textarea name="text" required maxLength={2000} />
-                </label>
-                <label>
+                </ControlLabel>
+                <ControlLabel>
                   Visibility
                   <NativeSelect name="visibility" defaultValue="members">
                     <NativeSelectOption value="members">
@@ -519,7 +725,7 @@ export function CommunityBoard({
                       </NativeSelectOption>
                     )}
                   </NativeSelect>
-                </label>
+                </ControlLabel>
                 <p className="small">
                   Replies always stay inside the co-op, including replies to
                   public updates.
@@ -540,7 +746,7 @@ export function CommunityBoard({
                 : r.kind === 'comment'
                   ? comments
                   : events;
-            const target = source.find((x: RecordItem) => x.id === r.targetId);
+            const target = source.find((x) => x.id === r.targetId);
             return (
               <article className="network-card" key={r.id}>
                 <p className="eyebrow">
@@ -549,17 +755,17 @@ export function CommunityBoard({
                 <p>{r.reason}</p>
                 {steward && target && (
                   <blockquote className="notice">
-                    {target.text ?? target.title}
+                    {'text' in target ? target.text : target.title}
                   </blockquote>
                 )}
                 {r.note && <p>Review note: {r.note}</p>}
                 {steward && r.status === 'open' && (
                   <Form
-                    disabled={disabled}
+                    disabled={busy}
                     submit="Save review decision"
                     save={(v) => mutate('resolve_report', { ...v, id: r.id })}
                   >
-                    <label>
+                    <ControlLabel>
                       Decision
                       <NativeSelect name="decision" required>
                         <NativeSelectOption value="">
@@ -572,11 +778,11 @@ export function CommunityBoard({
                           Dismiss report
                         </NativeSelectOption>
                       </NativeSelect>
-                    </label>
-                    <label>
+                    </ControlLabel>
+                    <ControlLabel>
                       Review note
                       <Textarea name="note" required maxLength={1000} />
-                    </label>
+                    </ControlLabel>
                   </Form>
                 )}
               </article>

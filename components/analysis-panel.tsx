@@ -1,4 +1,5 @@
 'use client';
+import { ControlLabel } from '@/components/ui/label';
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -7,7 +8,30 @@ import {
   NativeSelect,
   NativeSelectOption,
 } from '@/components/ui/native-select';
-type Item = { id: string; [key: string]: any };
+export type ImageryScene = { id: string; acquiredAt: string; cloudCover: number | null; reference: string };
+export type SatelliteSearch = {
+  id: string; parcelId: string; boundaryId: string; start: string; end: string;
+  limit: number; provider: string; connectorVersion: string; createdAt: number;
+  responseSha256: string; scenes: ImageryScene[];
+};
+export type AnalysisJob = {
+  id: string; parcelId: string; boundaryId: string; createdBy: string;
+  scenes: ImageryScene[]; geometry: unknown; geometryCanonical: string;
+  algorithm: string; createdAt: number;
+};
+export type AnalysisResult = {
+  id: string; parcelId: string; jobId: string; status: string; reviewNote?: string;
+  receipt: {
+    quality: string; signal: string; pairedPixels: number; totalPixels: number;
+    meanChange: number | null; beforeMean: number | null; afterMean: number | null;
+    algorithm: string; runtime: Record<string, string>; processorSha256: string;
+    inputSha256: { red: string; nir: string; scl: string }[];
+    radiometry: { red: { scale: number; offset: number }; nir: { scale: number; offset: number } }[];
+  };
+};
+export type AnalysisState = {
+  satelliteSearches?: SatelliteSearch[]; analysisJobs?: AnalysisJob[]; analysisResults?: AnalysisResult[];
+};
 export function AnalysisPanel({
   state,
   parcel,
@@ -16,32 +40,32 @@ export function AnalysisPanel({
   disabled,
   mutate,
 }: {
-  state: any;
-  parcel: Item;
-  boundary: any;
+  state: AnalysisState;
+  parcel: { id: string };
+  boundary: { id: string; status: string } | undefined;
   steward: boolean;
   disabled: boolean;
-  mutate: (op: string, p: any) => Promise<boolean>;
+  mutate: (op: string, p: Record<string, unknown>) => Promise<boolean>;
 }) {
   const [error, setError] = useState(''),
     [busy, setBusy] = useState(false),
     [upload, setUpload] = useState(''),
     [jobId, setJobId] = useState('');
-  const scenes: Item[] = Array.from(
+  const scenes: ImageryScene[] = Array.from(
     new Map(
       (state.satelliteSearches ?? [])
         .filter(
-          (r: Item) =>
+          (r) =>
             r.parcelId === parcel.id && r.boundaryId === boundary?.id,
         )
-        .flatMap((r: Item) => r.scenes)
-        .map((s: Item) => [s.id, s]),
+        .flatMap((r) => r.scenes)
+        .map((s) => [s.id, s]),
     ).values(),
-  ) as Item[];
-  const jobs: Item[] = (state.analysisJobs ?? []).filter(
-    (j: Item) => j.parcelId === parcel.id,
   );
-  async function act(op: string, p: any) {
+  const jobs: AnalysisJob[] = (state.analysisJobs ?? []).filter(
+    (j) => j.parcelId === parcel.id,
+  );
+  async function act(op: string, p: Record<string, unknown>) {
     setBusy(true);
     setError('');
     try {
@@ -54,8 +78,8 @@ export function AnalysisPanel({
       setBusy(false);
     }
   }
-  function download(job: Item) {
-    const { createdBy, ...exported } = job;
+  function download(job: AnalysisJob) {
+    const { createdBy: _createdBy, ...exported } = job;
     const url = URL.createObjectURL(
       new Blob([JSON.stringify(exported, null, 2)], {
         type: 'application/json',
@@ -102,7 +126,7 @@ export function AnalysisPanel({
           }
         >
           {['beforeId', 'afterId'].map((name, i) => (
-            <label key={name}>
+            <ControlLabel key={name}>
               {i === 0 ? 'Earlier scene' : 'Later scene'}
               <NativeSelect name={name} required>
                 <NativeSelectOption value="">Choose a scene</NativeSelectOption>
@@ -112,7 +136,7 @@ export function AnalysisPanel({
                   </NativeSelectOption>
                 ))}
               </NativeSelect>
-            </label>
+            </ControlLabel>
           ))}
           <Button type="submit" className="mt-4">
             Create processing job
@@ -166,7 +190,7 @@ export function AnalysisPanel({
         }}
       >
         <fieldset disabled={disabled || busy}>
-          <label>
+          <ControlLabel>
             Processing job
             <NativeSelect
               value={jobId}
@@ -178,7 +202,7 @@ export function AnalysisPanel({
                 .filter(
                   (j) =>
                     !(state.analysisResults ?? []).some(
-                      (r: Item) => r.jobId === j.id,
+                      (r) => r.jobId === j.id,
                     ),
                 )
                 .map((j) => (
@@ -187,8 +211,8 @@ export function AnalysisPanel({
                   </NativeSelectOption>
                 ))}
             </NativeSelect>
-          </label>
-          <label>
+          </ControlLabel>
+          <ControlLabel>
             Worker JSON result
             <Input
               type="file"
@@ -203,8 +227,8 @@ export function AnalysisPanel({
                 setUpload(await f.text());
               }}
             />
-          </label>
-          <label>
+          </ControlLabel>
+          <ControlLabel>
             Receipt contents
             <Textarea
               value={upload}
@@ -213,15 +237,15 @@ export function AnalysisPanel({
               required
               rows={4}
             />
-          </label>
+          </ControlLabel>
           <Button type="submit" className="mt-4">
             Import for independent review
           </Button>
         </fieldset>
       </form>
       {(state.analysisResults ?? [])
-        .filter((r: Item) => r.parcelId === parcel.id)
-        .map((result: Item) => {
+        .filter((r) => r.parcelId === parcel.id)
+        .map((result) => {
           const r = result.receipt;
           return (
             <article className="network-card" key={result.id}>
@@ -240,7 +264,7 @@ export function AnalysisPanel({
                 {r.totalPixels.toLocaleString()} parcel pixels usable on both
                 dates ({((100 * r.pairedPixels) / r.totalPixels).toFixed(1)}%)
               </p>
-              {r.meanChange !== null && (
+              {r.meanChange !== null && r.beforeMean !== null && r.afterMean !== null && (
                 <p>
                   Earlier NDVI {r.beforeMean.toFixed(3)} · Later{' '}
                   {r.afterMean.toFixed(3)} · Change {r.meanChange.toFixed(3)}
@@ -280,7 +304,7 @@ export function AnalysisPanel({
                   }}
                 >
                   <fieldset disabled={disabled || busy}>
-                    <label>
+                    <ControlLabel>
                       Review decision
                       <NativeSelect name="decision" required>
                         <NativeSelectOption value="">Choose</NativeSelectOption>
@@ -291,11 +315,11 @@ export function AnalysisPanel({
                           Reject record
                         </NativeSelectOption>
                       </NativeSelect>
-                    </label>
-                    <label>
+                    </ControlLabel>
+                    <ControlLabel>
                       Field checks, limitations, and next action
                       <Textarea name="note" maxLength={2000} required />
-                    </label>
+                    </ControlLabel>
                     <Button className="mt-4" type="submit">
                       Record review
                     </Button>

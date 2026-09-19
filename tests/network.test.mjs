@@ -51,6 +51,221 @@ function twoStewards() {
   f.run('member_role', { id: memberId, role: 'steward' });
   return f;
 }
+await test('founder responsibility transfers only after confirmation to an active steward and preserves historical records', () => {
+  const f = twoStewards();
+  const target = f.s.members.find((m) => m.userId === reviewer.id);
+  const founder = f.s.members.find((m) => m.userId === owner.id);
+  const before = structuredClone(f.s);
+  assert.throws(
+    () =>
+      f.run(
+        'transfer_stewardship',
+        { id: target.id, confirmation: 'TRANSFER' },
+        reviewer,
+      ),
+    /Only the founding/,
+  );
+  assert.throws(
+    () => f.run('transfer_stewardship', { id: target.id }),
+    /Confirm/,
+  );
+  assert.throws(
+    () =>
+      f.run('transfer_stewardship', {
+        id: founder.id,
+        confirmation: 'TRANSFER',
+      }),
+    /another active/,
+  );
+  f.run('member_role', { id: target.id, role: 'member' });
+  assert.throws(
+    () =>
+      f.run('transfer_stewardship', {
+        id: target.id,
+        confirmation: 'TRANSFER',
+      }),
+    /another active/,
+  );
+  f.run('member_role', { id: target.id, role: 'steward' });
+  f.run('transfer_stewardship', { id: target.id, confirmation: 'TRANSFER' });
+  assert.equal(f.s.ownerId, reviewer.id);
+  assert.equal(memberView(f.s, owner.id).isOwner, false);
+  assert.equal(memberView(f.s, reviewer.id).isOwner, true);
+  assert.equal(f.s.members.find((m) => m.userId === owner.id).role, 'steward');
+  assert.deepEqual(f.s.parcels, before.parcels);
+  assert.deepEqual(f.s.allocations, before.allocations);
+  assert.throws(
+    () => f.run('member_role', { id: target.id, role: 'member' }),
+    /Only the founding/,
+  );
+  f.run('leave');
+  assert.equal(
+    f.s.members.find((m) => m.userId === owner.id).status,
+    'removed',
+  );
+  f.run('archive', {}, reviewer);
+  assert.equal(f.s.visibility, 'archived');
+});
+
+await test('member blocking hides both directions of social participation without leaking block lists or changing governance', () => {
+  const f = twoStewards();
+  const participant = { id: 'participant' };
+  const target = f.s.members.find((m) => m.userId === reviewer.id);
+  const id = f.run('request_membership', { name: 'Participant' }, participant);
+  f.run('member_status', { id, status: 'active' });
+  const projectId = f.run('create_project', {
+    name: 'Test place',
+    region: 'Test region',
+    summary: 'Synthetic only',
+    kind: 'ecohedge',
+  });
+  const updateId = f.run(
+    'post_update',
+    { projectId, text: 'Steward update', visibility: 'members' },
+    reviewer,
+  );
+  const ownUpdate = f.run(
+    'post_update',
+    { projectId, text: 'Participant update', visibility: 'members' },
+    participant,
+  );
+  f.run(
+    'post_comment',
+    { updateId: ownUpdate, text: 'Steward reply' },
+    reviewer,
+  );
+  const eventId = f.run(
+    'create_event',
+    {
+      projectId,
+      title: 'Test activity',
+      summary: 'Synthetic only',
+      meetingDetails: 'Private test',
+      startsAt: 10000,
+      endsAt: 20000,
+      timeZone: 'UTC',
+      visibility: 'members',
+      capacity: 0,
+    },
+    reviewer,
+  );
+  f.run('block_member', { id: target.id }, participant);
+  f.run('block_member', { id: target.id }, participant);
+  Object.assign(f.s.audit.at(-1), {
+    requestHash: 'private-command-digest',
+    stateHash: 'private-state-digest',
+    commitmentNonce: 'private-audit-salt',
+    hash: 'shareable-receipt',
+  });
+  assert.equal(f.s.blocks.length, 1);
+  const visible = memberView(f.s, participant.id).state;
+  assert.deepEqual(visible.blocks, [
+    { memberId: target.id, name: target.name },
+  ]);
+  assert.deepEqual(
+    visible.updates.map((u) => u.id),
+    [ownUpdate],
+  );
+  assert.equal(visible.comments.length, 0);
+  assert.equal(visible.events.length, 0);
+  assert.equal(visible.members.length, 3);
+  assert.equal(visible.projects.length, 1);
+  const moderator = memberView(f.s, reviewer.id).state;
+  assert.deepEqual(moderator.blocks, []);
+  for (const projection of [visible, moderator]) {
+    assert.equal(projection.audit.at(-1).requestHash, undefined);
+    assert.equal(projection.audit.at(-1).stateHash, undefined);
+    assert.equal(projection.audit.at(-1).commitmentNonce, undefined);
+    assert.equal(projection.audit.at(-1).hash, 'shareable-receipt');
+  }
+  assert.equal(f.s.audit.at(-1).commitmentNonce, 'private-audit-salt');
+  assert.equal(
+    moderator.updates.find((u) => u.id === ownUpdate).authorMemberId,
+    id,
+  );
+  assert.equal(moderator.updates.find((u) => u.id === ownUpdate).blocked, true);
+  assert.equal(publicWorkspace(f.s).blocks, undefined);
+  assert.throws(
+    () =>
+      f.run('post_comment', { updateId, text: 'Blocked reply' }, participant),
+    /unavailable/,
+  );
+  assert.throws(
+    () =>
+      f.run(
+        'post_comment',
+        { updateId: ownUpdate, text: 'Blocked reply' },
+        reviewer,
+      ),
+    /unavailable/,
+  );
+  assert.throws(
+    () => f.run('event_rsvp', { id: eventId, response: 'going' }, participant),
+    /unavailable/,
+  );
+  assert.throws(() => f.run('block_member', { id }, participant), /yourself/);
+  assert.throws(
+    () => f.run('block_member', { id: target.id }, stranger),
+    /membership/,
+  );
+  // A different member cannot undo another member's block.
+  f.run('unblock_member', { id }, reviewer);
+  assert.equal(f.s.blocks.length, 1);
+  f.run('unblock_member', { id: target.id }, participant);
+  assert.equal(memberView(f.s, participant.id).state.updates.length, 2);
+  f.run('post_comment', { updateId, text: 'Unblocked reply' }, participant);
+  f.run('event_rsvp', { id: eventId, response: 'going' }, participant);
+});
+function reviewBoundaryAndConsent(
+  f,
+  parcelId,
+  area = 10000,
+  longitude = 0,
+  actor = owner,
+  other = reviewer,
+) {
+  const side = Math.sqrt(area) / 111195.0802335329;
+  const geometry = {
+    type: 'Polygon',
+    coordinates: [
+      [
+        [longitude, 0],
+        [longitude + side, 0],
+        [longitude + side, side],
+        [longitude, side],
+        [longitude, 0],
+      ],
+    ],
+  };
+  const id = f.run(
+    'save_boundary',
+    { parcelId, geometry, consentReference: 'Fixture boundary consent' },
+    actor,
+  );
+  f.run('review_boundary', { parcelId, id, decision: 'approve' }, other);
+  const consentId = f.run(
+    'record_parcel_consent',
+    {
+      parcelId,
+      holder: 'Fixture rights holder',
+      authority: 'Test authority only',
+      reference: 'Fixture signed consent',
+      scope: 'Fixture project participation only',
+      attested: true,
+    },
+    actor,
+  );
+  f.run(
+    'review_parcel_consent',
+    {
+      parcelId,
+      id: consentId,
+      decision: 'approve',
+      note: 'Synthetic independent review',
+    },
+    other,
+  );
+}
 function prepared() {
   const f = twoStewards();
   const project = f.run('create_project', {
@@ -87,10 +302,12 @@ function prepared() {
     consentReference: 'fixture-consent',
   });
   f.run('review_parcel', { id: parcel, decision: 'approve' }, reviewer);
+  reviewBoundaryAndConsent(f, parcel);
   for (const kind of ['enrollment', 'carbon_rights']) {
     const id = f.run('submit_agreement', {
       projectId: project,
       kind,
+      parcelIds: [parcel],
       jurisdiction: 'Test',
       holder: 'Test counterparty',
       notes: 'Test rights',
@@ -113,7 +330,7 @@ function prepared() {
   }
   return { f, project, evidence };
 }
-test('private workspace requires membership and starts without invented data', () => {
+await test('private workspace requires membership and starts without invented data', () => {
   const f = setup();
   assert.equal(f.s.visibility, 'private');
   assert.equal(f.s.projects.length, 0);
@@ -123,7 +340,7 @@ test('private workspace requires membership and starts without invented data', (
     /not accepting/,
   );
 });
-test('membership requests cannot self-approve or escalate roles', () => {
+await test('membership requests cannot self-approve or escalate roles', () => {
   const f = setup();
   f.run('update_coop', {
     name: 'Co-op',
@@ -142,7 +359,7 @@ test('membership requests cannot self-approve or escalate roles', () => {
     /founding/,
   );
 });
-test('public projection exposes only opted-in projects and updates', () => {
+await test('public projection exposes only opted-in projects and updates', () => {
   const { f, project, evidence } = prepared();
   f.run('post_update', {
     projectId: project,
@@ -167,7 +384,7 @@ test('public projection exposes only opted-in projects and updates', () => {
   assert.ok(!JSON.stringify(p).includes('owner'));
   assert.equal(p.projects.length, 1);
 });
-test('evidence and agreements require an independent reviewer', () => {
+await test('evidence and agreements require an independent reviewer', () => {
   const f = twoStewards();
   const project = f.run('create_project', {
     name: 'P',
@@ -198,7 +415,7 @@ test('evidence and agreements require an independent reviewer', () => {
     /already/,
   );
 });
-test('unreviewed legal and land records block issued holding records', () => {
+await test('unreviewed legal and land records block issued holding records', () => {
   const f = twoStewards();
   const project = f.run('create_project', {
     name: 'P',
@@ -211,7 +428,7 @@ test('unreviewed legal and land records block issued holding records', () => {
     /legal authority/,
   );
 });
-test('governance freezes electorate and prevents early or duplicate tally', () => {
+await test('governance freezes electorate and prevents early or duplicate tally', () => {
   const f = twoStewards();
   const members = f.s.members;
   const p = f.run('propose_charter', {
@@ -230,7 +447,7 @@ test('governance freezes electorate and prevents early or duplicate tally', () =
   assert.throws(() => f.run('close_proposal', { id: p }), /already/);
   assert.throws(() => f.run('vote', { id: p, choice: 'oppose' }), /closed/);
 });
-test('full receipt workflow preserves cents, custody caps and reviewer separation', () => {
+await test('full receipt workflow preserves cents, custody caps and reviewer separation', () => {
   const { f, project, evidence } = prepared();
   const lot = f.run('record_lot', {
     projectId: project,
@@ -366,7 +583,7 @@ test('full receipt workflow preserves cents, custody caps and reviewer separatio
   );
   assert.equal(f.s.audit.at(-1).action, 'review_retirement');
 });
-test('failed commands do not partially mutate previous state', () => {
+await test('failed commands do not partially mutate previous state', () => {
   const f = twoStewards();
   const before = structuredClone(f.s);
   assert.throws(() =>
@@ -381,7 +598,7 @@ test('failed commands do not partially mutate previous state', () => {
   );
   assert.deepEqual(f.s, before);
 });
-test('a regular member cannot read another member’s private land and evidence', () => {
+await test('a regular member cannot read another member’s private land and evidence', () => {
   const { f } = prepared();
   const member = f.s.members.find((m) => m.userId === reviewer.id);
   f.run('member_role', { id: member.id, role: 'member' });
@@ -391,7 +608,7 @@ test('a regular member cannot read another member’s private land and evidence'
   assert.equal(view.state.evidence.length, 0);
   assert.ok(view.state.members.every((m) => !('userId' in m)));
 });
-test('archiving blocks further mutations and hides discovery via visibility', () => {
+await test('archiving blocks further mutations and hides discovery via visibility', () => {
   const f = twoStewards();
   f.run('archive');
   assert.equal(f.s.visibility, 'archived');
@@ -406,7 +623,7 @@ test('archiving blocks further mutations and hides discovery via visibility', ()
     /archived/,
   );
 });
-test('money allocation rejects noninteger amounts and conserves every cent', () => {
+await test('money allocation rejects noninteger amounts and conserves every cent', () => {
   assert.throws(() =>
     allocateCents(1.2, [{ id: 'a', name: 'A', shareBps: 10000 }], 0, 0),
   );
@@ -428,7 +645,7 @@ test('money allocation rejects noninteger amounts and conserves every cent', () 
     );
   }
 });
-test('evidence links reject executable schemes and embedded credentials', () => {
+await test('evidence links reject executable schemes and embedded credentials', () => {
   const f = twoStewards();
   const project = f.run('create_project', {
     name: 'P',
@@ -453,7 +670,7 @@ test('evidence links reject executable schemes and embedded credentials', () => 
     );
 });
 
-test('private invitations are single-use, expiring, revocable and require approval', () => {
+await test('private invitations are single-use, expiring, revocable and require approval', () => {
   const f = setup(),
     tokenHash = 'a'.repeat(64);
   const invitation = f.run('create_invitation', {
@@ -529,7 +746,7 @@ test('private invitations are single-use, expiring, revocable and require approv
   );
 });
 
-test('organization profile is opt-in and self-reported, with HTTPS references only', () => {
+await test('organization profile is opt-in and self-reported, with HTTPS references only', () => {
   const f = setup();
   const profile = {
     name: 'Synthetic group',
@@ -553,7 +770,7 @@ test('organization profile is opt-in and self-reported, with HTTPS references on
   );
 });
 
-test('pooling assessments freeze reviewed parcels and require independent review', () => {
+await test('pooling assessments freeze reviewed parcels and require independent review', () => {
   const f = twoStewards();
   const projectId = f.run('create_project', {
     name: 'Test forest',
@@ -579,8 +796,10 @@ test('pooling assessments freeze reviewed parcels and require independent review
     consentReference: 'Consent only for test',
   });
   f.run('review_parcel', { id: parcel, decision: 'approve' }, reviewer);
+  assert.throws(() => f.run('record_assessment', assessment), /boundaries/);
+  reviewBoundaryAndConsent(f, parcel, 1000);
   const id = f.run('record_assessment', assessment);
-  assert.equal(f.s.assessments[0].areaSquareMetres, 1000);
+  assert.equal(Math.round(f.s.assessments[0].areaSquareMetres), 1000);
   assert.throws(
     () => f.run('review_assessment', { id, decision: 'approve' }),
     /Another steward/,
@@ -591,7 +810,7 @@ test('pooling assessments freeze reviewed parcels and require independent review
   assert.equal(publicWorkspace(f.s).assessments, undefined);
 });
 
-test('events enforce capacity, privacy, membership and cancellation', () => {
+await test('events enforce capacity, privacy, membership and cancellation', () => {
   const f = twoStewards(),
     startsAt = Date.UTC(2030, 0, 1, 10),
     endsAt = startsAt + 3600000;
@@ -666,7 +885,7 @@ test('events enforce capacity, privacy, membership and cancellation', () => {
   assert.equal(publicWorkspace(f.s).events.length, 0);
 });
 
-test('discussions remain private and reports require independent steward resolution', () => {
+await test('discussions remain private and reports require independent steward resolution', () => {
   const f = twoStewards();
   const projectId = f.run('create_project', {
     name: 'Test',
@@ -737,7 +956,7 @@ test('discussions remain private and reports require independent steward resolut
   );
 });
 
-test('monitoring needs current reviewed boundaries, consent and private parcel access', () => {
+await test('monitoring needs current reviewed boundaries, consent and private parcel access', () => {
   const f = twoStewards();
   const projectId = f.run('create_project', {
     name: 'Test plot',
@@ -847,7 +1066,7 @@ test('monitoring needs current reviewed boundaries, consent and private parcel a
   assert.equal(f.s.observations[0].boundaryId, boundaryId);
 });
 
-test('analysis jobs preserve reviewed geometry and scene selection', () => {
+await test('analysis jobs preserve reviewed geometry and scene selection', () => {
   const f = twoStewards();
   const projectId = f.run('create_project', {
     name: 'Analysis',
@@ -954,4 +1173,112 @@ test('analysis jobs preserve reviewed geometry and scene selection', () => {
   );
   assert.equal(f.s.analysisResults[0].receipt.quality, 'insufficient_coverage');
   assert.equal(f.s.lots.length, 0);
+});
+
+await test('conservation partnerships require reviewed project evidence, separate reviewers, and remain private', () => {
+  const { f, project, evidence } = prepared();
+  const payload = {
+    projectId: project,
+    name: 'Synthetic land trust',
+    website: 'https://example.org',
+    role: 'Review the monitoring plan',
+    agreementReference: 'private-partner-consent',
+    evidenceId: evidence,
+  };
+  assert.throws(
+    () => f.run('record_partnership', payload, stranger),
+    /membership/,
+  );
+  assert.throws(
+    () =>
+      f.run('record_partnership', {
+        ...payload,
+        website: 'javascript:alert(1)',
+      }),
+    /HTTPS/,
+  );
+  const otherProject = f.run('create_project', {
+    name: 'Other',
+    summary: 'Other project',
+    region: 'Test area',
+    kind: 'landscape',
+  });
+  assert.throws(
+    () => f.run('record_partnership', { ...payload, projectId: otherProject }),
+    /this project/,
+  );
+  const id = f.run('record_partnership', payload);
+  assert.throws(
+    () => f.run('review_partnership', { id, decision: 'approve' }),
+    /Another steward/,
+  );
+  f.run('review_partnership', { id, decision: 'approve' }, reviewer);
+  assert.equal(f.s.partnerships[0].status, 'reviewed');
+  assert.equal(
+    JSON.stringify(publicWorkspace(f.s)).includes('private-partner-consent'),
+    false,
+  );
+  const memberId = f.run('request_membership', { name: 'Neighbor' }, stranger);
+  f.run('member_status', { id: memberId, status: 'active' });
+  assert.deepEqual(memberView(f.s, stranger.id).state.partnerships, []);
+  assert.equal(memberView(f.s, owner.id).state.partnerships.length, 1);
+  f.run('revoke_partnership', { id, reason: 'Partner withdrew consent' });
+  assert.equal(f.s.partnerships[0].status, 'revoked');
+  assert.throws(
+    () => f.run('review_partnership', { id, decision: 'approve' }, reviewer),
+    /already been reviewed/,
+  );
+});
+
+await test('pooling review refuses changed parcel snapshots and legacy assessments', () => {
+  const { f, project } = prepared();
+  const payload = {
+    projectId: project,
+    program: 'Synthetic program',
+    methodology: 'Example v1',
+    source: 'https://example.org/method',
+    minimumSquareMetres: 10000,
+    criteria: 'Synthetic review',
+    gaps: 'Needs external verification',
+  };
+  const assessment = f.run('record_assessment', payload);
+  const parcel = f.run(
+    'record_parcel',
+    {
+      projectId: project,
+      name: 'Neighbor land',
+      landReference: 'private-neighbor',
+      areaSquareMetres: 20000,
+      consentReference: 'consent-2',
+    },
+    reviewer,
+  );
+  f.run('review_parcel', { id: parcel, decision: 'approve' });
+  assert.throws(
+    () =>
+      f.run(
+        'review_assessment',
+        { id: assessment, decision: 'approve' },
+        reviewer,
+      ),
+    /Land records changed/,
+  );
+  reviewBoundaryAndConsent(f, parcel, 20000, 0.01, reviewer, owner);
+  const replacement = f.run('record_assessment', payload);
+  f.run(
+    'review_assessment',
+    { id: replacement, decision: 'approve' },
+    reviewer,
+  );
+  assert.equal(Math.round(f.s.assessments.at(-1).areaSquareMetres), 30000);
+  const legacy = structuredClone(f.s);
+  delete legacy.assessments[0].parcelSnapshot;
+  assert.throws(
+    () =>
+      applyCommand(legacy, reviewer, {
+        op: 'review_assessment',
+        payload: { id: assessment, decision: 'approve' },
+      }),
+    /legacy/,
+  );
 });

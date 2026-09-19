@@ -10,14 +10,14 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: '22'
+          node-version: '24'
           cache: npm
       - run: npm ci
       - run: npm test
-      - name: Launch page lint
-        run: npx oxlint app/page.tsx app/layout.tsx
+      - run: npm run lint
       - run: npm run typecheck
       - run: npm run build
+      - run: npm run build:public
       - run: npm run db:migrate:local
       - name: HTTP persistence and file checks
         run: |
@@ -30,6 +30,37 @@ jobs:
           done
           curl -fsS http://localhost:3000/api/network > /dev/null || { cat /tmp/verge-dev.log; exit 1; }
           python3 tests/http_integration.py
+      - run: npm run build:selfhost
+      - name: Self-hosted multi-account acceptance and backup
+        run: |
+          export VERGE_DATA_DIR="$RUNNER_TEMP/verge-ci"
+          export VERGE_BACKUP_DIR="$RUNNER_TEMP/verge-backups"
+          npm run start:selfhost > /tmp/verge-selfhost.log 2>&1 &
+          server_pid=$!
+          trap 'kill "$server_pid" 2>/dev/null || true' EXIT
+          for attempt in $(seq 1 45); do
+            if curl -fsS http://127.0.0.1:3100/healthz > /dev/null; then break; fi
+            sleep 1
+          done
+          python3 tests/selfhost_acceptance.py
+          npm run backup:selfhost
+
+  container:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build and verify the actual deployment image
+        run: |
+          docker build -f self-hosted/Dockerfile -t vergecommon:ci .
+          docker run -d --name vergecommon-ci --read-only --tmpfs /tmp:rw,noexec,nosuid,size=128m --tmpfs /data:rw,noexec,nosuid,size=128m,uid=1000,gid=1000 --tmpfs /backups:rw,noexec,nosuid,size=128m,uid=1000,gid=1000 --cap-drop ALL --security-opt no-new-privileges --pids-limit 256 --memory 1g -p 127.0.0.1:3100:3000 -e VERGE_ORIGIN=http://127.0.0.1:3100 -e VERGE_TRUST_CADDY=0 vergecommon:ci
+          trap 'docker logs vergecommon-ci; docker rm -f vergecommon-ci' EXIT
+          for attempt in $(seq 1 45); do
+            if curl -fsS http://127.0.0.1:3100/api/network > /dev/null; then break; fi
+            sleep 1
+          done
+          python3 tests/selfhost_acceptance.py
+          docker exec vergecommon-ci node self-hosted/backup.mjs
 
   imagery:
     runs-on: ubuntu-latest

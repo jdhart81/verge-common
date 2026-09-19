@@ -9,7 +9,7 @@ export function nativeFixture() {
   state.events = [{id:'event',projectId:'project',title:'Fixture walk',summary:'Test event',startsAt:1000,endsAt:2000,timeZone:'UTC',status:'scheduled',visibility:'public',instructions:'Private meeting instructions'}];
   return {coops:[publicWorkspace(state)],next:null};
 }
-test('native discovery fixture matches the backend public projection', () => {
+await test('native discovery fixture matches the backend public projection', () => {
   const fixture=JSON.parse(fs.readFileSync(new URL('../ios/CoreTests/Fixtures/community.json',import.meta.url),'utf8'));
   assert.deepEqual(fixture,nativeFixture());
   assert.ok(!JSON.stringify(fixture).includes('Private meeting instructions'));

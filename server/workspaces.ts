@@ -1,4 +1,6 @@
 import { getD1 } from '@/db/d1';
+import { attachmentExistsGuard } from '@/server/evidence-uploads.mjs';
+import { workspaceCapacityIssue } from '@/lib/workspace-capacity.mjs';
 import { getChatGPTUser } from '@/app/chatgpt-auth';
 import {
   applyCommand,
@@ -106,17 +108,29 @@ export async function command(
     );
   const next = applyCommand(state, user, input, Date.now(), input.requestId);
   const event = next.audit.at(-1)!;
-  const { audit, ...data } = next;
+  const { audit: _audit, ...data } = next;
   event.requestHash = requestHash;
   event.previousHash = state.audit.at(-1)?.hash ?? '';
   event.stateHash = await hash(JSON.stringify(data));
+  // Keep a private salt in the persisted receipt so a member cannot enumerate
+  // low-entropy private payloads (for example a block target) from its hash.
+  event.commitmentNonce = crypto.randomUUID();
   event.hash = await hash(JSON.stringify(event));
+  // Enforce the actual persisted size, including all receipt metadata. The
+  // domain check reserves its upper bound, and this also protects future fields.
+  const capacityIssue = workspaceCapacityIssue(state, next, user, input);
+  if (capacityIssue) throw new DomainError(capacityIssue, 409);
+  const attachedAsset =
+    input.op === 'submit_evidence'
+      ? ((input.payload.asset as { id?: string } | undefined)?.id ?? null)
+      : null;
   const result = await getD1()
     .prepare(
-      'UPDATE workspaces SET state_json = ?, name = ?, region = ?, summary = ?, visibility = ?, updated_at = ?, version = version + 1 WHERE id = ? AND version = ? RETURNING version',
+      `UPDATE workspaces SET state_json = ?, owner_id = ?, name = ?, region = ?, summary = ?, visibility = ?, updated_at = ?, version = version + 1 WHERE id = ? AND version = ? ${attachmentExistsGuard} RETURNING version`,
     )
     .bind(
       JSON.stringify(next),
+      next.ownerId,
       next.name,
       next.region,
       next.summary,
@@ -124,6 +138,9 @@ export async function command(
       next.updatedAt,
       id,
       row.version,
+      attachedAsset,
+      attachedAsset,
+      user.id,
     )
     .first<{ version: number }>();
   if (!result)

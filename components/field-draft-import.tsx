@@ -30,6 +30,6 @@ export function FieldDraftImport() {
         setDraft(null); setMessage('Draft loaded. Check the parcel and details, then save for review.');
       }}>Use draft in this form</Button>
     </div>}
-    {message && <p className="small" role="status">{message}</p>}
+    {message && <output className="small">{message}</output>}
   </div>;
 }

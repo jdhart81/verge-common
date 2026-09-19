@@ -1,5 +1,6 @@
 'use client';
 import { useMemo, useState } from 'react';
+import Link from 'next/link';
 import { Sprout, ArrowLeft, Download, Plus, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -70,14 +71,14 @@ export function CoopWorkbench() {
         Skip to workbench
       </a>
       <header className="nav">
-        <a className="brand" href="/">
+        <Link className="brand" href="/">
           <Sprout />
           verge common
-        </a>
-        <a href="/" className="text-link">
+        </Link>
+        <Link href="/" className="text-link">
           <ArrowLeft size={16} />
           The mission
-        </a>
+        </Link>
       </header>
       <main id="main" className="wrap planner coop">
         <div className="section-head">
@@ -623,14 +624,14 @@ export function CoopWorkbench() {
             </section>
           </TabsContent>
         </Tabs>
-        <p role="status" className="status">
+        <output className="status">
           {status}
-        </p>
+        </output>
         <p className="small mt-5">
           Need to plan a workday? The{' '}
-          <a className="underline" href="/demo/">
+          <Link className="underline" href="/demo/">
             local stewardship planner
-          </a>{' '}
+          </Link>{' '}
           remains available alongside the cooperative workbench.
         </p>
       </main>

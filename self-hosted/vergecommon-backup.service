@@ -1,0 +1,8 @@
+[Unit]
+Description=VergeCommon verified database and evidence backup
+After=docker.service
+Requires=docker.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/docker exec vergecommon-app node self-hosted/backup.mjs

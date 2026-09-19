@@ -1,5 +1,6 @@
 'use client';
 import { useEffect, useState } from 'react';
+import Link from 'next/link';
 import { Compass, Users, Smartphone } from 'lucide-react';
 
 type InstallPrompt = Event & { prompt: () => Promise<void>; userChoice: Promise<{ outcome: string }> };
@@ -41,13 +42,13 @@ export function AppShell() {
     setPrompt(null);
   }
   return <>
-    {offline && <div className="connection-note" role="status">You’re offline. Reconnect before saving changes; unsent changes are not queued.</div>}
+    {offline && <output className="connection-note">You’re offline. Reconnect before saving changes; unsent changes are not queued.</output>}
     {prompt && !installed && <aside className="install-note"><span>Keep your community close.</span><button onClick={install}>Install Verge Common</button><button aria-label="Dismiss install suggestion" onClick={() => setPrompt(null)}>Later</button></aside>}
-    {message && <div className="connection-note" role="status">{message}<button onClick={() => setMessage('')} aria-label="Dismiss installation message">×</button></div>}
+    {message && <output className="connection-note">{message}<button onClick={() => setMessage('')} aria-label="Dismiss installation message">×</button></output>}
     <nav className="mobile-app-nav" aria-label="App navigation">
-      <a href="/network/"><Compass size={21} aria-hidden="true"/>Discover</a>
-      <a href="/workspace/"><Users size={21} aria-hidden="true"/>My co-ops</a>
-      <a href="/app/"><Smartphone size={21} aria-hidden="true"/>{installed ? 'App help' : 'Get the app'}</a>
+      <Link href="/network/"><Compass size={21} aria-hidden="true"/>Discover</Link>
+      <Link href="/workspace/"><Users size={21} aria-hidden="true"/>My co-ops</Link>
+      <Link href="/app/"><Smartphone size={21} aria-hidden="true"/>{installed ? 'App help' : 'Get the app'}</Link>
     </nav>
   </>;
 }

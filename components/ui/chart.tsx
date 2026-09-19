@@ -152,7 +152,7 @@ function ChartTooltipContent({
     }
 
     const [item] = payload;
-    const key = `${labelKey ?? item?.dataKey ?? item?.name ?? 'value'}`;
+    const key = chartSeriesKey(labelKey, item?.dataKey, item?.name);
     const itemConfig = getPayloadConfigFromPayload(config, item, key);
     const value =
       !labelKey && typeof label === 'string'
@@ -200,7 +200,7 @@ function ChartTooltipContent({
         {payload
           .filter((item) => item.type !== 'none')
           .map((item, index) => {
-            const key = `${nameKey ?? item.name ?? item.dataKey ?? 'value'}`;
+            const key = chartSeriesKey(nameKey, item.name, item.dataKey);
             const itemConfig = getPayloadConfigFromPayload(config, item, key);
             const indicatorColor = color ?? item.payload?.fill ?? item.color;
 
@@ -299,7 +299,7 @@ function ChartLegendContent({
       {payload
         .filter((item) => item.type !== 'none')
         .map((item, index) => {
-          const key = `${nameKey ?? item.dataKey ?? 'value'}`;
+          const key = chartSeriesKey(nameKey, item.dataKey);
           const itemConfig = getPayloadConfigFromPayload(config, item, key);
 
           return (
@@ -371,3 +371,8 @@ export {
   ChartLegendContent,
   ChartStyle,
 };
+
+function chartSeriesKey(...candidates: unknown[]): string {
+  const value = candidates.find(candidate => typeof candidate === 'string' || typeof candidate === 'number');
+  return value === undefined ? 'value' : String(value);
+}

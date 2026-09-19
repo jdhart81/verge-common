@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { eventCalendar } from '../lib/calendar.mjs';
-test('calendar escapes injected lines and preserves worldwide UTC times and Unicode', () => {
+await test('calendar escapes injected lines and preserves worldwide UTC times and Unicode', () => {
   const event = {
     id: 'test',
     title: 'Planting\nBEGIN:VALARM',

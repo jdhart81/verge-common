@@ -49,6 +49,20 @@ final class JournalRepositoryTests: XCTestCase {
             XCTAssertEqual(repo.drafts, [note]); XCTAssertEqual(try JournalRepository(file: file).drafts, [note])
         }
     }
+    func testRemoveAllIsAtomicAndDoesNotEraseOnWriteFailure() throws {
+        try temporary { file in
+            let repo = try JournalRepository(file: file)
+            try repo.save(draft()); try repo.save(draft())
+            let before = try Data(contentsOf: file)
+            let failing = try JournalRepository(file: file, writer: { _, _ in throw CocoaError(.fileWriteOutOfSpace) })
+            XCTAssertThrowsError(try failing.removeAll())
+            XCTAssertEqual(failing.drafts.count, 2)
+            XCTAssertEqual(try Data(contentsOf: file), before)
+            try repo.removeAll()
+            XCTAssertTrue(repo.drafts.isEmpty)
+            XCTAssertTrue(try JournalRepository(file: file).drafts.isEmpty)
+        }
+    }
     func testInvalidImportDoesNotWrite() throws {
         try temporary { file in
             let repo = try JournalRepository(file: file); var invalid = draft(); invalid.date = "2026-02-30"

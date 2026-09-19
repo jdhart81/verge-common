@@ -5,10 +5,46 @@ import {
   formatMoney,
   areaToSquareMetres,
 } from '@/lib/international.mjs';
-import { MonitoringBoard } from '@/components/monitoring-board';
-import { CommunityBoard, PublicEvents } from '@/components/community-board';
+import {
+  MonitoringBoard,
+  type MonitoringState,
+  type MonitoringParcel,
+  type MonitoringBoundary,
+} from '@/components/monitoring-board';
+import {
+  CommunityBoard,
+  PublicEvents,
+  type CommunityState,
+  type CommunityEvent,
+} from '@/components/community-board';
 import { allocateCents } from '@/lib/network.mjs';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { CooperativeParcelMap } from '@/components/cooperative-parcel-map';
+import { onboardingProgress } from '@/lib/onboarding.mjs';
+import { PendingWork } from '@/components/pending-work';
+import {
+  PartnerParticipation,
+  type ParticipationPartner,
+} from '@/components/partner-participation';
+import {
+  WorkspaceCapacityBanner,
+  type WorkspaceCapacityStatus,
+} from '@/components/workspace-capacity-banner';
+import {
+  assessmentIsCurrent,
+  projectReadiness,
+  parcelConsentIsCurrent,
+  agreementIsCurrent,
+} from '@/lib/readiness.mjs';
+import {
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+  useId,
+  useSyncExternalStore,
+} from 'react';
+import Link from 'next/link';
+import { ControlLabel } from '@/components/ui/label';
 import {
   Sprout,
   ArrowLeft,
@@ -20,8 +56,6 @@ import {
   MapPin,
   Copy,
   CheckCircle2,
-  ShieldCheck,
-  FileText,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -40,11 +74,229 @@ import {
   AlertDialogCancel,
 } from '@/components/ui/alert-dialog';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
-type Entity = { id: string; [key: string]: any };
+type NamedRecord = {
+  id: string;
+  name?: string;
+  title?: string;
+  reference?: string;
+};
+type ReviewRecord = { id: string; status: string };
+type Organization = {
+  name: string;
+  kind: string;
+  region: string;
+  services: string;
+  website: string;
+};
+type Project = {
+  id: string;
+  name: string;
+  kind: string;
+  region: string;
+  summary: string;
+  status: string;
+  visibility: string;
+};
+type Member = {
+  id: string;
+  name: string;
+  role: string;
+  status: string;
+  isYou?: boolean;
+};
+type PoolConsent = ReviewRecord & {
+  holder: string;
+  reference: string;
+  authority: string;
+  scope: string;
+  reviewNote?: string;
+};
+type Parcel = Omit<MonitoringParcel, 'boundaries'> &
+  ReviewRecord & {
+    projectId: string;
+    areaSquareMetres: number;
+    landReference: string;
+    consentReference: string;
+    notes: string;
+    consents?: PoolConsent[];
+    boundaries?: (MonitoringBoundary & { areaSquareMetres?: number })[];
+  };
+type Evidence = ReviewRecord & {
+  title: string;
+  method: string;
+  period: string;
+  notes: string;
+  reference: string;
+  reviewNote?: string;
+  asset?: { id: string; filename: string; sha256: string };
+};
+type Agreement = ReviewRecord & {
+  projectId: string;
+  kind: string;
+  holder: string;
+  jurisdiction: string;
+  notes: string;
+  parcelIds?: string[];
+  reference: string;
+  reviewNote?: string;
+  executionReference?: string;
+  recordingReference?: string;
+};
+type Amounts = {
+  grossCents: number;
+  stewardshipCents: number;
+  treasuryCents: number;
+  memberPoolCents: number;
+  members: { id: string; name: string; cents: number }[];
+};
+type Workspace = Omit<CommunityState, 'projects' | 'members' | 'tasks'> &
+  Omit<MonitoringState, 'parcels'> & {
+    name: string;
+    region: string;
+    summary: string;
+    country: string;
+    currency: string;
+    projects: Project[];
+    members: Member[];
+    parcels: Parcel[];
+    evidence: Evidence[];
+    organization: Organization | null;
+    partnerships?: (ReviewRecord &
+      ParticipationPartner & {
+        name: string;
+        role: string;
+        agreementReference: string;
+        website: string;
+      })[];
+    assessments?: (ReviewRecord & {
+      program: string;
+      methodology: string;
+      areaSquareMetres: number;
+      minimumSquareMetres: number;
+      parcelIds: string[];
+      source: string;
+      criteria: string;
+      gaps: string;
+    })[];
+    tasks: (ReviewRecord & {
+      projectId: string;
+      title: string;
+      due?: string;
+    })[];
+    invitations?: {
+      id: string;
+      label: string;
+      revoked: boolean;
+      used: boolean;
+      expiresAt: number;
+    }[];
+    blocks?: { memberId: string; name: string }[];
+    agreements: Agreement[];
+    proposals: (ReviewRecord & {
+      title: string;
+      text: string;
+      electorate: string[];
+      closesAt: number;
+      quorum: number;
+      stewardshipBps: number;
+      treasuryBps: number;
+      shares: { id: string; name: string; shareBps: number }[];
+      votes: { memberId: string; choice: string }[];
+    })[];
+    charters: {
+      id: string;
+      version: number;
+      adoptedAt: number;
+      title: string;
+    }[];
+    audit: {
+      id: string;
+      sequence: number;
+      action: string;
+      actor: string;
+      at: number;
+      hash: string;
+    }[];
+    authority:
+      | (ReviewRecord & {
+          legalName: string;
+          jurisdiction: string;
+          reference: string;
+        })
+      | null;
+    lots: (ReviewRecord & {
+      registry: string;
+      program: string;
+      method: string;
+      vintage: string;
+      units: number;
+      serialPrefix: string;
+      serialStart: number;
+      serialEnd: number;
+      reference: string;
+    })[];
+    settlements: (ReviewRecord & {
+      cents: number;
+      units: number;
+      reference: string;
+    })[];
+    allocations: (ReviewRecord & {
+      amounts: Amounts;
+      payments: (ReviewRecord & {
+        memberId: string;
+        cents: number;
+        reference: string;
+      })[];
+    })[];
+    retirements: (ReviewRecord & {
+      units: number;
+      beneficiary: string;
+      reference: string;
+    })[];
+  };
+type PublicCoop = {
+  id: string;
+  name: string;
+  region: string;
+  summary: string;
+  country?: string;
+  organization?: Organization;
+  projects: Project[];
+  updates: CommunityState['updates'];
+  events?: CommunityEvent[];
+  memberCount: number;
+};
+type WorkspaceSummary = {
+  id: string;
+  name: string;
+  region: string;
+  visibility: string;
+};
+type WorkspaceResponse = {
+  id: string;
+  error: string;
+  state?: Workspace;
+  capacity?: WorkspaceCapacityStatus;
+  coop?: PublicCoop;
+  role?: string;
+  memberId?: string;
+  isOwner?: boolean;
+  version: number;
+  membershipStatus?: string;
+  name?: string;
+};
+type FormValues = Record<string, string | number | string[]>;
+type CommandPayload = Record<string, unknown>;
+function subscribeClock(onChange: () => void) {
+  const timer = window.setInterval(onChange, 60_000);
+  return () => window.clearInterval(timer);
+}
+const clockSnapshot = () => Math.floor(Date.now() / 60_000) * 60_000;
+const serverClock = () => 0;
 type Field = {
   name: string;
   label: string;
-  type?: 'textarea' | 'number' | 'date' | 'select';
+  type?: 'textarea' | 'number' | 'date' | 'select' | 'multiselect';
   options?: { value: string; label: string }[];
   value?: string | number;
   optional?: boolean;
@@ -66,9 +318,10 @@ function ActionForm({
   title?: string;
   fields: Field[];
   submit: string;
-  onSubmit: (value: any) => Promise<boolean>;
+  onSubmit: (value: FormValues) => Promise<boolean>;
   disabled?: boolean;
 }) {
+  const formId = useId();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   return (
@@ -80,11 +333,20 @@ function ActionForm({
         setError('');
         setBusy(true);
         const form = e.currentTarget;
-        const raw = Object.fromEntries(new FormData(form));
-        const data: Record<string, any> = { ...raw };
+        const formData = new FormData(form);
+        const raw = Object.fromEntries(
+          [...formData.entries()].filter(
+            (entry): entry is [string, string] => typeof entry[1] === 'string',
+          ),
+        );
+        const data: FormValues = { ...raw };
         for (const field of fields)
           if (field.type === 'number')
             data[field.name] = Number(raw[field.name]);
+          else if (field.type === 'multiselect')
+            data[field.name] = formData
+              .getAll(field.name)
+              .filter((value): value is string => typeof value === 'string');
         try {
           const ok = await onSubmit(data);
           if (ok) form.reset();
@@ -97,45 +359,60 @@ function ActionForm({
     >
       {title && <h3>{title}</h3>}
       <fieldset disabled={busy || disabled}>
-        {fields.map((f) => (
-          <label key={f.name}>
-            <span>
-              {f.label}
-              {f.optional ? ' (optional)' : ''}
-            </span>
-            {f.type === 'textarea' ? (
-              <Textarea
-                name={f.name}
-                required={!f.optional}
-                maxLength={f.max ?? 2000}
-                defaultValue={f.value}
-              />
-            ) : f.type === 'select' ? (
-              <NativeSelect
-                name={f.name}
-                required={!f.optional}
-                defaultValue={f.value}
-              >
-                <NativeSelectOption value="">Choose…</NativeSelectOption>
-                {f.options?.map((o) => (
-                  <NativeSelectOption key={o.value} value={o.value}>
-                    {o.label}
-                  </NativeSelectOption>
-                ))}
-              </NativeSelect>
-            ) : (
-              <Input
-                name={f.name}
-                type={f.type ?? 'text'}
-                required={!f.optional}
-                maxLength={f.max ?? 200}
-                min={f.type === 'number' ? 0 : undefined}
-                step={f.step ?? '1'}
-                defaultValue={f.value}
-              />
-            )}
-          </label>
-        ))}
+        {fields.map((f) =>
+          f.type === 'multiselect' ? (
+            <fieldset key={f.name}>
+              <legend>{f.label}</legend>
+              {f.options?.map((o) => (
+                <label className="block py-1" key={o.value}>
+                  <input type="checkbox" name={f.name} value={o.value} />{' '}
+                  {o.label}
+                </label>
+              ))}
+            </fieldset>
+          ) : (
+            <label key={f.name} htmlFor={`${formId}-${f.name}`}>
+              <span>
+                {f.label}
+                {f.optional ? ' (optional)' : ''}
+              </span>
+              {f.type === 'textarea' ? (
+                <Textarea
+                  id={`${formId}-${f.name}`}
+                  name={f.name}
+                  required={!f.optional}
+                  maxLength={f.max ?? 2000}
+                  defaultValue={f.value}
+                />
+              ) : f.type === 'select' ? (
+                <NativeSelect
+                  id={`${formId}-${f.name}`}
+                  name={f.name}
+                  required={!f.optional}
+                  defaultValue={f.value}
+                >
+                  <NativeSelectOption value="">Choose…</NativeSelectOption>
+                  {f.options?.map((o) => (
+                    <NativeSelectOption key={o.value} value={o.value}>
+                      {o.label}
+                    </NativeSelectOption>
+                  ))}
+                </NativeSelect>
+              ) : (
+                <Input
+                  id={`${formId}-${f.name}`}
+                  name={f.name}
+                  type={f.type ?? 'text'}
+                  required={!f.optional}
+                  maxLength={f.max ?? 200}
+                  min={f.type === 'number' ? 0 : undefined}
+                  step={f.step ?? '1'}
+                  defaultValue={f.value}
+                />
+              )}
+            </label>
+          ),
+        )}
         <Button
           type="submit"
           className="h-11 px-4 mt-4"
@@ -152,7 +429,7 @@ function ActionForm({
     </form>
   );
 }
-const options = (items: Entity[], key = 'name') =>
+const options = (items: NamedRecord[], key: keyof NamedRecord = 'name') =>
   items.map((x) => ({
     value: x.id,
     label: x[key] ?? x.title ?? x.reference ?? x.id,
@@ -166,8 +443,8 @@ const field = (
 const select = (
   name: string,
   title: string,
-  items: Entity[],
-  key = 'name',
+  items: NamedRecord[],
+  key: keyof NamedRecord = 'name',
 ): Field => field(name, title, 'select', { options: options(items, key) });
 const choices = (name: string, title: string, values: string[]): Field =>
   field(name, title, 'select', {
@@ -184,11 +461,16 @@ export function NetworkApp({
   mode: 'network' | 'workspace';
   signedIn: boolean;
 }) {
+  const now = useSyncExternalStore(subscribeClock, clockSnapshot, serverClock);
   const pendingRequests = useRef(new Map<string, string>());
-  const [coops, setCoops] = useState<Entity[]>([]),
-    [mine, setMine] = useState<Entity[]>([]),
+  const loadGeneration = useRef(0);
+  const [appliedSearch, setAppliedSearch] = useState('');
+  const [nextId, setNextId] = useState<string | null>(null);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [coops, setCoops] = useState<PublicCoop[]>([]),
+    [mine, setMine] = useState<WorkspaceSummary[]>([]),
     [selected, setSelected] = useState(''),
-    [data, setData] = useState<any>(null),
+    [data, setData] = useState<WorkspaceResponse | null>(null),
     [loading, setLoading] = useState(true),
     [error, setError] = useState(''),
     [notice, setNotice] = useState(''),
@@ -198,37 +480,50 @@ export function NetworkApp({
     [invitationLink, setInvitationLink] = useState(''),
     [next, setNext] = useState<number | null>(null);
   const load = useCallback(
-    async (id = '') => {
+    async (id = '', query = '') => {
+      const generation = ++loadGeneration.current;
       setLoading(true);
       setError('');
       try {
         const url =
           mode === 'network'
-            ? `/api/network${id ? `?id=${encodeURIComponent(id)}` : ''}`
+            ? `/api/network${id ? `?id=${encodeURIComponent(id)}` : `?q=${encodeURIComponent(query)}`}`
             : `/api/workspaces${id ? `?id=${encodeURIComponent(id)}` : ''}`;
         const r = await fetch(url, { cache: 'no-store' });
-        const value: any = await r.json();
+        const value: WorkspaceResponse & {
+          coops: PublicCoop[];
+          next: number | null;
+          nextId: string | null;
+          workspaces: WorkspaceSummary[];
+        } = await r.json();
         if (!r.ok) throw new Error(value.error);
+        if (generation !== loadGeneration.current) return;
         if (id) setData(value);
         else {
           setData(null);
           if (mode === 'network') {
             setCoops(value.coops);
             setNext(value.next);
+            setNextId(value.nextId);
+            setAppliedSearch(query);
+            setSearch(query);
           } else setMine(value.workspaces);
         }
       } catch (e) {
-        setError((e as Error).message);
+        if (generation === loadGeneration.current)
+          setError((e as Error).message);
       } finally {
-        setLoading(false);
+        if (generation === loadGeneration.current) setLoading(false);
       }
     },
     [mode],
   );
   useEffect(() => {
     const id = new URLSearchParams(location.search).get('coop') ?? '';
-    setSelected(id);
-    void load(id);
+    queueMicrotask(() => {
+      setSelected(id);
+      void load(id);
+    });
   }, [load]);
   const chooseCoop = (id: string) => {
     setInvitationLink('');
@@ -241,7 +536,7 @@ export function NetworkApp({
     );
     void load(id);
   };
-  async function mutate(op: string, payload: any): Promise<boolean> {
+  async function mutate(op: string, payload: CommandPayload): Promise<boolean> {
     if (busy) throw new Error('Wait for the current save to finish.');
     setBusy(true);
     setNotice('');
@@ -261,7 +556,7 @@ export function NetworkApp({
           requestId,
         }),
       });
-      const result: any = await r.json();
+      const result: WorkspaceResponse = await r.json();
       if (!r.ok) {
         if (r.status === 409) await load(selected);
         throw new Error(result.error);
@@ -282,7 +577,7 @@ export function NetworkApp({
       setBusy(false);
     }
   }
-  async function quick(op: string, payload: any) {
+  async function quick(op: string, payload: CommandPayload) {
     try {
       await mutate(op, payload);
     } catch (e) {
@@ -290,15 +585,36 @@ export function NetworkApp({
     }
   }
   async function more() {
-    if (next === null) return;
+    if (next === null || loadingMore) return;
+    const generation = loadGeneration.current;
+    setLoadingMore(true);
     try {
-      const r = await fetch(`/api/network?before=${next}`);
-      const v: any = await r.json();
+      const query = new URLSearchParams({
+        before: String(next),
+        q: appliedSearch,
+      });
+      if (nextId) query.set('beforeId', nextId);
+      const r = await fetch(`/api/network?${query}`);
+      const v: {
+        error: string;
+        coops: PublicCoop[];
+        next: number | null;
+        nextId: string | null;
+      } = await r.json();
       if (!r.ok) throw new Error(v.error);
-      setCoops((c) => [...c, ...v.coops]);
+      if (generation !== loadGeneration.current) return;
+      setCoops((c) => [
+        ...c,
+        ...v.coops.filter(
+          (item) => !c.some((existing) => existing.id === item.id),
+        ),
+      ]);
       setNext(v.next);
+      setNextId(v.nextId);
     } catch (e) {
-      setError((e as Error).message);
+      if (generation === loadGeneration.current) setError((e as Error).message);
+    } finally {
+      setLoadingMore(false);
     }
   }
   async function copyLink() {
@@ -314,7 +630,6 @@ export function NetworkApp({
   }
   const state = data?.state,
     steward = data?.role === 'steward';
-  const money = (n: number) => formatMoney(n, state?.currency ?? 'USD');
   const exportRecords = () => {
     if (!state) return;
     const url = URL.createObjectURL(
@@ -323,7 +638,6 @@ export function NetworkApp({
           JSON.stringify(
             {
               exportedAt: new Date().toISOString(),
-              version: data.version,
               ...data,
             },
             null,
@@ -348,33 +662,42 @@ export function NetworkApp({
     select(
       'evidenceId',
       'Reviewed evidence',
-      state?.evidence.filter((e: Entity) => e.status === 'reviewed') ?? [],
+      state?.evidence.filter((e) => e.status === 'reviewed') ?? [],
       'title',
     );
+  const visibleCoops = coops;
   return (
     <>
       <a className="skip" href="#main">
         Skip to content
       </a>
       <header className="nav">
-        <a className="brand" href="/">
+        <Link className="brand" href="/" prefetch={false} target="_top">
           <Sprout />
           verge common
-        </a>
+        </Link>
         <nav aria-label="Main navigation">
-          <a href="/app/">Get the app</a>
-          <a href="/network/">Discover</a>
-          <a href="/workspace/" target="_top">
+          <Link href="/app/" prefetch={false} target="_top">
+            Get the app
+          </Link>
+          <Link href="/network/" prefetch={false} target="_top">
+            Discover
+          </Link>
+          <Link href="/workspace/" target="_top" prefetch={false}>
             My co-ops
-          </a>
+          </Link>
           {signedIn ? (
-            <a href="/signout-with-chatgpt?return_to=/network/" target="_top">
-              Sign out
-            </a>
+            <Link href="/account" target="_top" prefetch={false}>
+              Account
+            </Link>
           ) : (
-            <a href="/signin-with-chatgpt?return_to=/workspace/" target="_top">
+            <Link
+              href="/signin-with-chatgpt?return_to=/workspace/"
+              target="_top"
+              prefetch={false}
+            >
               Sign in
-            </a>
+            </Link>
           )}
         </nav>
       </header>
@@ -404,16 +727,35 @@ export function NetworkApp({
               All co-ops
             </Button>
           ) : mode === 'network' ? (
-            <a className="button primary" href="/workspace/" target="_top">
+            <Link
+              className="button primary"
+              href="/workspace/"
+              target="_top"
+              prefetch={false}
+            >
               <Plus />
               Start a co-op
-            </a>
+            </Link>
           ) : (
-            <a className="text-link" href="/network/">
+            <Link
+              className="text-link"
+              href="/network/"
+              prefetch={false}
+              target="_top"
+            >
               Explore the network <ArrowUpRight size={17} />
-            </a>
+            </Link>
           )}
         </div>
+        {selected && (
+          <p className="small mb-4">
+            <Link
+              href={`/report/?kind=coop&coop=${encodeURIComponent(selected)}`}
+            >
+              Report a concern to the operator
+            </Link>
+          </p>
+        )}
         {!selected && (
           <p className="intro">
             Bring an EcoHedge corridor, a woodlot, or a larger conservation
@@ -432,15 +774,9 @@ export function NetworkApp({
             </Button>
           </div>
         )}
-        {notice && (
-          <p className="notice mt-5" role="status">
-            {notice}
-          </p>
-        )}
+        {notice && <output className="notice mt-5">{notice}</output>}
         {loading ? (
-          <div className="empty" role="status">
-            Loading co-op records…
-          </div>
+          <output className="empty">Loading co-op records…</output>
         ) : mode === 'network' ? (
           <>
             {data?.coop ? (
@@ -470,7 +806,7 @@ export function NetworkApp({
                     {data.coop.projects.length === 0 ? (
                       <Empty>No projects have been made public yet.</Empty>
                     ) : (
-                      data.coop.projects.map((p: Entity) => (
+                      data.coop.projects.map((p) => (
                         <article className="network-card" key={p.id}>
                           <p className="eyebrow">{label(p.kind)}</p>
                           <h3>{p.name}</h3>
@@ -484,7 +820,7 @@ export function NetworkApp({
                     )}
                     <h2 className="mt-8">From the co-op</h2>
                     {data.coop.updates.length ? (
-                      data.coop.updates.map((u: Entity) => (
+                      data.coop.updates.map((u) => (
                         <article className="network-card" key={u.id}>
                           <time>{date(u.createdAt)}</time>
                           <p>{u.text}</p>
@@ -528,55 +864,84 @@ export function NetworkApp({
                       software participation records, not automatic legal co-op
                       membership or investment rights.
                     </p>
-                    <a
+                    <Link
                       className="text-link"
                       href={`/workspace/?coop=${selected}`}
+                      prefetch={false}
+                      target="_top"
                     >
                       Already a member? Open workspace ↗
-                    </a>
+                    </Link>
                   </aside>
                 </div>
               </>
             ) : (
               <>
                 <OrganizationDiscovery coops={coops} />
-                <label className="search-label">
-                  Find a co-op in the loaded results
-                  <Input
-                    placeholder="Search by name or general region…"
-                    value={search}
-                    onChange={(e) => setSearch(e.target.value)}
-                  />
-                </label>
+                <form
+                  onSubmit={(event) => {
+                    event.preventDefault();
+                    void load('', search.trim());
+                  }}
+                >
+                  <ControlLabel className="search-label">
+                    Search the public co-op directory
+                    <Input
+                      placeholder="Search by name or general region…"
+                      value={search}
+                      maxLength={160}
+                      onChange={(e) => setSearch(e.target.value)}
+                    />
+                  </ControlLabel>
+                  <Button type="submit" className="mb-4">
+                    Search
+                  </Button>
+                </form>
                 <div className="network-grid">
-                  {coops
-                    .filter((c) =>
-                      `${c.name} ${c.country ?? ''} ${c.region} ${c.summary}`
-                        .toLowerCase()
-                        .includes(search.toLowerCase()),
-                    )
-                    .map((c) => (
-                      <article className="network-card" key={c.id}>
-                        <p className="eyebrow">
-                          <MapPin size={14} />
-                          {c.region}
-                        </p>
-                        <h2>{c.name}</h2>
-                        <p>{c.summary}</p>
-                        <div className="network-meta">
-                          <span>{c.projects.length} public projects</span>
-                          <span>{c.memberCount} members</span>
-                        </div>
-                        <Button
-                          className="mt-5 h-11"
-                          onClick={() => chooseCoop(c.id)}
-                        >
-                          Explore this co-op <ArrowUpRight />
-                        </Button>
-                      </article>
-                    ))}
+                  {visibleCoops.map((c) => (
+                    <article className="network-card" key={c.id}>
+                      <p className="eyebrow">
+                        <MapPin size={14} />
+                        {c.region}
+                      </p>
+                      <h2>{c.name}</h2>
+                      <p>{c.summary}</p>
+                      <div className="network-meta">
+                        <span>{c.projects.length} public projects</span>
+                        <span>{c.memberCount} members</span>
+                      </div>
+                      <Button
+                        className="mt-5 h-11"
+                        onClick={() => chooseCoop(c.id)}
+                      >
+                        Explore this co-op <ArrowUpRight />
+                      </Button>
+                    </article>
+                  ))}
                 </div>
-                {!coops.length && (
+                {appliedSearch && visibleCoops.length === 0 && (
+                  <Empty>
+                    <h2>
+                      {next !== null
+                        ? 'Keep exploring the directory'
+                        : 'No matching co-ops'}
+                    </h2>
+                    <output className="block mb-4">
+                      {next !== null
+                        ? `No matches for “${appliedSearch}” in this part of the directory. Load more to continue searching.`
+                        : `No public co-ops match “${appliedSearch}” in the current results. Try another name or general region.`}
+                    </output>
+                    <Button
+                      variant="outline"
+                      onClick={() => {
+                        void load();
+                      }}
+                    >
+                      Clear search
+                    </Button>
+                  </Empty>
+                )}
+                {!coops.length && !appliedSearch && (
                   <Empty>
                     <Sprout size={36} className="mx-auto mb-4" />
                     <h2>Be the first to plant a flag.</h2>
@@ -584,18 +949,23 @@ export function NetworkApp({
                       No co-ops have made their profiles public yet. Start with
                       a real group and a place you care about.
                     </p>
-                    <a
+                    <Link
                       href="/workspace/"
                       target="_top"
                       className="button primary mt-4"
+                      prefetch={false}
                     >
                       Create your co-op
-                    </a>
+                    </Link>
                   </Empty>
                 )}
                 {next !== null && (
-                  <Button variant="outline" onClick={more}>
-                    Load more co-ops
+                  <Button
+                    variant="outline"
+                    onClick={more}
+                    disabled={loadingMore}
+                  >
+                    {loadingMore ? 'Loading…' : 'Load more co-ops'}
                   </Button>
                 )}
               </>
@@ -633,9 +1003,22 @@ export function NetworkApp({
             {state.visibility === 'archived' && (
               <div className="notice">
                 Archived. Existing records and authorized downloads remain
-                available; changes are disabled.
+                available. New activity is disabled; authorized reports, blocks,
+                removals and consent withdrawals remain available within the
+                safety storage limit.
               </div>
             )}
+            <WorkspaceCapacityBanner
+              capacity={data.capacity}
+              coopId={selected}
+            />
+            <PendingWork
+              state={state}
+              steward={steward}
+              memberId={data.memberId ?? ''}
+              now={now}
+              onOpenTab={setWorkspaceTab}
+            />
             <Tabs
               value={workspaceTab}
               onValueChange={(v) => setWorkspaceTab(String(v))}
@@ -668,6 +1051,7 @@ export function NetworkApp({
                   state={state}
                   steward={steward}
                   busy={busy}
+                  growthPaused={data.capacity?.growthPaused}
                   mutate={mutate}
                 />
               </TabsContent>
@@ -695,8 +1079,7 @@ export function NetworkApp({
                       'members',
                       '3. Invite your circle',
                       'Invite participants; approve members and appoint a second steward.',
-                      state.members.filter((m: Entity) => m.status === 'active')
-                        .length > 1,
+                      onboardingProgress(state).circle,
                     ],
                     [
                       'parcels',
@@ -708,9 +1091,7 @@ export function NetworkApp({
                       'pooling',
                       '5. Assess a carbon pathway',
                       'Document the chosen methodology, compatible land, and unresolved requirements.',
-                      (state.assessments ?? []).some(
-                        (a: Entity) => a.status === 'reviewed',
-                      ),
+                      onboardingProgress(state).assessment,
                     ],
                     [
                       'governance',
@@ -753,6 +1134,76 @@ export function NetworkApp({
                       </Empty>
                     )}
                     <OrganizationDiscovery coops={[]} />
+                    <PartnerParticipation
+                      records={state.partnerships ?? []}
+                      steward={steward}
+                      members={state.members}
+                      projects={state.projects}
+                      disabled={busy}
+                      growthPaused={
+                        state.visibility === 'archived' ||
+                        data.capacity?.growthPaused
+                      }
+                      mutate={mutate}
+                    />
+                    {steward &&
+                      (state.partnerships ?? []).map((partner) => (
+                        <article className="network-card" key={partner.id}>
+                          <h3>{partner.name}</h3>
+                          <Status value={partner.status} />
+                          <p>{partner.role}</p>
+                          <p>
+                            Agreement reference: {partner.agreementReference}
+                          </p>
+                          <a
+                            href={partner.website}
+                            target="_blank"
+                            rel="noreferrer"
+                          >
+                            Partner website ↗
+                          </a>
+                          <p className="small">
+                            Private co-op record. A steward review does not
+                            independently verify the nonprofit or its authority.
+                          </p>
+                          {partner.status === 'submitted' && (
+                            <ActionForm
+                              fields={[
+                                choices('decision', 'Partner review decision', [
+                                  'approve',
+                                  'reject',
+                                ]),
+                              ]}
+                              submit="Review partner agreement"
+                              onSubmit={(v) =>
+                                mutate('review_partnership', {
+                                  ...v,
+                                  id: partner.id,
+                                })
+                              }
+                            />
+                          )}
+                          {partner.status === 'reviewed' && (
+                            <ActionForm
+                              fields={[
+                                field(
+                                  'reason',
+                                  'Reason for ending this partnership record',
+                                  'textarea',
+                                  { max: 1000 },
+                                ),
+                              ]}
+                              submit="Revoke partner record"
+                              onSubmit={(v) =>
+                                mutate('revoke_partnership', {
+                                  ...v,
+                                  id: partner.id,
+                                })
+                              }
+                            />
+                          )}
+                        </article>
+                      ))}
                   </section>
                   <aside className="panel">
                     {steward && (
@@ -793,6 +1244,55 @@ export function NetworkApp({
                         onSubmit={(v) => mutate('update_organization', v)}
                       />
                     )}
+                    {steward && (
+                      <p className="small mt-4">
+                        First submit the partner’s agreement in Evidence and
+                        have another steward review it. Then link that evidence
+                        to the same project here.
+                      </p>
+                    )}
+                    {steward && (
+                      <ActionForm
+                        title="Record an agreed conservation partnership"
+                        fields={[
+                          projectField(),
+                          field(
+                            'name',
+                            'Partner organization name',
+                            undefined,
+                            { max: 160 },
+                          ),
+                          field(
+                            'website',
+                            'Partner official website (HTTPS)',
+                            undefined,
+                            { max: 500 },
+                          ),
+                          field(
+                            'role',
+                            'Agreed role and responsibilities',
+                            'textarea',
+                            { max: 1000 },
+                          ),
+                          field(
+                            'agreementReference',
+                            'Private reference to the partner’s agreement',
+                            undefined,
+                            { max: 500 },
+                          ),
+                          select(
+                            'evidenceId',
+                            'Reviewed evidence of the partner’s agreement',
+                            state.evidence.filter(
+                              (e) => e.status === 'reviewed',
+                            ),
+                            'title',
+                          ),
+                        ]}
+                        submit="Submit partner agreement for review"
+                        onSubmit={(v) => mutate('record_partnership', v)}
+                      />
+                    )}
                     <p className="small mt-4">
                       Profiles are self-reported. Public profiles appear only
                       when the co-op itself is public. No affiliation is
@@ -807,6 +1307,7 @@ export function NetworkApp({
                   state={state}
                   steward={steward}
                   busy={busy}
+                  growthPaused={data.capacity?.growthPaused}
                   mutate={mutate}
                   refresh={() => load(selected)}
                 />
@@ -818,44 +1319,115 @@ export function NetworkApp({
                   program and methodology. An area total is a planning measure,
                   not a carbon-credit approval.
                 </p>
+                {steward && (
+                  <CooperativeParcelMap
+                    key={selected}
+                    parcels={state.parcels}
+                    projects={state.projects}
+                    steward={steward}
+                  />
+                )}
                 {steward ? (
                   <div className="network-columns">
                     <section>
-                      {state.projects.map((p: Entity) => {
+                      {state.projects.map((p) => {
                         const parcels = state.parcels.filter(
-                          (x: Entity) =>
+                          (x) =>
                             x.projectId === p.id && x.status === 'reviewed',
                         );
+                        const readiness = projectReadiness(state, p.id);
                         return (
                           <article className="network-card" key={p.id}>
                             <h3>{p.name}</h3>
+                            <h4>Preparation for external review</h4>
+                            <ul>
+                              {readiness.checks.map((check) => (
+                                <li key={check.id}>
+                                  {check.complete ? 'Recorded' : 'Needed'}:{' '}
+                                  {check.label}
+                                </li>
+                              ))}
+                            </ul>
+                            <p className="small">
+                              This checklist tracks preparation records. It does
+                              not approve carbon credits or payouts.
+                            </p>
                             <p>
                               {parcels.length} reviewed parcels ·{' '}
                               {(
-                                parcels.reduce(
-                                  (n: number, x: Entity) =>
-                                    n + x.areaSquareMetres,
-                                  0,
-                                ) / 10000
-                              ).toLocaleString()}{' '}
-                              hectares recorded
+                                readiness.geometry.areaSquareMetres / 10000
+                              ).toLocaleString(undefined, {
+                                maximumFractionDigits: 3,
+                              })}{' '}
+                              hectares estimated from reviewed boundaries
                             </p>
+                            {readiness.geometry.problems.map((problem, i) => (
+                              <p
+                                className="notice"
+                                key={`${problem.parcelId}-${i}`}
+                              >
+                                {
+                                  state.parcels.find(
+                                    (parcel) => parcel.id === problem.parcelId,
+                                  )?.name
+                                }
+                                : {label(problem.reason)}. Review the parcel and
+                                boundary in the parcels and monitoring tabs.
+                              </p>
+                            ))}
+                            {readiness.geometry.overlaps.map((overlap) => (
+                              <p
+                                className="notice"
+                                key={overlap.parcelIds.join(':')}
+                              >
+                                Overlap:{' '}
+                                {overlap.parcelIds
+                                  .map(
+                                    (id) =>
+                                      state.parcels.find(
+                                        (parcel) => parcel.id === id,
+                                      )?.name,
+                                  )
+                                  .join(' / ')}{' '}
+                                —{' '}
+                                {overlap.areaSquareMetres.toLocaleString(
+                                  undefined,
+                                  { maximumFractionDigits: 1 },
+                                )}{' '}
+                                m². Correct the boundaries or withdraw the
+                                duplicate parcel before pooling.
+                              </p>
+                            ))}
                             <p className="small">
-                              Confirm boundaries do not overlap and each owner
-                              has consented to this pathway.
+                              Areas use the drawn boundary and a spherical Earth
+                              model. Recorded and drawn areas must agree within
+                              5% or 1 m², whichever is larger. This is a
+                              planning check, not a survey. Overlaps are checked
+                              within this co-op; qualified reviewers must check
+                              other projects and registry claims separately.
                             </p>
                           </article>
                         );
                       })}
-                      {(state.assessments ?? []).map((a: Entity) => (
+                      {(state.assessments ?? []).map((a) => (
                         <article className="network-card" key={a.id}>
                           <h3>
                             {a.program} · {a.methodology}
                           </h3>
                           <Status value={a.status} />
+                          {!assessmentIsCurrent(state, a) && (
+                            <p className="notice">
+                              Land records changed, or this older assessment
+                              lacks a versioned snapshot. Record and review a
+                              new assessment.
+                            </p>
+                          )}
                           <p>
-                            Snapshot: {a.areaSquareMetres.toLocaleString()} m²
-                            across {a.parcelIds.length} reviewed parcels.
+                            Boundary snapshot:{' '}
+                            {a.areaSquareMetres.toLocaleString(undefined, {
+                              maximumFractionDigits: 1,
+                            })}{' '}
+                            m² across {a.parcelIds.length} reviewed parcels.
                           </p>
                           <p>
                             {a.areaSquareMetres >= a.minimumSquareMetres
@@ -944,7 +1516,7 @@ export function NetworkApp({
                         Add your first EcoHedge or conservation project.
                       </Empty>
                     )}
-                    {state.projects.map((p: Entity) => (
+                    {state.projects.map((p) => (
                       <article className="network-card" key={p.id}>
                         <p className="eyebrow">
                           {label(p.kind)} · {p.region}
@@ -977,8 +1549,8 @@ export function NetworkApp({
                         )}
                         <div className="task-list">
                           {state.tasks
-                            .filter((t: Entity) => t.projectId === p.id)
-                            .map((t: Entity) => (
+                            .filter((t) => t.projectId === p.id)
+                            .map((t) => (
                               <div className="task-line" key={t.id}>
                                 <div>
                                   <strong>{t.title}</strong>
@@ -1048,23 +1620,25 @@ export function NetworkApp({
                       </article>
                     ))}
                     <h2 className="mt-8">Co-op updates</h2>
-                    {state.updates.map((u: Entity) => (
-                      <article className="network-card" key={u.id}>
-                        <p className="small">
-                          {u.author} · {date(u.createdAt)} ·{' '}
-                          {u.hidden ? 'hidden' : u.visibility}
-                        </p>
-                        <p>{u.text}</p>
-                        {steward && !u.hidden && (
-                          <Button
-                            variant="outline"
-                            onClick={() => quick('hide_update', { id: u.id })}
-                          >
-                            Hide update
-                          </Button>
-                        )}
-                      </article>
-                    ))}
+                    {state.updates
+                      .filter((u) => !u.blocked)
+                      .map((u) => (
+                        <article className="network-card" key={u.id}>
+                          <p className="small">
+                            {u.author} · {date(u.createdAt)} ·{' '}
+                            {u.hidden ? 'hidden' : u.visibility}
+                          </p>
+                          <p>{u.text}</p>
+                          {steward && !u.hidden && (
+                            <Button
+                              variant="outline"
+                              onClick={() => quick('hide_update', { id: u.id })}
+                            >
+                              Hide update
+                            </Button>
+                          )}
+                        </article>
+                      ))}
                   </section>
                   <aside>
                     <div className="panel">
@@ -1128,7 +1702,7 @@ export function NetworkApp({
                         into a carbon pool.
                       </Empty>
                     )}
-                    {state.parcels.map((p: Entity) => (
+                    {state.parcels.map((p) => (
                       <article className="network-card" key={p.id}>
                         <h3>{p.name}</h3>
                         <p>
@@ -1142,6 +1716,175 @@ export function NetworkApp({
                         </p>
                         <p>{p.notes}</p>
                         <Status value={p.status} />
+                        <p className="small">
+                          {parcelConsentIsCurrent(p)
+                            ? 'Current pooling consent reviewed'
+                            : 'Current pooling consent needed'}
+                        </p>
+                        {p.status !== 'withdrawn' &&
+                          p.boundaries?.at(-1)?.status === 'reviewed' && (
+                            <>
+                              <p className="small">
+                                Boundary estimate:{' '}
+                                {Number.isFinite(
+                                  Number(p.boundaries.at(-1)?.areaSquareMetres),
+                                )
+                                  ? `${Math.round(Number(p.boundaries.at(-1)?.areaSquareMetres)).toLocaleString()} m²`
+                                  : 'shown in the pooling geometry check'}
+                                . A correction requires another parcel review
+                                and new consent.
+                              </p>
+                              <Button
+                                variant="outline"
+                                disabled={busy}
+                                onClick={() =>
+                                  quick('use_boundary_area', { parcelId: p.id })
+                                }
+                              >
+                                Use boundary estimate as recorded area
+                              </Button>
+                            </>
+                          )}
+                        {(p.consents ?? []).map((consent) => (
+                          <section className="mt-4" key={consent.id}>
+                            <h4>Pooling consent: {consent.holder}</h4>
+                            <Status value={consent.status} />
+                            <p className="small">
+                              Reference: {consent.reference}
+                              <br />
+                              Authority: {consent.authority}
+                              <br />
+                              Scope: {consent.scope}
+                            </p>
+                            {consent.reviewNote && (
+                              <p className="small">
+                                Review: {consent.reviewNote}
+                              </p>
+                            )}
+                            {steward &&
+                              consent.status === 'submitted' &&
+                              consent.id === p.consents?.at(-1)?.id && (
+                                <ActionForm
+                                  fields={[
+                                    choices(
+                                      'decision',
+                                      'Consent review decision',
+                                      ['approve', 'reject'],
+                                    ),
+                                    field(
+                                      'note',
+                                      'Consent review notes',
+                                      'textarea',
+                                    ),
+                                  ]}
+                                  submit="Review pooling consent"
+                                  disabled={busy}
+                                  onSubmit={(v) =>
+                                    mutate('review_parcel_consent', {
+                                      ...v,
+                                      parcelId: p.id,
+                                      id: consent.id,
+                                    })
+                                  }
+                                />
+                              )}
+                            {['submitted', 'reviewed'].includes(
+                              consent.status,
+                            ) && (
+                              <ActionForm
+                                fields={[
+                                  field(
+                                    'reason',
+                                    'Reason for withdrawing this consent record',
+                                    'textarea',
+                                    { max: 1000 },
+                                  ),
+                                ]}
+                                submit="Revoke pooling consent record"
+                                disabled={busy}
+                                onSubmit={(v) =>
+                                  mutate('revoke_parcel_consent', {
+                                    ...v,
+                                    parcelId: p.id,
+                                    id: consent.id,
+                                  })
+                                }
+                              />
+                            )}
+                          </section>
+                        ))}
+                        {p.status === 'reviewed' &&
+                          p.boundaries?.at(-1)?.status === 'reviewed' && (
+                            <ActionForm
+                              title="Record consent for this parcel and boundary"
+                              fields={[
+                                field(
+                                  'holder',
+                                  'Consenting rights holder',
+                                  undefined,
+                                  { max: 200 },
+                                ),
+                                field(
+                                  'authority',
+                                  'Authority of the person providing consent',
+                                  'textarea',
+                                  { max: 1000 },
+                                ),
+                                field(
+                                  'reference',
+                                  'Signed consent document reference',
+                                  undefined,
+                                  { max: 300 },
+                                ),
+                                field(
+                                  'scope',
+                                  'Agreed pooling purpose, duration, and restrictions',
+                                  'textarea',
+                                  { max: 2000 },
+                                ),
+                                choices(
+                                  'attested',
+                                  'The referenced holder consent covers this parcel and its current boundary',
+                                  ['confirmed'],
+                                ),
+                              ]}
+                              submit="Submit pooling consent for review"
+                              disabled={busy}
+                              onSubmit={(v) =>
+                                mutate('record_parcel_consent', {
+                                  ...v,
+                                  parcelId: p.id,
+                                  attested: v.attested === 'confirmed',
+                                })
+                              }
+                            />
+                          )}
+                        {p.status !== 'withdrawn' && (
+                          <ActionForm
+                            fields={[
+                              field(
+                                'reason',
+                                'Reason for withdrawing this parcel from the proposed pool',
+                                'textarea',
+                                { max: 1000 },
+                              ),
+                            ]}
+                            submit="Withdraw parcel from pool"
+                            disabled={busy}
+                            onSubmit={(v) =>
+                              mutate('withdraw_parcel', {
+                                ...v,
+                                parcelId: p.id,
+                              })
+                            }
+                          />
+                        )}
+                        <p className="small">
+                          Consent and withdrawal records do not create or
+                          terminate a legal agreement. Have the rights holder
+                          and qualified advisers confirm those actions
+                          separately.
+                        </p>
                         {steward && p.status === 'submitted' && (
                           <div className="button-row mt-4">
                             {['approve', 'reject'].map((decision) => (
@@ -1198,7 +1941,10 @@ export function NetworkApp({
                       onSubmit={(p) =>
                         mutate('record_parcel', {
                           ...p,
-                          areaSquareMetres: areaToSquareMetres(p.area, p.unit),
+                          areaSquareMetres: areaToSquareMetres(
+                            Number(p.area),
+                            String(p.unit),
+                          ),
                         })
                       }
                       disabled={busy || !state.projects.length}
@@ -1234,7 +1980,8 @@ export function NetworkApp({
                             label: v.label,
                           }),
                         });
-                        const result: any = await response.json();
+                        const result: { error: string; link: string } =
+                          await response.json();
                         if (!response.ok) throw new Error(result.error);
                         setInvitationLink(location.origin + result.link);
                         await load(selected);
@@ -1248,16 +1995,16 @@ export function NetworkApp({
                       still apply.
                     </p>
                     {invitationLink && (
-                      <label>
+                      <ControlLabel>
                         Copy this invitation before leaving
                         <Input
                           readOnly
                           value={invitationLink}
                           onFocus={(e) => e.target.select()}
                         />
-                      </label>
+                      </ControlLabel>
                     )}
-                    {(state.invitations ?? []).map((i: Entity) => (
+                    {(state.invitations ?? []).map((i) => (
                       <div className="network-meta" key={i.id}>
                         <span>
                           {i.label} ·{' '}
@@ -1265,7 +2012,7 @@ export function NetworkApp({
                             ? 'Revoked'
                             : i.used
                               ? 'Request received'
-                              : i.expiresAt <= Date.now()
+                              : i.expiresAt <= now
                                 ? 'Expired'
                                 : `Expires ${date(i.expiresAt)}`}
                         </span>
@@ -1290,7 +2037,15 @@ export function NetworkApp({
                     Invite people by sharing the public co-op link. No
                     invitations are sent automatically.
                   </p>
-                  {state.members.map((m: Entity) => (
+                  <p className="small">
+                    Blocking hides your updates, replies and events from each
+                    other inside this co-op, and prevents replies or event
+                    responses between you. Public pages and shared governance
+                    records remain visible. Stewards retain moderation access.
+                    Report harmful content before blocking so stewards can
+                    review it.
+                  </p>
+                  {state.members.map((m) => (
                     <div className="member-row" key={m.id}>
                       <div>
                         <strong>
@@ -1302,10 +2057,32 @@ export function NetworkApp({
                         </span>
                       </div>
                       <div className="button-row">
+                        {!m.isYou && m.status === 'active' && (
+                          <Button
+                            variant="outline"
+                            disabled={busy}
+                            onClick={() =>
+                              quick(
+                                state.blocks?.some((b) => b.memberId === m.id)
+                                  ? 'unblock_member'
+                                  : 'block_member',
+                                { id: m.id },
+                              )
+                            }
+                          >
+                            {state.blocks?.some((b) => b.memberId === m.id)
+                              ? 'Unblock member'
+                              : 'Block member'}
+                          </Button>
+                        )}
                         {steward && m.status === 'pending' && (
                           <>
                             <Button
-                              disabled={busy}
+                              disabled={
+                                busy ||
+                                state.visibility === 'archived' ||
+                                data.capacity?.growthPaused
+                              }
                               onClick={() =>
                                 quick('member_status', {
                                   id: m.id,
@@ -1332,7 +2109,12 @@ export function NetworkApp({
                         {data.isOwner && !m.isYou && m.status === 'active' && (
                           <Button
                             variant="outline"
-                            disabled={busy}
+                            disabled={
+                              busy ||
+                              (m.role !== 'steward' &&
+                                (state.visibility === 'archived' ||
+                                  data.capacity?.growthPaused))
+                            }
                             onClick={() =>
                               quick('member_role', {
                                 id: m.id,
@@ -1360,9 +2142,45 @@ export function NetworkApp({
                             }
                           />
                         )}
+                        {data.isOwner &&
+                          !m.isYou &&
+                          m.status === 'active' &&
+                          m.role === 'steward' && (
+                            <ConfirmAction
+                              title={`Transfer responsibility to ${m.name}?`}
+                              description="Confirm this steward has agreed to take over. They will control steward appointments and co-op archival. You remain a steward but cannot reverse the transfer yourself. Land rights, legal authority and financial records do not change."
+                              label="Transfer responsibility"
+                              disabled={busy}
+                              onConfirm={() =>
+                                quick('transfer_stewardship', {
+                                  id: m.id,
+                                  confirmation: 'TRANSFER',
+                                })
+                              }
+                            />
+                          )}
                       </div>
                     </div>
                   ))}
+                  {!!state.blocks?.length && (
+                    <details className="mt-5">
+                      <summary>Members you have blocked</summary>
+                      {state.blocks.map((b) => (
+                        <div className="network-meta" key={b.memberId}>
+                          <span>{b.name}</span>
+                          <Button
+                            variant="outline"
+                            disabled={busy}
+                            onClick={() =>
+                              quick('unblock_member', { id: b.memberId })
+                            }
+                          >
+                            Unblock member
+                          </Button>
+                        </div>
+                      ))}
+                    </details>
+                  )}
                   <p className="notice mt-5">
                     Evidence and financial records need a different steward to
                     review them. Appoint a trusted second steward before
@@ -1378,14 +2196,13 @@ export function NetworkApp({
                         Your authorized agreement records will appear here.
                       </Empty>
                     )}
-                    {state.agreements.map((a: Entity) => (
+                    {state.agreements.map((a) => (
                       <article className="network-card" key={a.id}>
                         <p className="eyebrow">{label(a.kind)}</p>
                         <h3>
                           {
-                            state.projects.find(
-                              (p: Entity) => p.id === a.projectId,
-                            )?.name
+                            state.projects.find((p) => p.id === a.projectId)
+                              ?.name
                           }
                         </h3>
                         <p>
@@ -1393,6 +2210,41 @@ export function NetworkApp({
                         </p>
                         <p>{a.notes}</p>
                         <Status value={a.status} />
+                        <p className="small">
+                          Covered parcels:{' '}
+                          {(a.parcelIds ?? [])
+                            .map(
+                              (id: string) =>
+                                state.parcels.find((p) => p.id === id)?.name ??
+                                'Private parcel',
+                            )
+                            .join(', ') ||
+                            'Not recorded — submit a scoped replacement'}
+                        </p>
+                        {!agreementIsCurrent(state, a) && (
+                          <p className="notice">
+                            Coverage or consent is missing or out of date. A new
+                            agreement record must reference the current parcels
+                            before this record can count toward readiness.
+                          </p>
+                        )}
+                        {a.status === 'execution_recorded' && steward && (
+                          <ActionForm
+                            fields={[
+                              field(
+                                'reason',
+                                'Reason this agreement no longer supports the pool',
+                                'textarea',
+                                { max: 1000 },
+                              ),
+                            ]}
+                            submit="Revoke agreement record"
+                            disabled={busy}
+                            onSubmit={(v) =>
+                              mutate('revoke_agreement', { ...v, id: a.id })
+                            }
+                          />
+                        )}
                         {a.reference && (
                           <p>
                             <a
@@ -1416,37 +2268,46 @@ export function NetworkApp({
                             {a.recordingReference || 'Not applicable'}
                           </p>
                         )}
-                        {steward && a.status !== 'execution_recorded' && (
-                          <ActionForm
-                            fields={[
-                              choices(
-                                'status',
-                                'Review outcome',
-                                a.status === 'reviewed'
-                                  ? ['changes_requested', 'execution_recorded']
-                                  : ['changes_requested', 'reviewed'],
-                              ),
-                              field('note', 'Review notes', 'textarea'),
-                              field(
-                                'executionReference',
-                                'Executed instrument reference',
-                                undefined,
-                                { optional: a.status !== 'reviewed', max: 300 },
-                              ),
-                              field(
-                                'recordingReference',
-                                'Recording reference (required for executed easements)',
-                                undefined,
-                                { optional: true, max: 300 },
-                              ),
-                            ]}
-                            submit="Save review"
-                            onSubmit={(p) =>
-                              mutate('review_agreement', { ...p, id: a.id })
-                            }
-                            disabled={busy}
-                          />
-                        )}
+                        {steward &&
+                          !['execution_recorded', 'revoked'].includes(
+                            a.status,
+                          ) && (
+                            <ActionForm
+                              fields={[
+                                choices(
+                                  'status',
+                                  'Review outcome',
+                                  a.status === 'reviewed'
+                                    ? [
+                                        'changes_requested',
+                                        'execution_recorded',
+                                      ]
+                                    : ['changes_requested', 'reviewed'],
+                                ),
+                                field('note', 'Review notes', 'textarea'),
+                                field(
+                                  'executionReference',
+                                  'Executed instrument reference',
+                                  undefined,
+                                  {
+                                    optional: a.status !== 'reviewed',
+                                    max: 300,
+                                  },
+                                ),
+                                field(
+                                  'recordingReference',
+                                  'Recording reference (required for executed easements)',
+                                  undefined,
+                                  { optional: true, max: 300 },
+                                ),
+                              ]}
+                              submit="Save review"
+                              onSubmit={(p) =>
+                                mutate('review_agreement', { ...p, id: a.id })
+                              }
+                              disabled={busy}
+                            />
+                          )}
                       </article>
                     ))}
                   </section>
@@ -1455,6 +2316,18 @@ export function NetworkApp({
                       title="Submit an agreement record"
                       fields={[
                         projectField(),
+                        {
+                          name: 'parcelIds',
+                          label:
+                            'Specific covered parcels (choose only parcels in the selected project)',
+                          type: 'multiselect',
+                          options: state.parcels
+                            .filter((p) => p.status !== 'withdrawn')
+                            .map((p) => ({
+                              value: p.id,
+                              label: `${state.projects.find((project) => project.id === p.projectId)?.name}: ${p.name}`,
+                            })),
+                        },
                         choices('kind', 'Instrument', [
                           'enrollment',
                           'easement',
@@ -1506,7 +2379,7 @@ export function NetworkApp({
                     {state.evidence.length === 0 && (
                       <Empty>No evidence visible to you yet.</Empty>
                     )}
-                    {state.evidence.map((e: Entity) => (
+                    {state.evidence.map((e) => (
                       <article className="network-card" key={e.id}>
                         <h3>{e.title}</h3>
                         <p className="small">
@@ -1517,13 +2390,15 @@ export function NetworkApp({
                         {e.asset && (
                           <>
                             <p>
-                              <a
+                              <Link
                                 href={`/api/files?id=${e.asset.id}`}
                                 className="text-link"
+                                prefetch={false}
+                                target="_top"
                               >
                                 <Download size={16} />
                                 {e.asset.filename}
-                              </a>
+                              </Link>
                             </p>
                             <p className="digest">SHA-256: {e.asset.sha256}</p>
                           </>
@@ -1561,6 +2436,7 @@ export function NetworkApp({
                   </section>
                   <aside className="panel">
                     <EvidenceForm
+                      key={selected}
                       workspaceId={selected}
                       projects={state.projects}
                       disabled={busy}
@@ -1577,9 +2453,7 @@ export function NetworkApp({
               <TabsContent value="governance">
                 <PayoutPreview
                   currency={state.currency ?? 'USD'}
-                  members={state.members.filter(
-                    (m: Entity) => m.status === 'active',
-                  )}
+                  members={state.members.filter((m) => m.status === 'active')}
                 />
                 <div className="network-columns">
                   <section>
@@ -1589,7 +2463,7 @@ export function NetworkApp({
                         member vote.
                       </Empty>
                     )}
-                    {state.proposals.map((p: Entity) => (
+                    {state.proposals.map((p) => (
                       <article className="network-card" key={p.id}>
                         <h3>{p.title}</h3>
                         <p>{p.text}</p>
@@ -1600,7 +2474,7 @@ export function NetworkApp({
                           quorum {p.quorum}
                         </p>
                         <dl className="ledger">
-                          {p.shares.map((m: Entity) => (
+                          {p.shares.map((m) => (
                             <div key={m.id}>
                               <dt>{m.name}</dt>
                               <dd>{m.shareBps / 100}%</dd>
@@ -1620,8 +2494,7 @@ export function NetworkApp({
                                   <Button
                                     variant={
                                       p.votes.find(
-                                        (v: any) =>
-                                          v.memberId === data.memberId,
+                                        (v) => v.memberId === data.memberId,
                                       )?.choice === choice
                                         ? 'default'
                                         : 'outline'
@@ -1682,8 +2555,8 @@ export function NetworkApp({
                             { value: 10, step: '0.01' },
                           ),
                           ...state.members
-                            .filter((m: Entity) => m.status === 'active')
-                            .map((m: Entity) =>
+                            .filter((m) => m.status === 'active')
+                            .map((m) =>
                               field(
                                 `share_${m.id}`,
                                 `${m.name}: member-pool share (%)`,
@@ -1699,14 +2572,18 @@ export function NetworkApp({
                             text: p.text,
                             days: p.days,
                             stewardshipBps: Math.round(
-                              p.stewardshipPercent * 100,
+                              Number(p.stewardshipPercent) * 100,
                             ),
-                            treasuryBps: Math.round(p.treasuryPercent * 100),
+                            treasuryBps: Math.round(
+                              Number(p.treasuryPercent) * 100,
+                            ),
                             shares: state.members
-                              .filter((m: Entity) => m.status === 'active')
-                              .map((m: Entity) => ({
+                              .filter((m) => m.status === 'active')
+                              .map((m) => ({
                                 id: m.id,
-                                shareBps: Math.round(p[`share_${m.id}`] * 100),
+                                shareBps: Math.round(
+                                  Number(p[`share_${m.id}`]) * 100,
+                                ),
                               })),
                           })
                         }
@@ -1747,7 +2624,7 @@ export function NetworkApp({
                     is an application audit trail, not independently notarized
                     proof.
                   </p>
-                  {[...state.audit].reverse().map((a: Entity) => (
+                  {[...state.audit].reverse().map((a) => (
                     <div className="audit-row" key={a.id}>
                       <strong>
                         #{a.sequence} · {label(a.action)}
@@ -1904,7 +2781,7 @@ export function NetworkApp({
                     {data.isOwner ? (
                       <ConfirmAction
                         title="Archive this co-op?"
-                        description="This stops all further changes and removes the co-op from discovery. Authorized members can still read and export retained records. Archival is permanent in this release."
+                        description="This stops new activity and removes the co-op from discovery. Authorized members can still read and export retained records and make safety changes while storage remains. Archival is permanent in this release and does not erase history or free storage."
                         label="Archive co-op"
                         disabled={busy || state.visibility === 'archived'}
                         onConfirm={() => quick('archive', {})}
@@ -1919,9 +2796,14 @@ export function NetworkApp({
                       />
                     )}
                   </div>
-                  <a href="/coop/" className="text-link mt-5">
+                  <Link
+                    href="/coop/"
+                    className="text-link mt-5"
+                    prefetch={false}
+                    target="_top"
+                  >
                     Explore the separate hypothetical accounting workbench ↗
-                  </a>
+                  </Link>
                 </section>
               </TabsContent>
             </Tabs>
@@ -2002,52 +2884,197 @@ function EvidenceForm({
   onSubmit,
 }: {
   workspaceId: string;
-  projects: Entity[];
+  projects: Project[];
   disabled: boolean;
-  onSubmit: (p: any) => Promise<boolean>;
+  onSubmit: (p: CommandPayload) => Promise<boolean>;
 }) {
-  const [asset, setAsset] = useState<any>(null),
+  type PendingAsset = { id: string; filename: string };
+  const [asset, setAsset] = useState<PendingAsset | null>(null),
     [uploading, setUploading] = useState(false),
+    [retryFile, setRetryFile] = useState<File | null>(null),
+    [discarding, setDiscarding] = useState(false),
     [message, setMessage] = useState('');
+  const inputRef = useRef<HTMLInputElement>(null);
+  const transfer = useRef({
+    asset: null as PendingAsset | null,
+    cancelled: false,
+    attaching: false,
+    generation: 0,
+  });
+
+  async function discard(id: string) {
+    const response = await fetch(`/api/files?id=${encodeURIComponent(id)}`, {
+      method: 'DELETE',
+    });
+    if (!response.ok) {
+      const result = (await response.json()) as PendingAsset & {
+        error?: string;
+      };
+      throw new Error(
+        result.error || 'Could not discard the file. Please retry.',
+      );
+    }
+  }
+
+  useEffect(() => {
+    const tracker = transfer.current;
+    const current = ++tracker.generation;
+    return () => {
+      if (tracker.generation === current) tracker.generation++;
+      const abandoned = tracker.asset;
+      if (abandoned && !tracker.attaching) {
+        // A failed background cleanup is retried by the 24-hour expiry sweep.
+        void discard(abandoned.id).catch(() => {});
+      }
+    };
+  }, []);
+
+  async function removeFile() {
+    if (!transfer.current.asset) {
+      setRetryFile(null);
+      if (inputRef.current) inputRef.current.value = '';
+      setMessage('File selection cleared.');
+      return;
+    }
+    setDiscarding(true);
+    setMessage('Discarding unsubmitted file…');
+    try {
+      await discard(transfer.current.asset.id);
+      transfer.current.asset = null;
+      setAsset(null);
+      setRetryFile(null);
+      if (inputRef.current) inputRef.current.value = '';
+      setMessage('Unsubmitted file discarded.');
+    } catch (error) {
+      setMessage((error as Error).message);
+    } finally {
+      setDiscarding(false);
+    }
+  }
+
+  async function upload(file: File) {
+    const current = transfer.current.generation;
+    transfer.current.cancelled = false;
+    setUploading(true);
+    setRetryFile(null);
+    setMessage('');
+    try {
+      // Release the previous upload before replacing it, including at quota.
+      if (transfer.current.asset) {
+        await discard(transfer.current.asset.id);
+        transfer.current.asset = null;
+        setAsset(null);
+      }
+      const form = new FormData();
+      form.append('file', file);
+      const response = await fetch(
+        `/api/files?workspace=${encodeURIComponent(workspaceId)}`,
+        {
+          method: 'POST',
+          body: form,
+        },
+      );
+      const result = (await response.json()) as PendingAsset & {
+        error?: string;
+      };
+      if (!response.ok)
+        throw new Error(result.error || 'Upload failed. Please retry.');
+      if (
+        transfer.current.cancelled ||
+        transfer.current.generation !== current
+      ) {
+        // Wait for the server receipt before discarding; aborting the browser
+        // request alone cannot cancel a server write already in progress.
+        if (transfer.current.generation === current) {
+          transfer.current.asset = result;
+          setAsset(result);
+        }
+        await discard(result.id);
+        if (transfer.current.generation === current) {
+          transfer.current.asset = null;
+          setAsset(null);
+          if (inputRef.current) inputRef.current.value = '';
+          setMessage('Upload cancelled and unsubmitted file discarded.');
+        }
+        return;
+      }
+      transfer.current.asset = result;
+      setAsset(result);
+      setMessage(
+        `Uploaded ${result.filename}. Complete the evidence form to attach it.`,
+      );
+    } catch (error) {
+      if (transfer.current.generation === current) {
+        if (!transfer.current.cancelled) setRetryFile(file);
+        setMessage(
+          `${(error as Error).message} Any unattached upload expires after 24 hours.`,
+        );
+      }
+    } finally {
+      if (transfer.current.generation === current) setUploading(false);
+    }
+  }
+
   return (
     <>
       <h2>Submit evidence</h2>
-      <label className="upload-label">
+      <ControlLabel className="upload-label">
         Private file (optional)
         <Input
+          ref={inputRef}
           type="file"
           accept="application/pdf,image/png,image/jpeg,image/webp,text/plain"
-          disabled={uploading || disabled}
-          onChange={async (e) => {
-            const f = e.target.files?.[0];
-            setAsset(null);
-            if (!f) return;
-            setUploading(true);
-            setMessage('');
-            try {
-              const form = new FormData();
-              form.append('file', f);
-              const r = await fetch(`/api/files?workspace=${workspaceId}`, {
-                method: 'POST',
-                body: form,
-              });
-              const result: any = await r.json();
-              if (!r.ok) throw new Error(result.error);
-              setAsset(result);
-              setMessage(
-                `Uploaded ${result.filename}. Complete the evidence form to attach it.`,
-              );
-            } catch (e) {
-              setMessage((e as Error).message);
-            } finally {
-              setUploading(false);
-            }
+          disabled={uploading || discarding || disabled}
+          onChange={(e) => {
+            const file = e.target.files?.[0];
+            // Clearing the browser chooser is not a replacement or discard.
+            if (file) void upload(file);
           }}
         />
-      </label>
-      <p className="small" role="status">
-        {uploading ? 'Uploading…' : message}
+      </ControlLabel>
+      <output className="small" aria-live="polite">
+        {uploading ? message || 'Uploading…' : message}
+      </output>
+      <p className="small">
+        Unsubmitted files expire after 24 hours. Attached evidence is retained.
       </p>
+      {uploading ? (
+        <Button
+          type="button"
+          variant="outline"
+          onClick={() => {
+            transfer.current.cancelled = true;
+            setMessage(
+              'Cancelling… Waiting for the upload receipt so the file can be discarded.',
+            );
+          }}
+        >
+          Cancel upload
+        </Button>
+      ) : (
+        <div className="flex gap-2">
+          {retryFile && (
+            <Button
+              type="button"
+              variant="outline"
+              disabled={disabled || discarding}
+              onClick={() => void upload(retryFile)}
+            >
+              Retry upload
+            </Button>
+          )}
+          {(asset || retryFile) && (
+            <Button
+              type="button"
+              variant="outline"
+              disabled={disabled || discarding}
+              onClick={() => void removeFile()}
+            >
+              Discard file
+            </Button>
+          )}
+        </div>
+      )}
       <ActionForm
         fields={[
           select('projectId', 'Project', projects),
@@ -2063,14 +3090,30 @@ function EvidenceForm({
           field('notes', 'What does this evidence establish?', 'textarea'),
         ]}
         submit="Submit evidence"
-        disabled={disabled || uploading || !projects.length}
+        disabled={
+          disabled || uploading || discarding || !projects.length || !!retryFile
+        }
         onSubmit={async (p) => {
-          const ok = await onSubmit({ ...p, assetId: asset?.id });
-          if (ok) {
-            setAsset(null);
-            setMessage('Evidence submitted.');
+          transfer.current.attaching = true;
+          const current = transfer.current.generation;
+          const submittedAsset = transfer.current.asset;
+          try {
+            const ok = await onSubmit({ ...p, assetId: submittedAsset?.id });
+            if (ok) {
+              transfer.current.asset = null;
+              setAsset(null);
+              if (inputRef.current) inputRef.current.value = '';
+              setMessage('Evidence submitted.');
+            } else if (
+              transfer.current.generation !== current &&
+              submittedAsset
+            ) {
+              void discard(submittedAsset.id).catch(() => {});
+            }
+            return ok;
+          } finally {
+            transfer.current.attaching = false;
           }
-          return ok;
         }}
       />
     </>
@@ -2083,19 +3126,17 @@ function Ledger({
   mutate,
   quick,
 }: {
-  state: any;
+  state: Workspace;
   steward: boolean;
   busy: boolean;
-  mutate: (op: string, p: any) => Promise<boolean>;
-  quick: (op: string, p: any) => Promise<void>;
+  mutate: (op: string, p: CommandPayload) => Promise<boolean>;
+  quick: (op: string, p: CommandPayload) => Promise<void>;
 }) {
   const money = (n: number) => formatMoney(n, state.currency ?? 'USD');
-  const reviewed = state.evidence.filter(
-    (e: Entity) => e.status === 'reviewed',
-  );
+  const reviewed = state.evidence.filter((e) => e.status === 'reviewed');
   const evidence = () =>
     select('evidenceId', 'Reviewed supporting evidence', reviewed, 'title');
-  const review = (kind: string, r: Entity) => (
+  const review = (kind: string, r: ReviewRecord) => (
     <div className="button-row mt-4">
       {steward &&
         r.status === 'submitted' &&
@@ -2133,7 +3174,7 @@ function Ledger({
         <TabsContent value="holdings">
           <div className="network-columns">
             <section>
-              {state.lots.map((l: Entity) => (
+              {state.lots.map((l) => (
                 <article className="network-card" key={l.id}>
                   <h3>
                     {l.registry} · {l.program}
@@ -2195,7 +3236,7 @@ function Ledger({
         <TabsContent value="settlements">
           <div className="network-columns">
             <section>
-              {state.settlements.map((s: Entity) => (
+              {state.settlements.map((s) => (
                 <article className="network-card" key={s.id}>
                   <h3>
                     {money(s.cents)} · {s.units} units
@@ -2217,7 +3258,7 @@ function Ledger({
                     select(
                       'lotId',
                       'Reviewed holding',
-                      state.lots.filter((l: Entity) => l.status === 'reviewed'),
+                      state.lots.filter((l) => l.status === 'reviewed'),
                       'reference',
                     ),
                     field('units', 'Transferred units', 'number'),
@@ -2237,7 +3278,7 @@ function Ledger({
                   onSubmit={(p) =>
                     mutate('record_settlement', {
                       ...p,
-                      cents: toMinor(p.amount, state.currency ?? 'USD'),
+                      cents: toMinor(String(p.amount), state.currency ?? 'USD'),
                     })
                   }
                   disabled={busy}
@@ -2254,7 +3295,7 @@ function Ledger({
         <TabsContent value="allocations">
           <div className="network-columns">
             <section>
-              {state.allocations.map((a: Entity) => (
+              {state.allocations.map((a) => (
                 <article className="network-card" key={a.id}>
                   <h3>Allocation · {money(a.amounts.grossCents)}</h3>
                   <Status value={a.status} />
@@ -2271,7 +3312,7 @@ function Ledger({
                       <dt>Platform percentage cut</dt>
                       <dd>{money(0)}</dd>
                     </div>
-                    {a.amounts.members.map((m: Entity) => (
+                    {a.amounts.members.map((m) => (
                       <div key={m.id}>
                         <dt>{m.name}</dt>
                         <dd>{money(m.cents)}</dd>
@@ -2287,13 +3328,12 @@ function Ledger({
                       Approve allocation
                     </Button>
                   )}
-                  {a.payments.map((p: Entity) => (
+                  {a.payments.map((p) => (
                     <div className="network-card" key={p.id}>
                       <p>
                         {
-                          a.amounts.members.find(
-                            (m: Entity) => m.id === p.memberId,
-                          )?.name
+                          a.amounts.members.find((m) => m.id === p.memberId)
+                            ?.name
                         }{' '}
                         · {money(p.cents)}
                       </p>
@@ -2333,10 +3373,10 @@ function Ledger({
                           'memberId',
                           'Member',
                           a.amounts.members.filter(
-                            (m: Entity) =>
+                            (m) =>
                               m.cents > 0 &&
                               !a.payments.some(
-                                (p: Entity) =>
+                                (p) =>
                                   p.memberId === m.id &&
                                   p.status !== 'rejected',
                               ),
@@ -2374,15 +3414,13 @@ function Ledger({
                     select(
                       'settlementId',
                       'Reviewed settlement',
-                      state.settlements.filter(
-                        (s: Entity) => s.status === 'reviewed',
-                      ),
+                      state.settlements.filter((s) => s.status === 'reviewed'),
                       'reference',
                     ),
                     select(
                       'charterId',
                       'Adopted charter',
-                      state.charters.map((c: Entity) => ({
+                      state.charters.map((c) => ({
                         ...c,
                         name: `Charter version ${c.version}`,
                       })),
@@ -2404,7 +3442,7 @@ function Ledger({
         <TabsContent value="retirements">
           <div className="network-columns">
             <section>
-              {state.retirements.map((r: Entity) => (
+              {state.retirements.map((r) => (
                 <article className="network-card" key={r.id}>
                   <h3>
                     {r.units} units · {r.beneficiary}
@@ -2426,9 +3464,7 @@ function Ledger({
                     select(
                       'settlementId',
                       'Reviewed transfer / settlement',
-                      state.settlements.filter(
-                        (s: Entity) => s.status === 'reviewed',
-                      ),
+                      state.settlements.filter((s) => s.status === 'reviewed'),
                       'reference',
                     ),
                     field('units', 'Retired units', 'number'),
@@ -2498,7 +3534,7 @@ function ConfirmAction({
   );
 }
 
-function OrganizationCard({ organization: o }: { organization: any }) {
+function OrganizationCard({ organization: o }: { organization: Organization }) {
   return (
     <article className="network-card">
       <p className="eyebrow">{label(o.kind)} · Self-reported profile</p>
@@ -2516,11 +3552,11 @@ function OrganizationCard({ organization: o }: { organization: any }) {
     </article>
   );
 }
-function OrganizationDiscovery({ coops }: { coops: Entity[] }) {
+function OrganizationDiscovery({ coops }: { coops: PublicCoop[] }) {
   const [region, setRegion] = useState('');
   const organizations = coops.filter(
-    (c) =>
-      c.organization &&
+    (c): c is PublicCoop & { organization: Organization } =>
+      !!c.organization &&
       `${c.organization.name} ${c.organization.region} ${c.organization.services}`
         .toLowerCase()
         .includes(region.toLowerCase()),
@@ -2528,7 +3564,7 @@ function OrganizationDiscovery({ coops }: { coops: Entity[] }) {
   return (
     <section className="panel mb-6">
       <h2>Connect with conservation anywhere</h2>
-      <label>
+      <ControlLabel>
         Country, territory, town, or region
         <Input
           value={region}
@@ -2536,7 +3572,7 @@ function OrganizationDiscovery({ coops }: { coops: Entity[] }) {
           placeholder="For example: Kisumu, Kenya; Kerala, India; or your region"
           maxLength={120}
         />
-      </label>
+      </ControlLabel>
       <div className="network-meta mt-4">
         <a
           className="text-link"
@@ -2566,9 +3602,14 @@ function OrganizationDiscovery({ coops }: { coops: Entity[] }) {
             {organizations.map((c) => (
               <div key={c.id}>
                 <OrganizationCard organization={c.organization} />
-                <a className="text-link" href={`/network/?coop=${c.id}`}>
+                <Link
+                  className="text-link"
+                  href={`/network/?coop=${c.id}`}
+                  prefetch={false}
+                  target="_top"
+                >
                   Explore their co-op ↗
-                </a>
+                </Link>
               </div>
             ))}
           </div>
@@ -2581,7 +3622,7 @@ function PayoutPreview({
   members,
   currency,
 }: {
-  members: Entity[];
+  members: Member[];
   currency: string;
 }) {
   const money = (n: number) => formatMoney(n, currency);
@@ -2589,7 +3630,7 @@ function PayoutPreview({
     [care, setCare] = useState('15'),
     [reserve, setReserve] = useState('10'),
     [shares, setShares] = useState<Record<string, string>>({});
-  let result: any = null,
+  let result: Amounts | null = null,
     error = '';
   try {
     const amounts = [care, reserve, ...members.map((m) => shares[m.id] ?? '')];
@@ -2624,7 +3665,7 @@ function PayoutPreview({
           ['Stewardship budget (%)', care, setCare],
           ['Reserve (%)', reserve, setReserve],
         ].map(([title, value, setter]) => (
-          <label key={String(title)}>
+          <ControlLabel key={String(title)}>
             {String(title)}
             <Input
               type="number"
@@ -2633,10 +3674,10 @@ function PayoutPreview({
               value={String(value)}
               onChange={(e) => (setter as (s: string) => void)(e.target.value)}
             />
-          </label>
+          </ControlLabel>
         ))}
         {members.map((m) => (
-          <label key={m.id}>
+          <ControlLabel key={m.id}>
             {m.name}: share of member pool (%)
             <Input
               type="number"
@@ -2646,7 +3687,7 @@ function PayoutPreview({
               value={shares[m.id] ?? ''}
               onChange={(e) => setShares({ ...shares, [m.id]: e.target.value })}
             />
-          </label>
+          </ControlLabel>
         ))}
       </div>
       {result ? (
@@ -2656,16 +3697,14 @@ function PayoutPreview({
             {money(result.treasuryCents)} · Member pool{' '}
             {money(result.memberPoolCents)}
           </p>
-          {result.members.map((m: any) => (
+          {result.members.map((m) => (
             <p key={m.id}>
               {m.name}: {money(m.cents)}
             </p>
           ))}
         </div>
       ) : (
-        <p className="small mt-4" role="status">
-          {error}
-        </p>
+        <output className="small mt-4">{error}</output>
       )}
       <p className="small mt-4">
         Illustration only; nothing is saved or paid. Enter the agreed

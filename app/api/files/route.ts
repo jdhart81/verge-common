@@ -8,6 +8,12 @@ import {
   json,
   load,
 } from '@/server/workspaces';
+import {
+  cleanupExpiredUploads,
+  discardUpload,
+  persistUpload,
+  validateUploadId,
+} from '@/server/evidence-uploads.mjs';
 import { requireMember, isSteward } from '@/lib/network.mjs';
 export const dynamic = 'force-dynamic';
 export async function POST(request: Request) {
@@ -15,6 +21,8 @@ export async function POST(request: Request) {
     guardOrigin(request);
     const user = await authenticated();
     const id = new URL(request.url).searchParams.get('workspace') ?? '';
+    const uploadId = new URL(request.url).searchParams.get('uploadId');
+    validateUploadId(uploadId);
     const { state } = await load(id);
     requireMember(state, user.id);
     if (state.visibility === 'archived')
@@ -34,43 +42,32 @@ export async function POST(request: Request) {
     ];
     if (!allowed.includes(file.type))
       throw new DomainError('Use PDF, PNG, JPEG, WebP, or plain text.');
-    const count = await getD1()
-      .prepare('SELECT count(*) AS n FROM assets WHERE workspace_id = ?')
-      .bind(id)
-      .first<{ n: number }>();
-    if ((count?.n ?? 0) >= 200)
-      throw new DomainError('This pilot co-op has reached its 200-file limit.');
+    const db = getD1();
+    await cleanupExpiredUploads(db, env.EVIDENCE, { workspaceId: id });
     const bytes = await file.arrayBuffer();
     const sha256 = Array.from(
       new Uint8Array(await crypto.subtle.digest('SHA-256', bytes)),
       (b) => b.toString(16).padStart(2, '0'),
     ).join('');
-    const assetId = crypto.randomUUID(),
-      key = `private/${id}/${assetId}`,
-      filename = file.name.replace(/[^a-zA-Z0-9._-]/g, '_').slice(0, 100);
-    await env.EVIDENCE.put(key, bytes);
-    try {
-      await getD1()
-        .prepare(
-          'INSERT INTO assets (id,workspace_id,uploader_id,object_key,filename,content_type,sha256,size,created_at) VALUES (?,?,?,?,?,?,?,?,?)',
-        )
-        .bind(
-          assetId,
-          id,
-          user.id,
-          key,
-          filename,
-          file.type,
-          sha256,
-          file.size,
-          Date.now(),
-        )
-        .run();
-    } catch (e) {
-      await env.EVIDENCE.delete(key);
-      throw e;
-    }
-    return json({ id: assetId, filename, sha256 }, 201);
+    const filename =
+      file.name.replace(/[^a-zA-Z0-9._-]/g, '_').slice(0, 100) || 'evidence';
+    const receipt = await persistUpload(
+      db,
+      env.EVIDENCE,
+      {
+        workspaceId: id,
+        uploaderId: user.id,
+        filename,
+        originalFilename: file.name,
+        contentType: file.type,
+        sha256,
+        size: file.size,
+        createdAt: Date.now(),
+      },
+      bytes,
+      uploadId,
+    );
+    return json(receipt, receipt.repeated ? 200 : 201);
   } catch (e) {
     return failure(e);
   }
@@ -104,6 +101,21 @@ export async function GET(request: Request) {
         'x-content-type-options': 'nosniff',
       },
     });
+  } catch (e) {
+    return failure(e);
+  }
+}
+
+export async function DELETE(request: Request) {
+  try {
+    guardOrigin(request);
+    const user = await authenticated();
+    const assetId = new URL(request.url).searchParams.get('id') ?? '';
+    if (!/^[0-9a-f-]{36}$/.test(assetId))
+      throw new DomainError('Invalid upload ID.');
+    return json(
+      await discardUpload(getD1(), env.EVIDENCE, { assetId, userId: user.id }),
+    );
   } catch (e) {
     return failure(e);
   }

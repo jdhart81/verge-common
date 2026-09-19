@@ -1,1 +1,2 @@
-export default { trailingSlash: true };
+const config = { trailingSlash: true };
+export default config;

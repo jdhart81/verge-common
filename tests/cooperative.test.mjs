@@ -5,7 +5,7 @@ import {
   exampleCooperative,
   scenarioPacket,
 } from '../lib/cooperative.mjs';
-test('example closes both quantity and money without a platform cut', () => {
+await test('example closes both quantity and money without a platform cut', () => {
   const r = calculateCooperative(exampleCooperative());
   assert.equal(r.grossKg, 100000);
   assert.equal(r.ecologicalReserveKg, 20000);
@@ -13,7 +13,7 @@ test('example closes both quantity and money without a platform cut', () => {
   assert.equal(r.platformCutCents, 0);
   assert.ok(Object.values(r.checks).every(Boolean));
 });
-test('ecological reserve rounds upward for fractional kilograms', () => {
+await test('ecological reserve rounds upward for fractional kilograms', () => {
   const s = exampleCooperative();
   s.projects = s.projects.slice(0, 1);
   s.projects[0].contributionKg = 1;
@@ -22,12 +22,12 @@ test('ecological reserve rounds upward for fractional kilograms', () => {
   assert.equal(r.ecologicalReserveKg, 1);
   assert.equal(r.modeledCapacityKg, 0);
 });
-test('oversales are rejected rather than silently clamped', () => {
+await test('oversales are rejected rather than silently clamped', () => {
   const s = exampleCooperative();
   s.policy.saleKg = 80001;
   assert.throws(() => calculateCooperative(s), /exceeds/);
 });
-test('incompatible scopes and unknown members cannot enter one pool', () => {
+await test('incompatible scopes and unknown members cannot enter one pool', () => {
   const s = exampleCooperative();
   s.projects[0].poolKey = 'different vintage';
   assert.throws(() => calculateCooperative(s), /scope/);
@@ -35,7 +35,7 @@ test('incompatible scopes and unknown members cannot enter one pool', () => {
   s.projects[0].memberId = 'unknown';
   assert.throws(() => calculateCooperative(s), /reference a member/);
 });
-test('invalid percentages and duplicate IDs fail closed', () => {
+await test('invalid percentages and duplicate IDs fail closed', () => {
   const s = exampleCooperative();
   s.members[0].shareBps = 0;
   assert.throws(() => calculateCooperative(s), /100%/);
@@ -46,14 +46,14 @@ test('invalid percentages and duplicate IDs fail closed', () => {
   x.policy.stewardshipBps = 9999;
   assert.throws(() => calculateCooperative(x), /exceed 100%/);
 });
-test('noninteger, negative, and unsafe numeric inputs are rejected', () => {
+await test('noninteger, negative, and unsafe numeric inputs are rejected', () => {
   for (const value of [-1, 0.5, NaN, Infinity, Number.MAX_SAFE_INTEGER + 1]) {
     const s = exampleCooperative();
     s.projects[0].contributionKg = value;
     assert.throws(() => calculateCooperative(s));
   }
 });
-test('ties use stable IDs and allocations are invariant to input order', () => {
+await test('ties use stable IDs and allocations are invariant to input order', () => {
   const s = exampleCooperative();
   s.members = [
     { id: 'b', name: 'B', shareBps: 5000 },
@@ -76,7 +76,7 @@ test('ties use stable IDs and allocations are invariant to input order', () => {
   s.members.reverse();
   assert.deepEqual(calculateCooperative(s).allocations, r.allocations);
 });
-test('zero proceeds and full reserve remain valid without phantom payouts', () => {
+await test('zero proceeds and full reserve remain valid without phantom payouts', () => {
   const s = exampleCooperative();
   s.policy.ecologicalReserveBps = 10000;
   s.policy.saleKg = 0;
@@ -84,7 +84,7 @@ test('zero proceeds and full reserve remain valid without phantom payouts', () =
   assert.equal(r.proceedsCents, 0);
   assert.ok(r.allocations.every((m) => m.cents === 0));
 });
-test('a member with zero shares never receives remainder pennies', () => {
+await test('a member with zero shares never receives remainder pennies', () => {
   const s = exampleCooperative();
   s.members = [
     { id: 'a', name: 'A', shareBps: 0 },
@@ -95,7 +95,7 @@ test('a member with zero shares never receives remainder pennies', () => {
   assert.equal(r.allocations[0].cents, 0);
   assert.equal(r.allocations[1].cents, r.memberPoolCents);
 });
-test('draft export cannot claim execution, issuance or payment', () => {
+await test('draft export cannot claim execution, issuance or payment', () => {
   const p = scenarioPacket(exampleCooperative());
   assert.equal(p.authority.payout, 'NOT_PAID');
   assert.equal(p.authority.registryIssuance, 'NOT_ISSUED');
@@ -103,7 +103,7 @@ test('draft export cannot claim execution, issuance or payment', () => {
   assert.equal(p.agreements.length, 3);
   assert.ok(p.agreements.every((a) => a.recordingReference === null));
 });
-test('quantity conservation holds across reserve settings', () => {
+await test('quantity conservation holds across reserve settings', () => {
   for (let bps = 0; bps <= 10000; bps += 137) {
     const s = exampleCooperative();
     s.policy.ecologicalReserveBps = bps;

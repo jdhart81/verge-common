@@ -16,7 +16,7 @@ const square = [
   [-73.2, 44.41],
 ];
 
-test('drawing drafts round trip before and after the third corner', () => {
+await test('drawing drafts round trip before and after the third corner', () => {
   for (let i = 0; i <= square.length; i++) {
     const points = square.slice(0, i);
     assert.deepEqual(draftPoints(draftText(points)), points);
@@ -31,7 +31,7 @@ test('drawing drafts round trip before and after the third corner', () => {
   }
 });
 
-test('import strips feature metadata without rounding original coordinates', () => {
+await test('import strips feature metadata without rounding original coordinates', () => {
   const precise = [
     [36.8123456789, -1.300000001],
     [36.82, -1.3],
@@ -48,7 +48,7 @@ test('import strips feature metadata without rounding original coordinates', () 
   assert.ok(!imported.includes('owner'));
 });
 
-test('bad imports cannot replace a draft with oversized or unsupported geometry', () => {
+await test('bad imports cannot replace a draft with oversized or unsupported geometry', () => {
   assert.throws(() => importBoundary(' '.repeat(30001) + '{}'), /30 KB/);
   assert.throws(() => importBoundary('{bad json'));
   assert.throws(
@@ -86,7 +86,7 @@ test('bad imports cannot replace a draft with oversized or unsupported geometry'
   );
 });
 
-test('crossing drafts remain editable and are never filled or admitted for review', () => {
+await test('crossing drafts remain editable and are never filled or admitted for review', () => {
   const points = [
     [0, 0],
     [1, 1],
@@ -106,7 +106,7 @@ test('crossing drafts remain editable and are never filled or admitted for revie
   assert.deepEqual(boundaryFeatures([]).features, []);
 });
 
-test('coordinate entry rejects empty, nonfinite and out-of-range values', () => {
+await test('coordinate entry rejects empty, nonfinite and out-of-range values', () => {
   assert.deepEqual(coordinate('-73.123456789', '44.5'), [-73.1234568, 44.5]);
   assert.deepEqual(coordinate('0', '0'), [0, 0]);
   for (const point of [
