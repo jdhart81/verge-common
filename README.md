@@ -23,7 +23,7 @@ Organize a local conservation project, document the work, and make decisions tog
 
 [Website](https://vergecommon.com) · [Conservation network](https://vergecommon.com/network/) · [Member workspace](https://vergecommon.com/workspace/) · [Account and device access](https://vergecommon.com/account) · [Contribute](CONTRIBUTING.md)
 
-`vergecommon.com` is the canonical service address. The shared application passed live HTTPS acceptance on September 19, 2026, using three independent synthetic accounts. The pilot source is on `build/coop-launch-readiness` while [PR #2](https://github.com/jdhart81/verge-common/pull/2) remains under review. See the [latest deployed build receipt](docs/LAUNCH_BUILD_2026-09-19.md) and [next candidate readiness](docs/BETA_READINESS_2026-09-19.md) for exact revisions and operational limits before inviting participants. Co-op and project publication is opt-in; member records and private land evidence retain their server-side access rules.
+`vergecommon.com` is the canonical service address. The shared application passed live HTTPS acceptance on September 19, 2026, using three independent synthetic accounts. The launch foundation was merged into `main` in [PR #2](https://github.com/jdhart81/verge-common/pull/2). The [conversation actions candidate](docs/CONVERSATION_ACTIONS.md) adds private structured workflows inside Discussion; its presence in source does not mean it is deployed. See the [latest deployed build receipt](docs/LAUNCH_BUILD_2026-09-19.md) and [next candidate readiness](docs/BETA_READINESS_2026-09-19.md) for exact revisions and operational limits before inviting participants. Co-op and project publication is opt-in; member records and private land evidence retain their server-side access rules.
 
 ## Start your own community
 
@@ -39,6 +39,7 @@ Create a personal agent token from `/account`, store it in the client's secret s
 
 ## What is implemented
 
+- Guided co-op actions inside Discussion for private mapping, consent, evidence, partner participation, agreements, governance and external receipts, with role-aware choices and retained drafts. [Conversation actions](docs/CONVERSATION_ACTIONS.md).
 - A single-server Node runtime with durable SQLite and private evidence files, an authenticated gateway, username/password accounts, recovery codes, account export/closure, and revocable device/agent tokens.
 - Boundary-derived area estimates, overlap screening, reviewed parcel-specific consent, scoped agreement coverage, stale-record detection, and withdrawal/revocation history. [Pooling safeguards](docs/POOLING_SAFEGUARDS.md).
 - iPhone/iPad source for authenticated member workspaces, member posts, explicit field-draft submission and deliberate photo/PDF/text evidence submission. A protected, account-bound queue retains exact retry requests through interrupted connections. Public discovery and the protected offline journal remain available; signing, device acceptance and Apple distribution are separate release steps.

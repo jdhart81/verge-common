@@ -1,3 +1,11 @@
+# Conversation actions candidate — September 19, 2026
+
+Community now opens on Discussion with private guided actions for land intake, mapping, explicit pooling consent, evidence, partner participation, agreements, legal authority, governance and external receipts. The same structured forms remain available in workspace tabs. Retained drafts survive closing an action and same-workspace refresh; conflicting edits preserve the draft for review and retry. Voting controls respect the frozen electorate and deadline. Pooling consent requires choosing the confirmation rather than accepting a preselected answer.
+
+Local validation: 210 Node tests, TypeScript, repository lint and the self-hosted build pass. The fictional co-op rehearsal now runs in CI (100 successful commands and 19 expected denials). See [conversation scope and verification](CONVERSATION_ACTIONS.md). This candidate is not a hosted deployment, Apple distribution or registry/payment integration. Earlier entries below describe their historical checkpoints.
+
+---
+
 # Deployed cooperative pilot — September 19, 2026
 
 The shared website is live at https://vergecommon.com on its dedicated server, with self-hosted accounts, private co-ops, durable SQLite/evidence storage, and scoped hosted MCP. Native source now includes authenticated participation. Land preparation adds boundary-area and overlap checks, current parcel consent, explicit agreement coverage, and withdrawal/revocation safeguards.
