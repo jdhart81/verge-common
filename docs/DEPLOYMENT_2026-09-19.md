@@ -6,23 +6,24 @@ The shared cooperative web application is deployed at **https://vergecommon.com*
 
 This is an **early technical pilot**. It does not establish real nonprofit affiliation, a legally effective pooled-land agreement, verified ecological results, carbon eligibility, issued credits, sales, cleared proceeds or executed payouts. The software prepares and records those workflows; external people and institutions must complete them. Native source and an unsigned simulator build are not Apple distribution.
 
-Implementation source: `build/coop-launch-readiness`, [PR #2](https://github.com/jdhart81/verge-common/pull/2). The full implementation was pushed as `2b73c2de7470c54c30fe4b4de1946c325c314c63`; the final deployed source is **`2e989abcefc0666bf327b417fb35fd465c9d273a`**. This receipt was finalized afterward without changing the runtime. `main` has not been merged.
+Implementation source: `build/coop-launch-readiness`, [PR #2](https://github.com/jdhart81/verge-common/pull/2). The full implementation was pushed as `2b73c2de7470c54c30fe4b4de1946c325c314c63`; final operational acceptance used `2e989abcefc0666bf327b417fb35fd465c9d273a`. The deployed source is **`a081e73e457a12327829dbd326168834682a6fc1`**, which also points the homepage privacy link to the current self-hosted policy. This receipt was finalized afterward without changing the runtime. `main` has not been merged.
 
 ## Deployment
 
 - Dedicated droplet: `codex-keen-forge-bf65`, DigitalOcean ID `601953476`, NYC3, 2 vCPU / 4 GB. Separate from Viridis Conservation.
 - Public HTTPS origin: `https://vergecommon.com`; `www` redirects to the canonical hostname.
 - Private application container: `vergecommon-app`, one Node 24.19.0 process with SQLite and immutable private evidence files. No application port is published directly.
-- Release image: `vergecommon:20260919-final`, manifest/image identifier `sha256:a6a458fc53da8a49c65665d48bc4705d0bc0c40cd9654ba290248df724c544b6`; source retained at `/opt/vergecommon/releases/20260919-final`.
+- Release image: `vergecommon:20260919-policy`, manifest/image identifier `sha256:516cfac1dee03e09649d336f533b7c07804a20f077600765bb747d9d242cbc9a`; source retained at `/opt/vergecommon/releases/20260919-policy`.
 - Reverse proxy: `vergecommon-web`, Caddy with persistent certificate volumes and private Docker network `vergecommon`.
 - Durable database and evidence mount: `/opt/vergecommon/data`; backups: `/opt/vergecommon/backups`.
 - Runtime restrictions: unprivileged user, read-only container filesystem, temporary scratch mount, dropped capabilities, no-new-privileges and resource limits.
 - Original public-only container is retained stopped as `vergecommon-public-rollback`. Runtime rollback must retain the current data; never overwrite live data with an older backup merely to revert source.
 - The preceding shared-app container is retained stopped as `vergecommon-app-rollback`. Isolated staging containers are stopped. Final application health was verified after replacement with the same durable mounts.
+- The fully accepted operational release is also retained as stopped `vergecommon-final-rollback`; the policy-link follow-up changed no account, database, agent or co-op behavior.
 
 ## Verified behavior
 
-1. **Source validation:** 100 Node tests, complete lint with zero diagnostics and TypeScript checks passed. [GitHub CI 35454934778](https://github.com/jdhart81/verge-common/actions/runs/35454934778) passed web, deployment-container, imagery and iOS jobs for the final deployed source, including production builds, native tests and an unsigned simulator compile.
+1. **Source validation:** 100 Node tests, complete lint with zero diagnostics and TypeScript checks passed. [GitHub CI 35455365182](https://github.com/jdhart81/verge-common/actions/runs/35455365182) passed web, deployment-container, imagery and iOS jobs for the final deployed source, including production builds, native tests and an unsigned simulator compile.
 2. **Linux staging:** the deployed Docker build passed the production-build three-account acceptance runner. An isolated backup restore checked SQLite integrity, relationships, workspace JSON and evidence bytes.
 3. **Live HTTPS acceptance:** three independent synthetic accounts exercised registration, invitations, membership approval, a private post, retry idempotency, version conflict handling, unauthorized-account and cross-origin denial, forged identity rejection, evidence upload/private download, scoped native tokens and revocation. Hosted MCP completed initialization, a permitted private read and bounded write, and denied financial commands and scope-bypass attempts.
 4. **Fixture handling:** initial live synthetic workspace `e411b753-a9c6-40e5-ae3d-3c6900db0fe9` and final-release fixture `884f0d31-8a01-452f-8e5e-136bebabf309` were archived; all three synthetic login accounts from each run were closed. No real affiliation, land right, credit or payout was created. Private archived test history remains for traceability.
