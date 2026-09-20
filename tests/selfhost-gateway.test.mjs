@@ -918,3 +918,37 @@ await test('provider preview keeps ordinary login unchanged and reveals only con
     /https:\/\/appleid.apple.com/,
   );
 });
+
+await test('Supabase login forms allow the exact broker redirect without broadening other CSP directives', async (t) => {
+  const broker = 'https://tizcemlockjetjaqnnlt.supabase.co';
+  const f = await fixture(
+    t,
+    {},
+    {
+      socialPreview: true,
+      social: {
+        available: () => [{ id: 'google', name: 'Google', linked: false }],
+        formActionOrigins: [
+          'https://accounts.google.com',
+          'https://appleid.apple.com',
+          broker,
+        ],
+      },
+    },
+  );
+  const response = await f.request('/account?socialPreview=1');
+  const policy = response.headers.get('content-security-policy');
+  const directives = Object.fromEntries(
+    policy.split(';').map((value) => {
+      const [name, ...sources] = value.trim().split(/\s+/);
+      return [name, sources.join(' ')];
+    }),
+  );
+  assert.equal(
+    directives['form-action'],
+    `'self' https://accounts.google.com https://appleid.apple.com ${broker}`,
+  );
+  assert.equal(directives['default-src'], "'none'");
+  assert.equal(directives['frame-ancestors'], "'none'");
+  assert(!policy.includes('*.supabase.co'));
+});

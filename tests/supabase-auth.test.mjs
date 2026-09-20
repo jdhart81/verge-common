@@ -124,6 +124,7 @@ await test('OAuth redirect contains S256 challenge and exact callback but no sec
     ),
   );
   assert.equal(target.origin, env.VERGE_SUPABASE_URL);
+  assert.equal(adapter.authorizationOrigin, target.origin);
   assert.equal(target.searchParams.get('provider'), 'apple');
   assert.equal(
     target.searchParams.get('code_challenge'),

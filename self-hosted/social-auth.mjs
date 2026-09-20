@@ -308,6 +308,11 @@ export async function createSocialAuth({
       );
   };
   const api = {
+    formActionOrigins: [
+      'https://accounts.google.com',
+      'https://appleid.apple.com',
+      ...(adapter.authorizationOrigin ? [adapter.authorizationOrigin] : []),
+    ],
     available(id) {
       const linked = id ? auth.identities(id) : [];
       return enabled.map((provider) => ({

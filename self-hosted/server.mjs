@@ -139,7 +139,7 @@ export function createGateway({
       res.writeHead(status, {
         'content-type': 'text/html; charset=utf-8',
         'cache-control': 'no-store',
-        'content-security-policy': `default-src 'none'; img-src ${base.origin}/brand/shared-canopy-logo-v1.png ${base.origin}/icons/; style-src 'unsafe-inline'; form-action 'self'${social ? ' https://accounts.google.com https://appleid.apple.com' : ''}; base-uri 'none'; frame-ancestors 'none'`,
+        'content-security-policy': `default-src 'none'; img-src ${base.origin}/brand/shared-canopy-logo-v1.png ${base.origin}/icons/; style-src 'unsafe-inline'; form-action 'self'${social ? ` ${(social.formActionOrigins ?? ['https://accounts.google.com', 'https://appleid.apple.com']).join(' ')}` : ''}; base-uri 'none'; frame-ancestors 'none'`,
       });
       res.end(
         accountPage({

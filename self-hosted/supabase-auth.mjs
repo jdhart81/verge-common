@@ -73,6 +73,7 @@ export function createSupabaseProviderAdapter({
   };
   return {
     supportsSupabase: true,
+    authorizationOrigin: url.origin,
     async sendEmail(flow, state, redirectUri, address) {
       const callback = new URL(redirectUri);
       callback.searchParams.set('state', state);
