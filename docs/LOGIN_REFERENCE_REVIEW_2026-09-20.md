@@ -7,7 +7,7 @@ Reference inspected read-only: the live `https://viridisconservation.com/login` 
 | Area | Viridis reference | VergeCommon |
 | --- | --- | --- |
 | Identity service | Supabase Auth | Dedicated Supabase integration implemented; not activated in production |
-| Google and Apple | Both enabled in the reference project's Supabase dashboard; both buttons present on the live page | Google client form prepared but not submitted; Apple provider disabled with secret entry pending |
+| Google and Apple | Both enabled in the reference project's Supabase dashboard; both buttons present on the live page | Google client created and email return address saved after approval; Google/Apple provider secret entry still pending |
 | Email | One-time email link; the same form supports new and returning users | Opt-in email-link flow now implemented and locally tested; public delivery/activation still pending; username/password and recovery retained |
 | First use | Account creation followed by Research OS onboarding | Provider identity confirmation followed by local account creation and co-op access |
 | Account/session storage | Supabase session plus Viridis profiles/entitlements | Existing local accounts, co-op memberships and sessions; Supabase brokers provider authentication |
@@ -27,7 +27,7 @@ The reference's `docs/beta/SOCIAL_LOGIN_SETUP.md` still says Google and Apple ar
 
 ## Remaining activation work
 
-1. Create the prepared Google web client after the pending action-time approval; configure its credentials privately in VergeCommon's Supabase project and server.
+1. Google web client creation and the email return address are now saved. Configure the new client credentials privately in VergeCommon's Supabase project and server; finish audience/branding checks.
 2. Owner enters and submits the prepared Apple client secret in the dedicated Supabase Apple form. The browser credential-entry handoff is still required.
 3. Provision the server-only Supabase cleanup key and record Apple secret rotation before its actual expiry.
 4. Deploy the already-tested broker integration behind the existing preview gate, preserving a compatible rollback and backup.
