@@ -1,5 +1,9 @@
 # Deployed service update — September 20, 2026 UTC
 
+## Shared Canopy branding — deployed September 20, 2026 UTC
+
+The approved logo is live across public and member web pages, account screens, browser icons and installable web-app icons. Native Discover/sign-in branding and the iOS app icon are updated in source; the unsigned simulator build passed, with Apple distribution still separate. [Deployment and recovery receipt](DEPLOYMENT_BRANDING_2026-09-20.md).
+
 Source `750f7f3` is live at https://vergecommon.com on the dedicated server. The exact image passed an on-server restored-copy migration rehearsal, canonical-hostname health check and full live HTTPS account/co-op/file/native/MCP acceptance. Fresh before/after backups passed isolated restore verification. Existing data and private mounts were preserved; no offhost transfer or Apple submission occurred. See the [deployment receipt](DEPLOYMENT_SERVICE_2026-09-20.md). Remaining service and release gaps below still apply; earlier candidate language records its historical checkpoint.
 
 ---
