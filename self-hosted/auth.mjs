@@ -49,6 +49,14 @@ export function createAuth(db, now = Date.now, lifecycle = {}) {
     CREATE TABLE IF NOT EXISTS api_tokens (id TEXT PRIMARY KEY, hash TEXT UNIQUE NOT NULL, user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE, label TEXT NOT NULL, scopes TEXT NOT NULL, expires_at INTEGER NOT NULL, created_at INTEGER NOT NULL);
     CREATE TABLE IF NOT EXISTS auth_audit (id TEXT PRIMARY KEY, user_id TEXT, event TEXT NOT NULL, created_at INTEGER NOT NULL);
     CREATE TABLE IF NOT EXISTS rate_limits (key TEXT PRIMARY KEY, count INTEGER NOT NULL, expires_at INTEGER NOT NULL);`);
+  db.exec(`CREATE TABLE IF NOT EXISTS social_identities (provider TEXT NOT NULL, subject TEXT NOT NULL, user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE, encrypted_token TEXT NOT NULL, subject_hash TEXT NOT NULL, PRIMARY KEY(provider,subject), UNIQUE(user_id,provider));
+    CREATE TABLE IF NOT EXISTS social_only_users (user_id TEXT PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE);
+    CREATE TABLE IF NOT EXISTS social_revocations (id INTEGER PRIMARY KEY, provider TEXT NOT NULL, encrypted_token TEXT NOT NULL);
+    CREATE TABLE IF NOT EXISTS social_identity_tombstones (provider TEXT NOT NULL, subject_hash TEXT NOT NULL, deleted_at INTEGER NOT NULL, PRIMARY KEY(provider,subject_hash));
+    CREATE TRIGGER IF NOT EXISTS queue_social_revocation BEFORE DELETE ON social_identities BEGIN
+      INSERT INTO social_revocations(provider,encrypted_token) VALUES (OLD.provider,OLD.encrypted_token);
+      INSERT INTO social_identity_tombstones VALUES (OLD.provider,OLD.subject_hash,CAST(unixepoch('subsec')*1000 AS INTEGER)) ON CONFLICT(provider,subject_hash) DO UPDATE SET deleted_at=excluded.deleted_at;
+    END;`);
   const audit = (id, event) => {
     if (id && !db.prepare('SELECT id FROM users WHERE id=?').get(id)) return;
     db.prepare('INSERT INTO auth_audit VALUES (?,?,?,?)').run(
@@ -72,7 +80,187 @@ export function createAuth(db, now = Date.now, lifecycle = {}) {
     row
       ? { id: row.id, username: row.username, displayName: row.display_name }
       : null;
+  const eraseUser = async (id, expectedHash) => {
+    db.exec('BEGIN IMMEDIATE');
+    try {
+      if (
+        db.prepare('SELECT password_hash FROM users WHERE id=?').get(id)
+          ?.password_hash !== expectedHash
+      )
+        throw new Error('Credentials changed. Sign in again.');
+      lifecycle.eraseAccountData?.(id, now());
+      db.prepare('DELETE FROM users WHERE id=?').run(id);
+      db.prepare('DELETE FROM auth_audit WHERE user_id=?').run(id);
+      audit(null, 'account_deleted');
+      db.exec('COMMIT');
+    } catch (error) {
+      db.exec('ROLLBACK');
+      lifecycle.abortAccountDeletion?.(id);
+      throw error;
+    }
+    await lifecycle.afterAccountDeletion?.(id);
+  };
+  const identityRow = (identity) =>
+    db
+      .prepare('SELECT * FROM social_identities WHERE provider=? AND subject=?')
+      .get(identity.provider, identity.subject);
+  const checkDeletion = (identity) => {
+    const tombstone = db
+      .prepare(
+        'SELECT deleted_at FROM social_identity_tombstones WHERE provider=? AND subject_hash=?',
+      )
+      .get(identity.provider, digest(identity.subject));
+    if (
+      tombstone &&
+      (!Number.isFinite(identity.startedAt) ||
+        identity.startedAt <= tombstone.deleted_at)
+    )
+      throw new Error('Account identity changed. Start a new sign-in.');
+  };
   return {
+    hasPassword(id) {
+      return !db
+        .prepare('SELECT user_id FROM social_only_users WHERE user_id=?')
+        .get(id);
+    },
+    identities(id) {
+      return db
+        .prepare('SELECT provider FROM social_identities WHERE user_id=?')
+        .all(id)
+        .map((r) => r.provider);
+    },
+    async checkPassword(id, password) {
+      const row = db.prepare('SELECT * FROM users WHERE id=?').get(id);
+      return (
+        !!row &&
+        this.hasPassword(id) &&
+        (await passwordMatches(password, row.password_hash)) &&
+        db.prepare('SELECT password_hash FROM users WHERE id=?').get(id)
+          ?.password_hash === row.password_hash
+      );
+    },
+    async socialLogin(identity) {
+      checkDeletion(identity);
+      let existing = identityRow(identity);
+      if (existing) {
+        db.prepare(
+          'UPDATE social_identities SET encrypted_token=? WHERE provider=? AND subject=?',
+        ).run(identity.encryptedToken, identity.provider, identity.subject);
+        audit(existing.user_id, 'social_login');
+        return {
+          user: getUser(
+            db.prepare('SELECT * FROM users WHERE id=?').get(existing.user_id),
+          ),
+          session: session(existing.user_id),
+        };
+      }
+      const hash = await passwordHash(secret());
+      const recoveryCode = secret(),
+        id = randomUUID(),
+        username = 'member_' + randomUUID().replaceAll('-', '').slice(0, 24);
+      const name =
+        typeof identity.name === 'string' &&
+        identity.name.trim().length <= 80 &&
+        !contentSafetyIssue(identity.name)
+          ? identity.name.trim()
+          : '';
+      db.exec('BEGIN IMMEDIATE');
+      try {
+        checkDeletion(identity);
+        existing = identityRow(identity);
+        if (existing) {
+          const result = {
+            user: getUser(
+              db
+                .prepare('SELECT * FROM users WHERE id=?')
+                .get(existing.user_id),
+            ),
+            session: session(existing.user_id),
+          };
+          db.exec('COMMIT');
+          return result;
+        }
+        db.prepare('INSERT INTO users VALUES (?,?,?,?,?,?)').run(
+          id,
+          username,
+          name || 'Community member',
+          hash,
+          digest(recoveryCode),
+          now(),
+        );
+        db.prepare('INSERT INTO social_only_users VALUES (?)').run(id);
+        db.prepare('INSERT INTO social_identities VALUES (?,?,?,?,?)').run(
+          identity.provider,
+          identity.subject,
+          id,
+          identity.encryptedToken,
+          digest(identity.subject),
+        );
+        audit(id, 'social_register');
+        const result = {
+          user: getUser(db.prepare('SELECT * FROM users WHERE id=?').get(id)),
+          session: session(id),
+          recoveryCode,
+        };
+        db.exec('COMMIT');
+        return result;
+      } catch (error) {
+        db.exec('ROLLBACK');
+        throw error;
+      }
+    },
+    linkSocial(id, identity) {
+      checkDeletion(identity);
+      const existing = identityRow(identity);
+      if (existing && existing.user_id !== id)
+        throw new Error(
+          'That provider account is already linked to another VergeCommon account.',
+        );
+      const own = db
+        .prepare(
+          'SELECT subject FROM social_identities WHERE user_id=? AND provider=?',
+        )
+        .get(id, identity.provider);
+      if (own && own.subject !== identity.subject)
+        throw new Error(
+          'Remove your current provider link before linking another account.',
+        );
+      db.prepare(
+        'INSERT INTO social_identities VALUES (?,?,?,?,?) ON CONFLICT(provider,subject) DO UPDATE SET encrypted_token=excluded.encrypted_token',
+      ).run(
+        identity.provider,
+        identity.subject,
+        id,
+        identity.encryptedToken,
+        digest(identity.subject),
+      );
+      audit(id, 'social_linked');
+    },
+    unlinkSocial(id, provider) {
+      if (!this.hasPassword(id))
+        throw new Error(
+          'Set a backup password using your recovery code before removing a sign-in method.',
+        );
+      db.prepare(
+        'DELETE FROM social_identities WHERE user_id=? AND provider=?',
+      ).run(id, provider);
+      audit(id, 'social_unlinked');
+    },
+    async closeSocial(id, identity) {
+      const existing = identityRow(identity);
+      if (!existing || existing.user_id !== id)
+        throw new Error(
+          'Use a provider account already linked to this VergeCommon account.',
+        );
+      const row = db
+        .prepare('SELECT password_hash FROM users WHERE id=?')
+        .get(id);
+      if (!row) throw new Error('Sign in again.');
+      db.prepare(
+        'UPDATE social_identities SET encrypted_token=? WHERE provider=? AND subject=?',
+      ).run(identity.encryptedToken, identity.provider, identity.subject);
+      await eraseUser(id, row.password_hash);
+    },
     rateLimit(key, limit, duration) {
       const hash = digest(key);
       const time = now();
@@ -298,6 +486,7 @@ export function createAuth(db, now = Date.now, lifecycle = {}) {
         throw new Error('Recovery code already used or credentials changed.');
       db.prepare('DELETE FROM sessions WHERE user_id=?').run(row.id);
       db.prepare('DELETE FROM api_tokens WHERE user_id=?').run(row.id);
+      db.prepare('DELETE FROM social_only_users WHERE user_id=?').run(row.id);
       audit(row.id, 'recovered');
       return {
         user: getUser(row),
@@ -309,26 +498,7 @@ export function createAuth(db, now = Date.now, lifecycle = {}) {
       const row = db.prepare('SELECT * FROM users WHERE id=?').get(id);
       if (!row || !(await passwordMatches(password, row.password_hash)))
         throw new Error('Password is incorrect.');
-      db.exec('BEGIN IMMEDIATE');
-      try {
-        if (
-          db.prepare('SELECT password_hash FROM users WHERE id=?').get(id)
-            ?.password_hash !== row.password_hash
-        )
-          throw new Error('Credentials changed. Sign in again.');
-        // No await inside this transaction: deletion and credential revocation
-        // commit together and cannot interleave with another command.
-        lifecycle.eraseAccountData?.(id, now());
-        db.prepare('DELETE FROM users WHERE id=?').run(id);
-        db.prepare('DELETE FROM auth_audit WHERE user_id=?').run(id);
-        audit(null, 'account_deleted');
-        db.exec('COMMIT');
-      } catch (error) {
-        db.exec('ROLLBACK');
-        lifecycle.abortAccountDeletion?.(id);
-        throw error;
-      }
-      await lifecycle.afterAccountDeletion?.(id);
+      await eraseUser(id, row.password_hash);
     },
   };
 }

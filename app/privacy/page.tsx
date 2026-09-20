@@ -20,7 +20,7 @@ export default function PrivacyPage() {
       intro="Understand what your co-op shares, what stays private, and what happens when you leave. VergeCommon is operated by Viridis LLC."
     >
       <p>
-        Updated September 19, 2026. This page summarizes the hosted public beta.
+        Updated September 20, 2026. This page summarizes the hosted public beta.
         The{' '}
         <a href={documentBranch + '/PRIVACY.md'}>
           full privacy and visibility policy
@@ -36,6 +36,18 @@ export default function PrivacyPage() {
           hashes with expiry and revocation. Security events record the account
           ID, action and time without including your password, recovery code or
           token.
+        </p>
+        <p>
+          When optional Google or Apple sign-in is enabled, the provider
+          verifies your identity. We retain its account identifier and an
+          encrypted token used to revoke authorization, plus an optional display
+          name. We do not store the provider email address or merge accounts by
+          email. Linking an existing account requires your password and explicit
+          consent. Removing a link or deleting your account queues provider
+          authorization revocation; a provider outage can delay that step after
+          local access ends. A hashed provider identifier and timestamp prevent
+          an older sign-in attempt from restoring a removed identity. Google and
+          Apple process sign-in requests under their own privacy policies.
         </p>
         <p>
           The hosted service keeps co-op records in a private database and

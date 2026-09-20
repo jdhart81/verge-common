@@ -4,6 +4,8 @@ VergeCommon's hosted public beta at https://vergecommon.com is operated by Virid
 
 The self-hosted conservation system stores co-op records in a private SQLite database and evidence files on the dedicated server. Accounts use a chosen username, display name, salted password hash and a hashed recovery code. Email addresses are not required. Browser sessions and optional device/agent tokens are stored as hashes with expiry and revocation. The alternate Sites build uses its trusted identity gateway with D1/R2 storage.
 
+Optional direct Google and Apple sign-in, when enabled, stores the provider's account identifier, an encrypted authorization-revocation token, and an optional display name. Provider email addresses are not stored or used to merge accounts. Existing-account linking requires a current password and explicit consent. Removing a link or deleting an account queues revocation; external outages can delay revocation after local access ends. Hashed provider identifiers and timestamps prevent older sign-in attempts from restoring removed identities. Google and Apple process sign-in requests under their own privacy policies. See [activation status and controls](self-hosted/SOCIAL_SIGN_IN.md).
+
 This source document includes the [launch build candidate](docs/LAUNCH_BUILD_2026-09-19.md). The release coordinator must verify that the hosted policy and deployed behavior match the final candidate.
 
 ## Public information

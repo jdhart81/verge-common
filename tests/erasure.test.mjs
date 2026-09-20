@@ -829,3 +829,38 @@ await test('deletion removes authored and ambiguous legacy cancellation reasons 
   assert.doesNotMatch(JSON.stringify(state), /PRIVATE/);
   assert.equal(state.events[2].cancelReason, 'Keep neighbor cancellation');
 });
+
+await test('deletion-ledger replay removes restored provider links and queues authorization revocation', (t) => {
+  const f = fixture(t);
+  f.db
+    .prepare('INSERT INTO social_identities VALUES (?,?,?,?,?)')
+    .run(
+      'apple',
+      'provider-subject',
+      f.user.id,
+      'encrypted-revocation-token',
+      'hashed-subject',
+    );
+  writeFileSync(
+    join(f.ledgerDirectory, `${f.user.id}.json`),
+    JSON.stringify({ schema: 1, userId: f.user.id, requestedAt: now }),
+  );
+  replayErasureLedger(f.db, { ledgerDirectory: f.ledgerDirectory });
+  assert.equal(
+    f.db.prepare('SELECT count(*) n FROM social_identities').get().n,
+    0,
+  );
+  assert.equal(
+    f.db.prepare('SELECT count(*) n FROM social_revocations').get().n,
+    1,
+  );
+  assert.equal(
+    f.db.prepare('SELECT count(*) n FROM social_identity_tombstones').get().n,
+    1,
+  );
+  replayErasureLedger(f.db, { ledgerDirectory: f.ledgerDirectory });
+  assert.equal(
+    f.db.prepare('SELECT count(*) n FROM social_revocations').get().n,
+    1,
+  );
+});
