@@ -1,7 +1,10 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { DatabaseSync } from 'node:sqlite';
-import { generateKeyPair, exportJWK, SignJWT } from 'jose';
+import { generateKeyPair, exportJWK, exportPKCS8, SignJWT } from 'jose';
+import { mkdtemp, writeFile, rm } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { createAuth } from '../self-hosted/auth.mjs';
 import {
   createSocialAuth,
@@ -153,6 +156,7 @@ async function flowFixture(t, options = {}) {
   let exchanges = 0;
   let failRevoke = false;
   const adapter = {
+    supportsSupabase: options.supabase,
     authorize: async (provider, flow, state) =>
       `https://provider.invalid/?state=${state}`,
     exchange: async (provider) => {
@@ -162,6 +166,18 @@ async function flowFixture(t, options = {}) {
         subject: 'browser-subject',
         token: 'credential',
         hint: 'access_token',
+        ...(options.supabase
+          ? {
+              credential: {
+                token: 'credential',
+                hint: 'access_token',
+                broker: {
+                  userId: 'ab000000-0000-4000-8000-000000000001',
+                  project: 'https://tizcemlockjetjaqnnlt.supabase.co',
+                },
+              },
+            }
+          : {}),
       };
     },
     revoke: async () => {
@@ -462,4 +478,189 @@ await test('Apple cross-site POST callback requires browser proof, while other c
     ).status,
     201,
   );
+});
+
+await test('Supabase Apple callback uses browser-bound GET, rejects old callback, and preserves cleanup metadata', async (t) => {
+  const f = await flowFixture(t, {
+    supabase: true,
+    env: {
+      VERGE_APPLE_ENABLED: '1',
+      VERGE_APPLE_CLIENT_ID: 'service',
+      VERGE_APPLE_TEAM_ID: 'team',
+      VERGE_APPLE_KEY_ID: 'key',
+      VERGE_APPLE_PRIVATE_KEY_FILE: '/test-only/unused',
+    },
+  });
+  const start = await f.request('/auth/social/start', {
+    method: 'POST',
+    body: 'action=login&provider=apple',
+  });
+  const state = new URL(start.location).searchParams.get('state');
+  const cookies = start.headers['set-cookie'].split(';')[0];
+  const callback = `/auth/social/apple/supabase-callback?state=${state}&code=code`;
+  assert.equal((await f.request(callback)).status, 400);
+  assert.equal(
+    (
+      await f.request(`/auth/social/apple/callback?state=${state}&code=code`, {
+        cookies,
+      })
+    ).status,
+    400,
+  );
+  assert.equal(
+    (await f.request(callback, { cookies, method: 'POST' })).status,
+    400,
+  );
+  assert.equal(f.exchanges(), 0);
+  assert.equal((await f.request(callback, { cookies })).status, 303);
+  assert.equal((await f.request(callback, { cookies })).status, 400);
+  const finish = await f.request('/auth/social/finish', {
+    method: 'POST',
+    cookies,
+    body: `state=${state}`,
+  });
+  assert.equal(finish.status, 201);
+  const row = f.db
+    .prepare('SELECT encrypted_token FROM social_identities')
+    .get();
+  assert.ok(!row.encrypted_token.includes('ab000000'));
+  const credential = tokenVault(env.VERGE_OAUTH_TOKEN_KEY).open(
+    row.encrypted_token,
+  );
+  assert.equal(
+    credential.broker.project,
+    'https://tizcemlockjetjaqnnlt.supabase.co',
+  );
+  await f.auth.closeSocial(finish.data.user.id, {
+    ...identity('browser-subject'),
+    provider: 'apple',
+    encryptedToken: row.encrypted_token,
+  });
+  const oldBackend = await createSocialAuth({
+    ...f,
+    origin,
+    env: {
+      ...env,
+      VERGE_APPLE_ENABLED: '1',
+      VERGE_APPLE_CLIENT_ID: 'service',
+      VERGE_APPLE_TEAM_ID: 'team',
+      VERGE_APPLE_KEY_ID: 'key',
+      VERGE_APPLE_PRIVATE_KEY_FILE: '/test-only/unused',
+    },
+    adapter: {
+      revoke: async () => assert.fail('must not silently skip broker cleanup'),
+    },
+  });
+  await assert.rejects(oldBackend.drainRevocations(), /Supabase configuration/);
+  assert.equal(
+    f.db.prepare('SELECT count(*) n FROM social_revocations').get().n,
+    1,
+  );
+  await f.social.drainRevocations();
+  assert.equal(
+    f.db.prepare('SELECT count(*) n FROM social_revocations').get().n,
+    0,
+  );
+});
+
+await test('Google broker identity comes from the provider access token, not broker profile metadata', async () => {
+  const adapter = await createProviderAdapter(
+    { google: { CLIENT_ID: 'client', CLIENT_SECRET: 'secret' } },
+    async (url, init) => {
+      assert.equal(
+        String(url),
+        'https://openidconnect.googleapis.com/v1/userinfo',
+      );
+      assert.equal(
+        new Headers(init.headers).get('authorization'),
+        'Bearer verified-access',
+      );
+      return Response.json({
+        sub: 'google-subject',
+        email: 'not-an-account-key@example.invalid',
+      });
+    },
+  );
+  assert.equal(
+    await adapter.verifyBrokerIdentity(
+      'google',
+      {
+        provider_token: 'verified-access',
+      },
+      'google-subject',
+    ),
+    'google-subject',
+  );
+});
+
+await test('Apple broker refresh verifies signed identity, issuer and audience before account binding', async (t) => {
+  const signing = await generateKeyPair('ES256', { extractable: true });
+  const issuerKeys = await generateKeyPair('RS256');
+  const wrongKeys = await generateKeyPair('RS256');
+  const directory = await mkdtemp(join(tmpdir(), 'verge-apple-test-'));
+  t.after(() => rm(directory, { recursive: true, force: true }));
+  const keyPath = join(directory, 'synthetic.p8');
+  await writeFile(keyPath, await exportPKCS8(signing.privateKey), {
+    mode: 0o600,
+  });
+  const jwk = {
+    ...(await exportJWK(issuerKeys.publicKey)),
+    kid: 'apple-test',
+    alg: 'RS256',
+    use: 'sig',
+  };
+  let variant = 'good';
+  const adapter = await createProviderAdapter(
+    {
+      apple: {
+        CLIENT_ID: 'com.test.web',
+        TEAM_ID: 'test-team',
+        KEY_ID: 'test-key',
+        PRIVATE_KEY_FILE: keyPath,
+      },
+    },
+    async (url, init) => {
+      if (String(url).endsWith('/auth/keys'))
+        return Response.json({ keys: [jwk] });
+      assert.equal(String(url), 'https://appleid.apple.com/auth/token');
+      const body = new URLSearchParams(init.body);
+      assert.equal(body.get('grant_type'), 'refresh_token');
+      assert.equal(body.get('refresh_token'), 'apple-refresh');
+      const token = await new SignJWT({})
+        .setProtectedHeader({ alg: 'RS256', kid: 'apple-test' })
+        .setSubject('apple-subject')
+        .setIssuer(
+          variant === 'issuer'
+            ? 'https://other.invalid'
+            : 'https://appleid.apple.com',
+        )
+        .setAudience(variant === 'audience' ? 'other-client' : 'com.test.web')
+        .setIssuedAt()
+        .setExpirationTime('5m')
+        .sign(
+          variant === 'signature'
+            ? wrongKeys.privateKey
+            : issuerKeys.privateKey,
+        );
+      return Response.json({
+        access_token: 'fresh-apple-access',
+        token_type: 'Bearer',
+        id_token: token,
+      });
+    },
+  );
+  assert.equal(
+    await adapter.verifyBrokerIdentity('apple', {
+      provider_refresh_token: 'apple-refresh',
+    }),
+    'apple-subject',
+  );
+  for (const value of ['issuer', 'audience', 'signature']) {
+    variant = value;
+    await assert.rejects(
+      adapter.verifyBrokerIdentity('apple', {
+        provider_refresh_token: 'apple-refresh',
+      }),
+    );
+  }
 });

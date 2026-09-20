@@ -41,13 +41,26 @@ export default function PrivacyPage() {
           When optional Google or Apple sign-in is enabled, the provider
           verifies your identity. We retain its account identifier and an
           encrypted token used to revoke authorization, plus an optional display
-          name. We do not store the provider email address or merge accounts by
-          email. Linking an existing account requires your password and explicit
-          consent. Removing a link or deleting your account queues provider
-          authorization revocation; a provider outage can delay that step after
-          local access ends. A hashed provider identifier and timestamp prevent
-          an older sign-in attempt from restoring a removed identity. Google and
-          Apple process sign-in requests under their own privacy policies.
+          name. Our local co-op database does not store the provider email
+          address or merge accounts by email. Linking an existing account
+          requires your password and explicit consent. Removing a link or
+          deleting your account queues provider authorization revocation; a
+          provider outage can delay that step after local access ends. A hashed
+          provider identifier and timestamp prevent an older sign-in attempt
+          from restoring a removed identity. Google and Apple process sign-in
+          requests under their own privacy policies.
+        </p>
+        <p>
+          When Supabase sign-in is enabled, Supabase also processes your
+          provider identity, email address and basic profile for authentication.
+          It can associate provider identities with the same verified email
+          within its authentication service; this does not automatically join
+          VergeCommon accounts or grant access to a co-op. The temporary
+          Supabase session is closed after verification. Removing the final
+          connected sign-in method queues deletion of the Supabase
+          authentication profile; a profile still used by another connected
+          sign-in is retained until its final link is removed. See{' '}
+          <a href="https://supabase.com/privacy">Supabase’s privacy policy</a>.
         </p>
         <p>
           The hosted service keeps co-op records in a private database and

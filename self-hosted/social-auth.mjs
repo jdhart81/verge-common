@@ -4,6 +4,7 @@ import { randomBytes, createCipheriv, createDecipheriv } from 'node:crypto';
 import { readFile } from 'node:fs/promises';
 import { digest } from './auth.mjs';
 import { escape } from './account.mjs';
+import { createSupabaseProviderAdapter } from './supabase-auth.mjs';
 
 const labels = { google: 'Google', apple: 'Apple' };
 const issuers = {
@@ -101,6 +102,8 @@ export async function createProviderAdapter(settings, fetchImplementation) {
               'https://accounts.google.com/o/oauth2/v2/auth',
             token_endpoint: 'https://oauth2.googleapis.com/token',
             jwks_uri: 'https://www.googleapis.com/oauth2/v3/certs',
+            userinfo_endpoint:
+              'https://openidconnect.googleapis.com/v1/userinfo',
             revocation_endpoint: 'https://oauth2.googleapis.com/revoke',
           }
         : {
@@ -183,6 +186,29 @@ export async function createProviderAdapter(settings, fetchImplementation) {
         if (error.error !== 'invalid_token') throw error;
       }
     },
+    async verifyBrokerIdentity(provider, tokens, expectedSubject) {
+      const config = await configuration(provider);
+      const claims =
+        provider === 'google'
+          ? await oidc.fetchUserInfo(
+              config,
+              tokens.provider_token,
+              expectedSubject,
+            )
+          : (
+              await oidc.refreshTokenGrant(
+                config,
+                tokens.provider_refresh_token,
+              )
+            ).claims();
+      if (
+        !claims?.sub ||
+        typeof claims.sub !== 'string' ||
+        claims.sub.length > 255
+      )
+        throw new Error('Invalid provider identity.');
+      return claims.sub;
+    },
   };
 }
 
@@ -203,7 +229,27 @@ export async function createSocialAuth({
   )
     throw new Error('Social login requires HTTPS.');
   const vault = tokenVault(env.VERGE_OAUTH_TOKEN_KEY);
-  adapter ??= await createProviderAdapter(settings);
+  if (!adapter) {
+    const direct = await createProviderAdapter(settings);
+    const backend = env.VERGE_SOCIAL_BACKEND || 'direct';
+    if (!['direct', 'supabase'].includes(backend))
+      throw new Error('Unknown social sign-in backend.');
+    adapter =
+      backend === 'supabase'
+        ? createSupabaseProviderAdapter({
+            env,
+            direct,
+            isReferenced: (userId) =>
+              db
+                .prepare('SELECT encrypted_token FROM social_identities')
+                .all()
+                .some(
+                  (row) =>
+                    vault.open(row.encrypted_token).broker?.userId === userId,
+                ),
+          })
+        : direct;
+  }
   db.exec(
     `CREATE TABLE IF NOT EXISTS social_flows (hash TEXT PRIMARY KEY, proof_hash TEXT NOT NULL, provider TEXT NOT NULL, action TEXT NOT NULL, user_id TEXT REFERENCES users(id) ON DELETE CASCADE, session_hash TEXT, return_to TEXT NOT NULL, nonce TEXT NOT NULL, verifier TEXT NOT NULL, expires_at INTEGER NOT NULL, phase TEXT NOT NULL, result TEXT);`,
   );
@@ -261,7 +307,12 @@ export async function createSocialAuth({
         .all()) {
         if (!settings[row.provider])
           throw new Error('Provider revocation configuration is required.');
-        await adapter.revoke(row.provider, vault.open(row.encrypted_token));
+        const credential = vault.open(row.encrypted_token);
+        if (credential.broker && !adapter.supportsSupabase)
+          throw new Error(
+            'Supabase configuration required for pending account cleanup.',
+          );
+        await adapter.revoke(row.provider, credential);
         db.prepare('DELETE FROM social_revocations WHERE id=?').run(row.id);
       }
       if (db.prepare('SELECT id FROM social_revocations LIMIT 1').get())
@@ -293,26 +344,29 @@ export async function createSocialAuth({
             error: 'Too many sign-in attempts. Try again later.',
           });
         db.prepare('DELETE FROM social_flows WHERE expires_at<=?').run(now());
-        const callbackMatch = /^\/auth\/social\/(google|apple)\/callback$/.exec(
-          url.pathname,
-        );
+        const callbackMatch =
+          /^\/auth\/social\/(google|apple)\/(callback|supabase-callback)$/.exec(
+            url.pathname,
+          );
         if (callbackMatch) {
           const provider = callbackMatch[1];
+          const brokerCallback = callbackMatch[2] === 'supabase-callback';
+          const postCallback = provider === 'apple' && !brokerCallback;
           if (
             !settings[provider] ||
-            req.method !== (provider === 'apple' ? 'POST' : 'GET')
+            brokerCallback !== Boolean(adapter.supportsSupabase) ||
+            req.method !== (postCallback ? 'POST' : 'GET')
           )
             throw new Error('Invalid sign-in callback.');
           if (
-            provider === 'apple' &&
+            postCallback &&
             String(req.headers['content-type']).split(';')[0] !==
               'application/x-www-form-urlencoded'
           )
             throw new Error('Invalid callback format.');
-          const raw =
-            provider === 'apple'
-              ? (await readBody(req, 16000)).toString()
-              : url.search.slice(1);
+          const raw = postCallback
+            ? (await readBody(req, 16000)).toString()
+            : url.search.slice(1);
           const params = new URLSearchParams(raw),
             state = params.get('state'),
             flow = getFlow(state, req.headers, 'pending');
@@ -330,16 +384,15 @@ export async function createSocialAuth({
               .run(flow.hash).changes
           )
             throw new Error('Sign-in already used.');
-          const callback =
-            provider === 'apple'
-              ? new Request(url, {
-                  method: 'POST',
-                  headers: {
-                    'content-type': 'application/x-www-form-urlencoded',
-                  },
-                  body: raw,
-                })
-              : url;
+          const callback = postCallback
+            ? new Request(url, {
+                method: 'POST',
+                headers: {
+                  'content-type': 'application/x-www-form-urlencoded',
+                },
+                body: raw,
+              })
+            : url;
           const result = await adapter.exchange(
             provider,
             { ...flow, state },
@@ -357,10 +410,12 @@ export async function createSocialAuth({
             subject: result.subject,
             name: result.name,
             startedAt: flow.expires_at - 600000,
-            encryptedToken: vault.seal({
-              token: result.token,
-              hint: result.hint,
-            }),
+            encryptedToken: vault.seal(
+              result.credential || {
+                token: result.token,
+                hint: result.hint,
+              },
+            ),
           };
           db.prepare(
             "UPDATE social_flows SET phase='verified',result=?,nonce='',verifier='' WHERE hash=? AND expires_at>?",
@@ -485,7 +540,7 @@ export async function createSocialAuth({
             data.provider,
             flow,
             state,
-            `${origin}/auth/social/${data.provider}/callback`,
+            `${origin}/auth/social/${data.provider}/${adapter.supportsSupabase ? 'supabase-callback' : 'callback'}`,
           ),
         );
       } catch (error) {

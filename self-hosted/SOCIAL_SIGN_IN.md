@@ -1,5 +1,7 @@
 # Direct Google and Apple sign-in
 
+For the owner-requested Supabase integration, see [SUPABASE_SIGN_IN.md](./SUPABASE_SIGN_IN.md). The Supabase project has been created, but provider configuration and real-provider acceptance are not complete. Direct sign-in remains the default backend until an explicit runtime cutover.
+
 This integration uses OpenID Connect with `openid-client` and signed Apple client assertions with `jose`. Firebase is not required. Providers authenticate identities; VergeCommon owns accounts, permissions, sessions and co-op records. It never joins accounts based on email addresses.
 
 ## Activation status
