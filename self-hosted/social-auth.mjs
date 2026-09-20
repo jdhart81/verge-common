@@ -353,7 +353,9 @@ export async function createSocialAuth({
     }) {
       if (!url.pathname.startsWith('/auth/social/')) return false;
       res.setHeader('cache-control', 'no-store');
-      res.setHeader('referrer-policy', 'no-referrer');
+      // Keep state/code query strings out of referrers without causing browser
+      // form POSTs to send Origin: null and fail our same-origin protection.
+      res.setHeader('referrer-policy', 'strict-origin');
       try {
         if (req.headers.authorization)
           throw new Error('Use a signed-in browser for account changes.');

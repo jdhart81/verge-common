@@ -257,9 +257,22 @@ await test('OAuth flow binds browser proof, validates origin, consumes callbacks
   assert.equal(f.exchanges(), 1);
   assert.equal((await f.request(callback, { cookies })).status, 400);
   assert.equal(f.exchanges(), 1);
+  const confirmation = await f.request(`/auth/social/finish?state=${state}`, {
+    cookies,
+  });
+  assert.equal(confirmation.status, 200);
+  assert.equal(confirmation.headers['referrer-policy'], 'strict-origin');
+  // An opaque origin must remain rejected; fix the page policy, not the gate.
   assert.equal(
-    (await f.request(`/auth/social/finish?state=${state}`, { cookies })).status,
-    200,
+    (
+      await f.request('/auth/social/finish', {
+        method: 'POST',
+        body: `state=${state}`,
+        cookies,
+        requestOrigin: 'null',
+      })
+    ).status,
+    403,
   );
   assert.equal(f.db.prepare('SELECT count(*) n FROM users').get().n, 0);
   const finish = await f.request('/auth/social/finish', {
