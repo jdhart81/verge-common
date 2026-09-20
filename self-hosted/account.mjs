@@ -1,11 +1,5 @@
-export const escape = (value) =>
-  String(value ?? '').replace(
-    /[&<>"']/g,
-    (c) =>
-      ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[
-        c
-      ],
-  );
+import { escape, welcomePage } from './account-welcome.mjs';
+export { escape } from './account-welcome.mjs';
 export function accountPage({
   user,
   tokens = [],
@@ -17,6 +11,7 @@ export function accountPage({
   socialProviders = [],
   hasPassword = true,
   socialContent,
+  providerPreview = false,
 }) {
   const input = (name, label, type = 'text', extra = '', hint = '') =>
     `<div><label>${label}<input name="${name}" type="${type}" required ${extra}${hint ? ` aria-describedby="${name}-hint"` : ''}></label>${hint ? `<small id="${name}-hint" class="field-hint">${hint}</small>` : ''}</div>`;
@@ -37,18 +32,17 @@ export function accountPage({
   const returnField = `<input type="hidden" name="returnTo" value="${escape(returnTo)}">`;
   const form = (action, fields, button) =>
     `<form method="post" action="/auth/${action}">${fields}${returnField}<button>${button}</button></form>`;
-  const accountLink = (nextMode) =>
-    escape(`/account?${new URLSearchParams({ mode: nextMode, returnTo })}`);
+  if (!user && socialContent === undefined)
+    return welcomePage({
+      mode,
+      returnTo,
+      message,
+      socialProviders,
+      providerPreview,
+    });
   let body;
   if (socialContent !== undefined) body = socialContent;
-  else if (!user) {
-    if (mode === 'register')
-      body = `<h1>Join VergeCommon</h1><p>Bring your neighbors together around a place you care about. Your account gives you access to shared co-op workspaces.</p><p>No email address is required. After joining, save your recovery code: you will need it if you forget your password.</p>${form('register', input('username', 'Username', 'text', 'minlength="3" maxlength="40" autocomplete="username" autocapitalize="none" spellcheck="false" pattern="[a-zA-Z0-9][a-zA-Z0-9_-]{2,39}"', 'Your sign-in name: 3–40 letters, numbers, underscores or hyphens. Start with a letter or number.') + input('displayName', 'Display name', 'text', 'maxlength="80" autocomplete="name"', 'The name shown on your account. You choose your member name when joining a co-op.') + pass('password', 'Password', 'new-password'), 'Create account')}<p><a href="${accountLink('login')}">Already have an account? Sign in</a></p>`;
-    else if (mode === 'recover')
-      body = `<h1>Recover account</h1><p>Use the recovery code you saved when creating or recovering your account. We do not send password reset emails. You will receive a new recovery code after this reset.</p>${form('recover', input('username', 'Username', 'text', 'autocomplete="username" autocapitalize="none" spellcheck="false"') + input('recoveryCode', 'Recovery code', 'password', 'autocomplete="off"') + pass('password', 'New password', 'new-password'), 'Recover account')}<a href="${accountLink('login')}">Back to sign-in</a>`;
-    else
-      body = `<h1>Welcome back</h1><p>Sign in to care for your shared places and catch up with your co-op.</p>${form('login', input('username', 'Username', 'text', 'autocomplete="username" autocapitalize="none" spellcheck="false"') + pass(), 'Sign in')}<p><a href="${accountLink('register')}">Create an account</a> · <a href="${accountLink('recover')}">Use a recovery code</a></p>`;
-  } else {
+  else {
     body = `<h1>Your account</h1><p>Signed in as <strong>${escape(user.displayName)}</strong> (${escape(user.username)}).</p>`;
     if (recoveryCode)
       body += `<section><h2>Save your recovery code now</h2><p>This is shown once. Keep it in your password manager. Anyone with it can reset your account.</p><code>${escape(recoveryCode)}</code></section>`;
@@ -64,10 +58,6 @@ export function accountPage({
   if (socialContent === undefined && socialProviders.length) {
     const socialForm = (provider, action, text, extra = '') =>
       `<form method="post" action="/auth/social/start"><input type="hidden" name="provider" value="${escape(provider.id)}"><input type="hidden" name="action" value="${action}">${returnField}${extra}<button>${text}</button></form>`;
-    if (!user && mode !== 'recover')
-      body =
-        `<section aria-label="Sign in with an existing account">${socialProviders.map((p) => socialForm(p, 'login', `Continue with ${escape(p.name)}`)).join('')}<p>Already have a VergeCommon account? Sign in with your existing method, then link Google or Apple from Your account.</p></section>` +
-        body;
     if (user)
       body += `<h2>Google and Apple sign-in</h2><p>Provider accounts are linked only with your consent, never by matching email addresses.</p>${socialProviders.map((p) => (p.linked ? `<p>${escape(p.name)} is linked.</p>${hasPassword ? socialForm(p, 'unlink', `Remove ${escape(p.name)} sign-in`, pass()) : ''}${socialForm(p, 'delete', `Verify with ${escape(p.name)} to delete my VergeCommon account`)}` : hasPassword ? socialForm(p, 'link', `Link ${escape(p.name)}`, pass()) : '')).join('')}`;
   }

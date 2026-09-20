@@ -144,6 +144,9 @@ export function createGateway({
       res.end(
         accountPage({
           ...options,
+          providerPreview:
+            socialPreview &&
+            new URL(req.url, origin).searchParams.get('socialPreview') === '1',
           socialProviders:
             !socialPreview ||
             new URL(req.url, origin).searchParams.get('socialPreview') === '1'
