@@ -2,7 +2,7 @@
 
 Updated 19 September 2026 for the native evidence-queue candidate (68 Swift core tests and an unsigned simulator build passed), following the [beta readiness candidate](BETA_READINESS_2026-09-19.md) and the earlier `5aa1a5f` review packet. The final candidate commit and deployment receipt remain to be recorded by the release coordinator. This is not a completed App Store Connect declaration, upload or approval. Native release evidence and remaining gates belong in [APPLE_RELEASE.md](APPLE_RELEASE.md).
 
-The coordinator verified access to an **individual** App Store Connect account, with no VergeCommon app record and no matching proposed bundle identifier in the new-app selector. The owner identifies the project operator as **Viridis LLC**. Confirm the intended team and public seller identity before registering the app. Free Apps is active; Paid Apps is unaccepted, and EU trader status is incomplete.
+The coordinator verified access to an **individual** App Store Connect account, with no VergeCommon app record at the September 19 review. The owner identifies the project operator as **Viridis LLC**. Confirm the intended team and public seller identity before registering the app. Free Apps is active; Paid Apps is unaccepted, and EU trader status is incomplete.
 
 ## Listing fields
 
@@ -13,7 +13,7 @@ The coordinator verified access to an **individual** App Store Connect account, 
 | Primary category | Social Networking, subject to owner confirmation |
 | Secondary category | Lifestyle, if appropriate to the final listing |
 | Language | English (U.S.) |
-| Bundle identifier | `org.vergecommon.app`, proposed in source; availability/team registration unverified |
+| Bundle identifier | `org.vergecommon.app`, registered September 20 under owner-approved team `ST9K746229` for web sign-in; no App Store app record created |
 | Version / build | `0.8.0` / `1` |
 | Compatibility | iPhone and iPad; iOS 17 or later |
 | Marketing URL | `https://vergecommon.com/` |

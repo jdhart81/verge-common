@@ -53,6 +53,7 @@ export function createGateway({
   auth,
   safety,
   social = null,
+  socialPreview = false,
   maintenanceHealthy = () => true,
   host = '127.0.0.1',
 }) {
@@ -143,7 +144,11 @@ export function createGateway({
       res.end(
         accountPage({
           ...options,
-          socialProviders: social?.available(options.user?.id) ?? [],
+          socialProviders:
+            !socialPreview ||
+            new URL(req.url, origin).searchParams.get('socialPreview') === '1'
+              ? (social?.available(options.user?.id) ?? [])
+              : [],
           hasPassword: options.user ? auth.hasPassword(options.user.id) : true,
         }),
       );
@@ -666,6 +671,7 @@ export async function start() {
     auth,
     safety,
     social,
+    socialPreview: process.env.VERGE_SOCIAL_PREVIEW === '1',
     maintenanceHealthy: () => !maintenanceFailed,
   });
   await new Promise((resolve) =>

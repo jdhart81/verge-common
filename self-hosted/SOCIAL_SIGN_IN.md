@@ -4,7 +4,7 @@ This integration uses OpenID Connect with `openid-client` and signed Apple clien
 
 ## Activation status
 
-Implementation is opt-in and disabled by default. No live Google/Apple client credentials were available during implementation. Local automated tests use synthetic identities and signed test tokens; they do not establish successful production provider consent or native-app distribution. Do not advertise provider login until the real-provider checklist below passes.
+Implementation is opt-in and disabled by default. Apple registration was completed on September 20; live user acceptance remains pending. Google registration is waiting for the owner’s billing-account choice. Local automated tests use synthetic identities and signed test tokens; they do not establish successful production provider consent or native-app distribution. Do not advertise provider login until the real-provider checklist below passes.
 
 The native iOS app still uses its existing password/device-token flow. A web social account receives a generated VergeCommon username and one-time recovery code, which can set a backup password in Your account. It can also issue a scoped device token. Native Google/Apple buttons and native provider callbacks are not included in this web integration.
 
@@ -30,6 +30,7 @@ Inject secrets through the deployment's private environment file or secret manag
 
 | Variable | Value |
 | --- | --- |
+| `VERGE_SOCIAL_PREVIEW` | `1` keeps provider buttons off ordinary login; `/account?socialPreview=1` shows configured providers for acceptance. This controls visibility, not access authorization. |
 | `VERGE_OAUTH_TOKEN_KEY` | 32 random bytes encoded as 64 hexadecimal characters |
 | `VERGE_GOOGLE_ENABLED` | `1` to enable Google |
 | `VERGE_GOOGLE_CLIENT_ID` | Google's web client ID |
@@ -66,3 +67,9 @@ Enable providers independently. Incomplete enabled configuration fails startup. 
 - The built application passed isolated acceptance on loopback using disposable accounts, private co-op membership, evidence, authenticated MCP, scoped native access, recovery and deletion. Providers were disabled for that application acceptance; provider tests used synthetic adapters/tokens.
 - Read-only provider console checks found no Google project matching `verge`, and no Apple Services IDs in the currently signed-in developer team. No provider registration or credential change was made.
 - This is source readiness, not a successful live Google/Apple sign-in or a deployed native social-login release. Production activation remains pending provider registration, secret provisioning and real-provider acceptance.
+
+## Approved Apple registration follow-up
+
+Registered under the owner-approved existing Apple Developer team `ST9K746229` (Justin Daniel Hart): primary App ID `org.vergecommon.app`, Services ID `com.vergecommon.web`, Sign in with Apple key ID `6J6KY5FQBW`. This is registration for web authentication, not App Store publication or a change to the team’s seller identity. The exact callback and domain above are saved. Apple’s authorization page recognizes VergeCommon; a deliberate invalid-code probe returned `invalid_grant` rather than `invalid_client`. Neither check is a successful user login.
+
+The private key and token-encryption configuration are stored outside the repository on the dedicated server. A downloaded Apple key remains permission-restricted on the owner’s Mac. An additional local recovery copy was blocked by automatic approval review and awaits explicit owner approval. Do not claim independently recoverable encryption-key custody until that is completed.
