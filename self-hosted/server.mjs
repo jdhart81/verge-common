@@ -148,6 +148,7 @@ export function createGateway({
             socialPreview &&
             new URL(req.url, origin).searchParams.get('socialPreview') === '1',
           socialProviders:
+            options.user ||
             !socialPreview ||
             new URL(req.url, origin).searchParams.get('socialPreview') === '1'
               ? (social?.available(options.user?.id) ?? [])

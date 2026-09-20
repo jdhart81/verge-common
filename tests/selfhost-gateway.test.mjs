@@ -907,6 +907,10 @@ await test('provider preview keeps ordinary login unchanged and reveals only con
     await (await f.request('/account?socialPreview=0')).text(),
     /Continue with Apple/,
   );
+  const signedIn = await f.request('/account', {
+    headers: { cookie: `vc_session=${f.alice.session}` },
+  });
+  assert.match(await signedIn.text(), /Link Apple/);
   const preview = await f.request('/account?socialPreview=1');
   assert.match(await preview.text(), /Continue with Apple/);
   assert.match(
