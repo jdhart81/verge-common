@@ -182,6 +182,9 @@ export function CoopWorkbench() {
                       <NativeSelectOption value="landscape">
                         Conservation parcel
                       </NativeSelectOption>
+                      <NativeSelectOption value="grassland">
+                        Grassland & meadow (pollinators)
+                      </NativeSelectOption>
                     </NativeSelect>
                   </div>
                   <div>

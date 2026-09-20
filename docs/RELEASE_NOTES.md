@@ -1,5 +1,11 @@
 # Deployed service update — September 20, 2026 UTC
 
+## Pollinator grassland conservation
+
+Added **Grassland & meadow (pollinators)** to co-op project creation and the cooperative planner. The saved project kind is `grassland`, supported by the workspace API and MCP agent tools. Existing privacy, independent review and pooling-scope rules continue to apply; selecting a habitat type does not calculate carbon benefits or establish credit eligibility. Homepage and discovery copy now include pollinator meadows.
+
+Validation: 39 focused network/planner/MCP tests, lint, TypeScript, self-hosted build, isolated multi-account HTTP acceptance with a saved grassland project, and browser selection in the planner.
+
 ## Shared Canopy branding — deployed September 20, 2026 UTC
 
 The approved logo is live across public and member web pages, account screens, browser icons and installable web-app icons. Native Discover/sign-in branding and the iOS app icon are updated in source; the unsigned simulator build passed, with Apple distribution still separate. [Deployment and recovery receipt](DEPLOYMENT_BRANDING_2026-09-20.md).

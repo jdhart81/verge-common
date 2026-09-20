@@ -47,7 +47,7 @@ Read-only tokens do not receive the write tool. `app:read` and `app:write` do no
 
 Only these commands are accepted:
 
-- `create_project`: create a proposed project using `name`, `summary`, `region`, and `kind` (`ecohedge`, `landscape`, or `restoration`).
+- `create_project`: create a proposed project using `name`, `summary`, `region`, and `kind` (`ecohedge`, `landscape`, `restoration`, or `grassland`). Use `grassland` for grassland and meadow conservation for pollinators, and describe the habitat goals in `summary`.
 - `post_update`: add a project update using `projectId`, `text`, and `visibility: "members"`. Public posting is unavailable through MCP.
 - `create_task`: add a project task using `projectId`, `title`, and optional `due` (`YYYY-MM-DD`).
 - `task_status`: set a task `id` to `claimed`, `completed`, or `open`; existing assignee/steward checks still apply.

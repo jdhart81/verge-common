@@ -326,7 +326,8 @@ type Field = {
   step?: string;
 };
 const date = (n: number) => new Date(n).toLocaleDateString();
-const label = (s: string) => s.replaceAll('_', ' ');
+const label = (s: string) =>
+  s === 'grassland' ? 'Grassland & meadow (pollinators)' : s.replaceAll('_', ' ');
 function Status({ value }: { value: string }) {
   return <span className={`state-tag state-${value}`}>{label(value)}</span>;
 }
@@ -1149,7 +1150,7 @@ export function NetworkApp({
               <section>
                 {state.projects.length === 0 && (
                   <Empty>
-                    Add your first EcoHedge or conservation project.
+                    Add your first hedgerow, pollinator meadow, or conservation project.
                   </Empty>
                 )}
                 {state.projects.map((p) => (
@@ -1288,6 +1289,7 @@ export function NetworkApp({
                         'ecohedge',
                         'landscape',
                         'restoration',
+                        'grassland',
                       ]),
                       field('region', 'General area', undefined, {
                         max: 120,
@@ -1299,8 +1301,10 @@ export function NetworkApp({
                     disabled={busy}
                   />
                   <p className="small mt-4">
-                    Keep exact parcel locations private. A steward can publish
-                    the general project description.
+                    Choose Grassland & meadow for pollinator habitat conservation.
+                    Describe the habitat goals and planned care in your purpose
+                    and next steps. Keep exact parcel locations private. A steward
+                    can publish the general project description.
                   </p>
                 </div>
                 {state.projects.length > 0 && (
@@ -2426,8 +2430,8 @@ export function NetworkApp({
         )}
         {!selected && (
           <p className="intro">
-            Bring an EcoHedge corridor, a woodlot, or a larger conservation
-            project into a community that can care for it together.
+            Bring a hedgerow, a pollinator meadow, a woodlot, or a larger
+            conservation project into a community that can care for it together.
           </p>
         )}
         {error && (
@@ -2763,7 +2767,7 @@ export function NetworkApp({
                     [
                       'projects',
                       '1. Add a place',
-                      'Describe your EcoHedge, woodlot, or conservation project.',
+                      'Describe your hedgerow, pollinator meadow, woodlot, or conservation project.',
                       state.projects.length > 0,
                     ],
                     [

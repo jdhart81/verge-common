@@ -51,6 +51,24 @@ function twoStewards() {
   f.run('member_role', { id: memberId, role: 'steward' });
   return f;
 }
+await test('pollinator grassland projects persist and remain private until shared by a steward', () => {
+  const f = setup();
+  const id = f.run('create_project', {
+    name: 'Neighbor pollinator meadow',
+    summary: 'Conserve shared grassland habitat and record pollinator surveys.',
+    region: 'Synthetic region',
+    kind: 'grassland',
+  });
+  const saved = JSON.parse(JSON.stringify(f.s));
+  assert.equal(saved.projects[0].kind, 'grassland');
+  assert.equal(saved.projects[0].status, 'proposed');
+  assert.equal(publicWorkspace(saved).projects.length, 0);
+  f.run('project_status', { id, status: 'active', visibility: 'public' });
+  assert.equal(publicWorkspace(f.s).projects[0].kind, 'grassland');
+  assert.throws(() => f.run('create_project', {
+    name: 'Invalid type', summary: 'Synthetic', region: 'Synthetic', kind: 'unsupported',
+  }));
+});
 await test('founder responsibility transfers only after confirmation to an active steward and preserves historical records', () => {
   const f = twoStewards();
   const target = f.s.members.find((m) => m.userId === reviewer.id);

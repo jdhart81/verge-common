@@ -125,8 +125,9 @@ export default function Home({
               </h2>
             </div>
             <p>
-              A hedgerow can connect to a woodlot. A group of neighbors can care
-              for both. Start with one place and one useful action, then build
+              A hedgerow, pollinator meadow, or woodlot can connect to the next
+              habitat. Neighbors can care for them together. Start with one
+              place and one useful action, then build
               from there.
             </p>
           </div>
