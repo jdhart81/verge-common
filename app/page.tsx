@@ -14,8 +14,8 @@ import { ConservationLandscape } from '@/components/conservation-landscape';
 import './home.css';
 
 const repo = 'https://github.com/jdhart81/verge-common';
-const sourceRepo = repo + '/tree/build/coop-launch-readiness';
-const docs = repo + '/blob/build/coop-launch-readiness';
+const sourceRepo = repo;
+const docs = repo + '/blob/main';
 
 export default function Home({
   publicPreview = false,

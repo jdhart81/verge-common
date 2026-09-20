@@ -3,10 +3,9 @@ import { ArrowUpRight, Sprout } from 'lucide-react';
 import type { ReactNode } from 'react';
 import './information-page.css';
 
-export const sourceBranch =
-  'https://github.com/jdhart81/verge-common/tree/build/coop-launch-readiness';
+export const sourceBranch = 'https://github.com/jdhart81/verge-common';
 export const documentBranch =
-  'https://github.com/jdhart81/verge-common/blob/build/coop-launch-readiness';
+  'https://github.com/jdhart81/verge-common/blob/main';
 // Account pages are rendered by the hosting gateway, so use document navigation.
 export const accountRoutes = {
   account: '/account',

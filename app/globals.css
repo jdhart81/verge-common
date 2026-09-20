@@ -776,6 +776,19 @@ p {
   margin-top: 27px;
   align-items: start;
 }
+.network-columns > * {
+  min-width: 0;
+}
+/* Embedded actions have less space than the full workspace, at every viewport. */
+[data-conversation-panel] .network-columns {
+  grid-template-columns: minmax(0, 1fr);
+}
+[data-conversation-panel] .action-form button {
+  max-width: 100%;
+  min-height: 40px;
+  height: auto;
+  white-space: normal;
+}
 .network-card {
   background: white;
   border: 1px solid var(--border);
@@ -963,7 +976,7 @@ p {
 }
 @media (max-width: 900px) {
   .network-columns {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
   }
   .network-grid {
     grid-template-columns: 1fr;

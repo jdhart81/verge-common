@@ -12,7 +12,7 @@ The script creates only local, ignored files under `outputs/coop-simulation/`. I
 
 ## Result
 
-The September 19 run completed **100 commands and 19 expected-denial checks**. Rejected commands left the original state unchanged. The final preparation status was `records_prepared_for_external_review`, and three fictional external member-payment receipts were independently reviewed. Actual credits issued, revenue received and payments sent: **zero**.
+The extended September 19 scenario completed **110 commands and 26 expected-denial checks**. Rejected commands left the original state unchanged. The final preparation status was `records_prepared_for_external_review`. Three fictional external member-payment receipts, one $400 stewardship receipt and one $200 treasury-transfer receipt were independently reviewed. Actual credits issued, revenue received and payments sent: **zero**.
 
 | Person | Software role | Contribution | Share of member pool |
 | --- | --- | --- | --- |
@@ -31,7 +31,7 @@ The conservation organization is **FICTIONAL Brook and Canopy Conservation Trust
 4. **Assemble land and legal records.** The simulation records reviewed co-op authority, a parcel-scoped enrollment agreement, an easement with an external recording reference, carbon-rights authority, and a pathway assessment bound to the current land records. All external references are fictional. The entered 10-hectare threshold is a test setting, not a real methodology criterion.
 5. **Adopt a charter.** All four members vote. A steward cannot close early before the deadline unless every eligible member has voted. The charter allocates 20% to stewardship, 10% to treasury and 70% to the member pool.
 6. **Record assumed external credits and a settled sale.** A fictional registry receipt supplies 100 serial-numbered units. A second steward reviews it. Another fictional external receipt records 80 units sold and $2,000 cleared. Duplicate serials, unreviewed proceeds and overselling are rejected.
-7. **Allocate and record external payment receipts.** Maya creates the allocation and Theo approves it. Each member's fictional bank-payment receipt is reviewed separately. The system prevents duplicate allocations and duplicate member-payment records. A fictional buyer retirement receipt accounts for the 80 transferred units.
+7. **Allocate and record external payment receipts.** Maya creates the allocation and Theo approves it. Each member's fictional bank-payment receipt is reviewed separately. Maya then records a fictional $400 payment for stewardship work and a $200 transfer into the co-op treasury reserve. Both remain pending until Theo reviews them. The system prevents duplicate allocations, duplicate member-payment records, reuse of the same reference across stewardship and treasury, self-review, member-authored disbursement records, and a one-cent overspend while receipts are pending. A fictional buyer retirement receipt accounts for the 80 transferred units.
 
 ## Hypothetical arithmetic
 
@@ -47,6 +47,8 @@ The assumed **100 tCO2e credits are independent of parcel area**. The rehearsal 
 | Sale proceeds recorded as cleared | $2,000 |
 | Stewardship reserve | $400 |
 | Treasury reserve | $200 |
+| Reviewed external stewardship-payment receipt | $400 |
+| Reviewed external treasury-transfer receipt | $200 |
 | Member pool | $1,400 |
 | Maya member-payment receipt | $560 |
 | Theo member-payment receipt | $490 |
@@ -54,11 +56,21 @@ The assumed **100 tCO2e credits are independent of parcel area**. The rehearsal 
 | Lena member-payment receipt | $0; no payment due |
 | Platform cut | $0 |
 
-Every cent balances. Stewardship and treasury are allocation categories; **their disbursement is not executed or recorded by the member-payment workflow**. In particular, the $400 does not mean the nonprofit received funds.
+Every allocated cent is covered by an independently reviewed fictional receipt. Budget receipts use their own record and review commands; an allocation alone does not count as a payment. **The $400 receipt does not mean a real nonprofit received funds.** The treasury receipt represents an assumed move into the co-op reserve, not a conservation expense. No transfer was executed and no bank was independently verified.
+
+The reconciliation assertions distinguish reviewed receipts, pending review and amounts without recorded receipts:
+
+| Rehearsal checkpoint | Allocated | Reviewed receipts | Pending receipts | Amount without receipts |
+| --- | ---: | ---: | ---: | ---: |
+| Member receipts reviewed; budget receipts absent | $2,000 | $1,400 | $0 | $600 |
+| Stewardship and treasury receipts submitted | $2,000 | $1,400 | $600 | $0 |
+| Both budget receipts independently reviewed | $2,000 | $2,000 | $0 | $0 |
+
+Pending receipts reserve their allocation bucket but never count as reviewed payments. These are recordkeeping totals, not a live bank balance. The focused allocation tests separately cover partial receipts, rejected receipts releasing capacity, legacy allocations, project-specific evidence, account erasure, and permission-aware review prompts.
 
 ## Group discussion boundary
 
-The simulation creates one actual private project post and 13 actual comments through `post_update` and `post_comment`. They describe what each participant has done. The executable record of those messages is in `result.json` under `transcript`.
+The simulation creates one actual private project post and 15 actual comments through `post_update` and `post_comment`. They describe what each participant has done. The executable record of those messages is in `result.json` under `transcript`.
 
 This is the existing project discussion model. The other commands are invoked programmatically by the offline runner. **The simulation does not demonstrate creating a co-op, mapping, signing, voting, selling or paying by typing into chat.** The subsequent [conversation actions build](CONVERSATION_ACTIONS.md) opens the existing structured controls within Discussion; this offline rehearsal does not test that interface. Signatures, integrated buyer execution and payment execution remain external work.
 
@@ -70,7 +82,7 @@ Privacy remains part of the scenario: Nadia's member view receives only her own 
 - A relevant program and verifier must determine eligibility, additionality, permanence, leakage, monitoring, quantified outcomes and issuance. Conserving land alone is not a carbon credit.
 - Registry custody, buyer contracting, pricing, trade execution, fees and any required retirement must be established externally.
 - Cleared proceeds and authorized payments require real financial arrangements. Current commands record receipts; they do not execute transfers or independently verify banks.
-- The current settlement stores a single cash amount. It does not model an itemized trade-fee ledger, tax treatment, or a nonprofit stewardship disbursement.
+- The current settlement stores a single cleared-cash amount. It does not model an itemized trade-fee ledger or tax treatment. Stewardship and treasury receipts can be recorded and reviewed, but the app does not execute those disbursements.
 
 ## Evidence files
 

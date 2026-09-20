@@ -198,6 +198,16 @@ export default function PrivacyPage() {
           the app’s separate local removal controls. Removing a local copy does
           not withdraw evidence already received by a co-op.
         </p>
+        <p>
+          Prepared discussion replies also stay in protected, account-bound
+          device storage until you explicitly send them. They are excluded from
+          device backups and journal exports. Interrupted submissions retain the
+          same reply and retry identity; the app never sends them automatically.
+          Confirmed success removes the local reply text and retains a receipt.
+          Signing out or deleting your account does not remove these local
+          copies. Use the separate reply-queue removal controls; removing a
+          local copy does not delete a reply already posted to the group.
+        </p>
       </section>
     </InformationPage>
   );

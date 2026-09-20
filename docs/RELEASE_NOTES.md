@@ -1,3 +1,11 @@
+# Service follow-through candidate — September 19, 2026
+
+Adds automatic foreground workspace refresh with retained drafts, native private discussion replies with protected explicit retries, a complete monitoring/financial review queue, and external stewardship/treasury receipts with exact allocation reconciliation. Receipt evidence must match its originating project; reviewers can inspect their authorized supporting evidence from each receipt. Independent reviews, budget limits, reference uniqueness, account erasure and capacity pauses remain enforced.
+
+Validation: 226 Node tests, 82 Swift tests, full lint and TypeScript checks, self-hosted build, unsigned simulator compilation, isolated multi-account HTTP acceptance and browser/phone-width walkthrough passed. The fictional rehearsal now covers 110 successful commands and 26 expected denials. See [service build and verification](SERVICE_BUILD_2026-09-19.md) and [claim-by-claim coverage](SERVICE_COVERAGE.md). This candidate has not been deployed or submitted to Apple. Continuing conservation obligations, provider transactions, funding activation and release operations remain separate unfinished work.
+
+---
+
 # Conversation actions candidate — September 19, 2026
 
 Community now opens on Discussion with private guided actions for land intake, mapping, explicit pooling consent, evidence, partner participation, agreements, legal authority, governance and external receipts. The same structured forms remain available in workspace tabs. Retained drafts survive closing an action and same-workspace refresh; conflicting edits preserve the draft for review and retry. Voting controls respect the frozen electorate and deadline. Pooling consent requires choosing the confirmation rather than accepting a preselected answer.

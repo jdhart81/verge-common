@@ -11,6 +11,7 @@ import {
 import { landPoolGeometry, projectReadiness } from '../lib/readiness.mjs';
 import { validateBoundary } from '../lib/monitoring.mjs';
 import { partnerParticipationStatus } from '../lib/partner-participation.mjs';
+import { allocationReconciliation } from '../lib/allocation-reconciliation.mjs';
 
 // Offline fixture only. Every state transition below uses the production domain
 // command handler; external documents, people and financial facts are fictional.
@@ -655,6 +656,94 @@ for (const person of people.slice(0, 3)) {
     `The ledger now contains a separately reviewed FICTIONAL external payment receipt for my $${expectedMemberCents[person.name] / 100}. It is a simulation receipt, not money sent by VergeCommon.`,
   );
 }
+const reconciliationBeforeBudgets = allocationReconciliation(state.allocations[0]);
+assert.deepEqual(reconciliationBeforeBudgets.total, {
+  allocatedCents: 200000,
+  reviewedReceiptCents: 140000,
+  pendingReceiptCents: 0,
+  remainingUnrecordedCents: 60000,
+});
+const budgetReceipts = [];
+for (const [budget, cents, recipientLabel, purpose] of [
+  ['stewardship', 40000, 'FICTIONAL Brook and Canopy Conservation Trust', 'FICTIONAL completed habitat-stewardship work'],
+  ['treasury', 20000, 'FICTIONAL Three Neighbors Co-op treasury reserve', 'FICTIONAL transfer to the co-op reserve; not a conservation expense'],
+]) {
+  const evidenceId = evidence(maya, `${budget} external payment receipt`, `${budget}-payment`);
+  const payload = {
+    id: allocationId,
+    budget,
+    cents,
+    recipientLabel,
+    purpose,
+    evidenceId,
+    reference: `FICTIONAL-bank-${budget}-payment`,
+  };
+  deny(
+    `A member cannot record a ${budget} disbursement`,
+    nadia,
+    'record_disbursement',
+    payload,
+    /steward/,
+  );
+  const disbursementId = execute(maya, 'record_disbursement', payload);
+  budgetReceipts.push({ budget, disbursementId });
+  deny(
+    `The ${budget} receipt author cannot independently review it`,
+    maya,
+    'review_disbursement',
+    { id: allocationId, disbursementId, decision: 'approve' },
+    /Another steward/,
+  );
+  deny(
+    `Pending ${budget} receipts prevent a one-cent overspend`,
+    maya,
+    'record_disbursement',
+    { ...payload, cents: 1, reference: `FICTIONAL-${budget}-overspend` },
+    /exceeds/,
+  );
+  if (budget === 'stewardship') {
+    deny(
+      'The stewardship payment reference cannot be reused for treasury',
+      maya,
+      'record_disbursement',
+      { ...payload, budget: 'treasury', cents: 1 },
+      /reference is already/,
+    );
+  }
+}
+const reconciliationPendingBudgets = allocationReconciliation(state.allocations[0]);
+assert.deepEqual(reconciliationPendingBudgets.total, {
+  allocatedCents: 200000,
+  reviewedReceiptCents: 140000,
+  pendingReceiptCents: 60000,
+  remainingUnrecordedCents: 0,
+});
+assert.equal(reconciliationPendingBudgets.stewardship.reviewedReceiptCents, 0);
+assert.equal(reconciliationPendingBudgets.treasury.reviewedReceiptCents, 0);
+say(
+  lena,
+  'The FICTIONAL $400 stewardship and $200 treasury receipts are submitted but still await independent review. Allocated or pending amounts do not show that our fictional nonprofit was paid. No real payment has happened.',
+);
+checkpoint(
+  'budget-receipts-pending',
+  'Stewardship and treasury receipts await separate review',
+  'The record shows $1,400 reviewed, $600 pending and no unrecorded budget. Pending amounts reserve their bucket but never count as reviewed payments.',
+);
+for (const { disbursementId } of budgetReceipts)
+  execute(theo, 'review_disbursement', { id: allocationId, disbursementId, decision: 'approve' });
+const reconciliationReviewedBudgets = allocationReconciliation(state.allocations[0]);
+assert.deepEqual(reconciliationReviewedBudgets.total, {
+  allocatedCents: 200000,
+  reviewedReceiptCents: 200000,
+  pendingReceiptCents: 0,
+  remainingUnrecordedCents: 0,
+});
+assert.equal(reconciliationReviewedBudgets.stewardship.reviewedReceiptCents, 40000);
+assert.equal(reconciliationReviewedBudgets.treasury.reviewedReceiptCents, 20000);
+say(
+  theo,
+  'I separately reviewed the two FICTIONAL budget receipts. The ledger now reconciles $1,400 in member receipts, $400 in stewardship receipts and a $200 treasury transfer. Moving cash into treasury is not a conservation expense. These records are hypothetical; VergeCommon sent no money and verified no bank.',
+);
 const retirementEvidenceId = evidence(
   maya,
   'buyer retirement receipt',
@@ -697,8 +786,8 @@ assert.equal(publicWorkspace(state).projects.length, 0);
 assert.throws(() => memberView(state, 'fictional-outsider'), /membership/);
 checkpoint(
   'receipts-recorded',
-  'Three member payment receipts and buyer retirement are recorded',
-  'All transitions used distinct actor permissions and independent-review rules. Actual transfers, registry actions and nonprofit budget disbursements are outside this rehearsal.',
+  'Member, stewardship and treasury receipts reconcile; buyer retirement is recorded',
+  'All five fictional external payment receipts were independently reviewed, and all allocated cents are accounted for. No actual transfer, conservation expense or registry action took place.',
 );
 
 const result = {
@@ -770,8 +859,20 @@ const result = {
       recordId: payment.id,
     })),
     retirement: { units: 80, status: 'fictional_external_receipt_reviewed' },
-    stewardshipDisbursement: 'NOT_EXECUTED_OR_RECORDED',
-    treasuryDisbursement: 'NOT_EXECUTED_OR_RECORDED',
+    stewardshipDisbursement: 'FICTIONAL_EXTERNAL_RECEIPT_REVIEWED_NOT_EXECUTED',
+    treasuryDisbursement: 'FICTIONAL_EXTERNAL_RECEIPT_REVIEWED_NOT_EXECUTED',
+    budgetDisbursements: state.allocations[0].disbursements.map((receipt) => ({
+      budget: receipt.budget,
+      recipientLabel: receipt.recipientLabel,
+      cents: receipt.cents,
+      status: 'fictional_external_receipt_reviewed',
+      recordId: receipt.id,
+    })),
+    reconciliation: {
+      beforeBudgetReceipts: reconciliationBeforeBudgets,
+      pendingBudgetReceipts: reconciliationPendingBudgets,
+      reviewedBudgetReceipts: reconciliationReviewedBudgets,
+    },
   },
   finalPreparation: projectReadiness(state, projectId),
   stages,
@@ -779,12 +880,12 @@ const result = {
   denialChecks,
   boundaries: [
     'Existing private project posts and comments coordinate the discussion. Commands here were run by an offline script, not by typing into group chat.',
-    'Structured map, consent, governance and financial forms are separate from discussion. There are no interactive workflow cards or chat-driven approvals in this run.',
+    'The conversation actions build opens structured map, consent, governance and financial forms within Discussion. This offline run does not exercise that interface or turn ordinary replies into approvals.',
     'Non-stewards only receive their own parcels and evidence; the full pooled private boundary is steward-only.',
     'Conservation, easement execution, carbon eligibility, verification, issuance, sales, bank settlement and payments are external facts. Fictional references are used to exercise recordkeeping.',
     'Land area is unrelated to the assumed credit quantity in this fixture. No yield, duration, price or eligibility forecast is made.',
     'The software records a single settled cash amount and does not model a separate trade, itemized verification/registry/broker fees, or an execution-ready payout instruction.',
-    'Stewardship and treasury reserves are allocated, but this workflow only supports per-member payment receipts. It does not disburse a nonprofit stewardship grant.',
+    'Stewardship and treasury external receipts are recorded and independently reviewed. The treasury receipt records an assumed reserve transfer, not a conservation expense. No bank transaction or nonprofit grant was executed.',
   ],
 };
 await mkdir(outputDirectory, { recursive: true });
