@@ -5,6 +5,14 @@ import {
   exampleCooperative,
   scenarioPacket,
 } from '../lib/cooperative.mjs';
+await test('grassland planning uses explicit scenario quantities and preserves pooling scope restrictions', () => {
+  const scenario = exampleCooperative();
+  scenario.projects[0].kind = 'grassland';
+  const result = calculateCooperative(scenario);
+  assert.equal(result.grossKg, 100000);
+  scenario.projects[0].poolKey = 'unreviewed grassland program';
+  assert.throws(() => calculateCooperative(scenario), /scope/);
+});
 await test('example closes both quantity and money without a platform cut', () => {
   const r = calculateCooperative(exampleCooperative());
   assert.equal(r.grossKg, 100000);

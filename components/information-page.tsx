@@ -1,12 +1,12 @@
+import { BrandLogo } from '@/components/brand-logo';
 import Link from 'next/link';
-import { ArrowUpRight, Sprout } from 'lucide-react';
+import { ArrowUpRight } from 'lucide-react';
 import type { ReactNode } from 'react';
 import './information-page.css';
 
-export const sourceBranch =
-  'https://github.com/jdhart81/verge-common/tree/build/coop-launch-readiness';
+export const sourceBranch = 'https://github.com/jdhart81/verge-common';
 export const documentBranch =
-  'https://github.com/jdhart81/verge-common/blob/build/coop-launch-readiness';
+  'https://github.com/jdhart81/verge-common/blob/main';
 // Account pages are rendered by the hosting gateway, so use document navigation.
 export const accountRoutes = {
   account: '/account',
@@ -31,8 +31,7 @@ export function InformationPage({
       </a>
       <header className="nav information-nav">
         <Link className="brand" href="/" aria-label="VergeCommon home">
-          <Sprout aria-hidden="true" />
-          <span>verge common</span>
+          <BrandLogo />
         </Link>
         <nav aria-label="Main navigation">
           <Link href="/network/">Find a co-op</Link>

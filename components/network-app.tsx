@@ -1,4 +1,5 @@
 'use client';
+import { BrandLogo } from '@/components/brand-logo';
 import {
   currencies,
   toMinor,
@@ -18,6 +19,10 @@ import {
   type CommunityEvent,
 } from '@/components/community-board';
 import { allocateCents } from '@/lib/network.mjs';
+import { allocationReconciliation } from '@/lib/allocation-reconciliation.mjs';
+import { startWorkspaceRefresh } from '@/lib/workspace-refresh.mjs';
+import { conversationActions } from '@/lib/conversation-actions.mjs';
+import { ConversationJourney } from '@/components/conversation-journey';
 import { CooperativeParcelMap } from '@/components/cooperative-parcel-map';
 import { onboardingProgress } from '@/lib/onboarding.mjs';
 import { PendingWork } from '@/components/pending-work';
@@ -80,7 +85,7 @@ type NamedRecord = {
   title?: string;
   reference?: string;
 };
-type ReviewRecord = { id: string; status: string };
+type ReviewRecord = { id: string; status: string; canReview?: boolean };
 type Organization = {
   name: string;
   kind: string;
@@ -122,6 +127,7 @@ type Parcel = Omit<MonitoringParcel, 'boundaries'> &
     boundaries?: (MonitoringBoundary & { areaSquareMetres?: number })[];
   };
 type Evidence = ReviewRecord & {
+  projectId: string;
   title: string;
   method: string;
   period: string;
@@ -154,6 +160,7 @@ type Workspace = Omit<CommunityState, 'projects' | 'members' | 'tasks'> &
     name: string;
     region: string;
     summary: string;
+    financialRecordsRedactedAt?: number;
     country: string;
     currency: string;
     projects: Project[];
@@ -225,6 +232,8 @@ type Workspace = Omit<CommunityState, 'projects' | 'members' | 'tasks'> &
         })
       | null;
     lots: (ReviewRecord & {
+      evidenceId?: string;
+      projectId: string;
       registry: string;
       program: string;
       method: string;
@@ -236,19 +245,32 @@ type Workspace = Omit<CommunityState, 'projects' | 'members' | 'tasks'> &
       reference: string;
     })[];
     settlements: (ReviewRecord & {
+      evidenceId?: string;
+      lotId: string;
       cents: number;
       units: number;
       reference: string;
     })[];
     allocations: (ReviewRecord & {
+      settlementId: string;
       amounts: Amounts;
       payments: (ReviewRecord & {
+        evidenceId?: string;
         memberId: string;
         cents: number;
         reference: string;
       })[];
+      disbursements?: (ReviewRecord & {
+        evidenceId?: string;
+        budget: 'stewardship' | 'treasury';
+        cents: number;
+        recipientLabel: string;
+        purpose: string;
+        reference: string;
+      })[];
     })[];
     retirements: (ReviewRecord & {
+      evidenceId?: string;
       units: number;
       beneficiary: string;
       reference: string;
@@ -304,7 +326,8 @@ type Field = {
   step?: string;
 };
 const date = (n: number) => new Date(n).toLocaleDateString();
-const label = (s: string) => s.replaceAll('_', ' ');
+const label = (s: string) =>
+  s === 'grassland' ? 'Grassland & meadow (pollinators)' : s.replaceAll('_', ' ');
 function Status({ value }: { value: string }) {
   return <span className={`state-tag state-${value}`}>{label(value)}</span>;
 }
@@ -463,10 +486,13 @@ export function NetworkApp({
 }) {
   const now = useSyncExternalStore(subscribeClock, clockSnapshot, serverClock);
   const pendingRequests = useRef(new Map<string, string>());
+  const mutationInFlight = useRef(false);
   const loadGeneration = useRef(0);
   const [appliedSearch, setAppliedSearch] = useState('');
   const [nextId, setNextId] = useState<string | null>(null);
   const [loadingMore, setLoadingMore] = useState(false);
+  const [refreshIssue, setRefreshIssue] = useState(false);
+  const [lastRefreshedAt, setLastRefreshedAt] = useState(0);
   const [coops, setCoops] = useState<PublicCoop[]>([]),
     [mine, setMine] = useState<WorkspaceSummary[]>([]),
     [selected, setSelected] = useState(''),
@@ -480,24 +506,46 @@ export function NetworkApp({
     [invitationLink, setInvitationLink] = useState(''),
     [next, setNext] = useState<number | null>(null);
   const load = useCallback(
-    async (id = '', query = '') => {
+    async (
+      id = '',
+      query = '',
+      preserveWorkspace = false,
+      conflictRefresh = false,
+      background = false,
+    ) => {
+      if (preserveWorkspace && mutationInFlight.current && !conflictRefresh)
+        return;
       const generation = ++loadGeneration.current;
-      setLoading(true);
-      setError('');
+      if (!preserveWorkspace) setLoading(true);
+      if (!background) setError('');
+      const controller = new AbortController();
+      const timeout = window.setTimeout(() => controller.abort(), 15_000);
       try {
         const url =
           mode === 'network'
             ? `/api/network${id ? `?id=${encodeURIComponent(id)}` : `?q=${encodeURIComponent(query)}`}`
             : `/api/workspaces${id ? `?id=${encodeURIComponent(id)}` : ''}`;
-        const r = await fetch(url, { cache: 'no-store' });
+        const r = await fetch(url, {
+          cache: 'no-store',
+          signal: controller.signal,
+        });
+        if (generation !== loadGeneration.current) return;
+        // Clear retained private data even if an access-denied response is not JSON.
+        if ([401, 403, 404].includes(r.status)) setData(null);
         const value: WorkspaceResponse & {
           coops: PublicCoop[];
           next: number | null;
           nextId: string | null;
           workspaces: WorkspaceSummary[];
         } = await r.json();
-        if (!r.ok) throw new Error(value.error);
         if (generation !== loadGeneration.current) return;
+        if (!r.ok) {
+          // Membership revocation must also remove retained private forms.
+          throw new Error(value.error || 'Unable to load the workspace.');
+        }
+        setRefreshIssue(false);
+        setLastRefreshedAt(Date.now());
+        if (background) setError('');
         if (id) setData(value);
         else {
           setData(null);
@@ -510,10 +558,14 @@ export function NetworkApp({
           } else setMine(value.workspaces);
         }
       } catch (e) {
-        if (generation === loadGeneration.current)
-          setError((e as Error).message);
+        if (generation === loadGeneration.current) {
+          setRefreshIssue(true);
+          if (!background) setError((e as Error).message);
+        }
       } finally {
-        if (generation === loadGeneration.current) setLoading(false);
+        window.clearTimeout(timeout);
+        if (generation === loadGeneration.current && !preserveWorkspace)
+          setLoading(false);
       }
     },
     [mode],
@@ -525,8 +577,22 @@ export function NetworkApp({
       void load(id);
     });
   }, [load]);
-  const chooseCoop = (id: string) => {
+  const hasWorkspace = Boolean(data?.state);
+  useEffect(() => {
+    if (mode !== 'workspace' || !signedIn || !selected || !hasWorkspace) return;
+    return startWorkspaceRefresh({
+      refresh: () => load(selected, '', true, false, true),
+      document,
+      window,
+    });
+  }, [mode, signedIn, selected, hasWorkspace, load]);
+  const chooseCoop = (id: string, afterSave = false) => {
+    if (mutationInFlight.current && !afterSave) return;
     setInvitationLink('');
+    setData(null);
+    setNotice('');
+    setRefreshIssue(false);
+    setLastRefreshedAt(0);
     setWorkspaceTab('community');
     setSelected(id);
     history.replaceState(
@@ -537,9 +603,15 @@ export function NetworkApp({
     void load(id);
   };
   async function mutate(op: string, payload: CommandPayload): Promise<boolean> {
-    if (busy) throw new Error('Wait for the current save to finish.');
+    if (mutationInFlight.current)
+      throw new Error('Wait for the current save to finish.');
+    // Invalidate an earlier background GET before saving against this version.
+    const generation = ++loadGeneration.current;
+    mutationInFlight.current = true;
     setBusy(true);
     setNotice('');
+    const controller = new AbortController();
+    const timeout = window.setTimeout(() => controller.abort(), 30_000);
     try {
       const requestKey = JSON.stringify({ selected, op, payload });
       const requestId =
@@ -547,6 +619,7 @@ export function NetworkApp({
       pendingRequests.current.set(requestKey, requestId);
       const r = await fetch('/api/workspaces', {
         method: 'POST',
+        signal: controller.signal,
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify({
           id: selected,
@@ -556,24 +629,39 @@ export function NetworkApp({
           requestId,
         }),
       });
+      if (generation !== loadGeneration.current) return false;
+      if (r.status === 401) setData(null);
       const result: WorkspaceResponse = await r.json();
+      // A late response must not replace records loaded for another workspace.
+      if (generation !== loadGeneration.current) return false;
       if (!r.ok) {
-        if (r.status === 409) await load(selected);
+        // A denied action can mean a self-review or stale item, not lost membership.
+        // Confirm actual read access before unmounting retained private drafts.
+        if ([403, 404, 409].includes(r.status))
+          await load(selected, '', true, true);
         throw new Error(result.error);
       }
       pendingRequests.current.delete(requestKey);
       if (op === 'create') {
-        chooseCoop(result.id);
+        chooseCoop(result.id, true);
       } else if (op === 'request_membership') {
         setNotice('Request saved. A steward will review your membership.');
       } else if (op === 'leave') {
-        chooseCoop('');
+        chooseCoop('', true);
       } else {
         setData(result);
         setNotice('Saved to the shared co-op record.');
       }
       return true;
+    } catch (e) {
+      if (controller.signal.aborted)
+        throw new Error(
+          'The save response timed out. Its outcome is unknown. Retry the same unchanged form to check the original request without creating a duplicate.',
+        );
+      throw e;
     } finally {
+      window.clearTimeout(timeout);
+      mutationInFlight.current = false;
       setBusy(false);
     }
   }
@@ -665,6 +753,1590 @@ export function NetworkApp({
       state?.evidence.filter((e) => e.status === 'reviewed') ?? [],
       'title',
     );
+  // The same forms serve workspace tabs and private actions in the conversation.
+  // Keep this a render helper: defining a component here would reset drafts on saves.
+  function renderWorkspacePanel(panel: string) {
+    if (!state || !data) return null;
+    switch (panel) {
+      case 'organizations':
+        return (
+          <>
+            <div className="network-columns">
+              <section>
+                <h2>Your organizing group</h2>
+                {state.organization ? (
+                  <OrganizationCard organization={state.organization} />
+                ) : (
+                  <Empty>
+                    Add the group organizing this co-op. Do not list an
+                    organization as a partner without its agreement.
+                  </Empty>
+                )}
+                <OrganizationDiscovery coops={[]} />
+                <PartnerParticipation
+                  records={state.partnerships ?? []}
+                  steward={steward}
+                  members={state.members}
+                  projects={state.projects}
+                  disabled={busy}
+                  growthPaused={
+                    state.visibility === 'archived' ||
+                    data.capacity?.growthPaused
+                  }
+                  mutate={mutate}
+                />
+                {steward &&
+                  (state.partnerships ?? []).map((partner) => (
+                    <article className="network-card" key={partner.id}>
+                      <h3>{partner.name}</h3>
+                      <Status value={partner.status} />
+                      <p>{partner.role}</p>
+                      <p>Agreement reference: {partner.agreementReference}</p>
+                      <a
+                        href={partner.website}
+                        target="_blank"
+                        rel="noreferrer"
+                      >
+                        Partner website ↗
+                      </a>
+                      <p className="small">
+                        Private co-op record. A steward review does not
+                        independently verify the nonprofit or its authority.
+                      </p>
+                      {partner.status === 'submitted' && (
+                        <ActionForm
+                          fields={[
+                            choices('decision', 'Partner review decision', [
+                              'approve',
+                              'reject',
+                            ]),
+                          ]}
+                          submit="Review partner agreement"
+                          onSubmit={(v) =>
+                            mutate('review_partnership', {
+                              ...v,
+                              id: partner.id,
+                            })
+                          }
+                        />
+                      )}
+                      {partner.status === 'reviewed' && (
+                        <ActionForm
+                          fields={[
+                            field(
+                              'reason',
+                              'Reason for ending this partnership record',
+                              'textarea',
+                              { max: 1000 },
+                            ),
+                          ]}
+                          submit="Revoke partner record"
+                          onSubmit={(v) =>
+                            mutate('revoke_partnership', {
+                              ...v,
+                              id: partner.id,
+                            })
+                          }
+                        />
+                      )}
+                    </article>
+                  ))}
+              </section>
+              <aside className="panel">
+                {steward && (
+                  <ActionForm
+                    title="Organization profile"
+                    fields={[
+                      field('name', 'Organization name', undefined, {
+                        value: state.organization?.name,
+                        max: 160,
+                      }),
+                      choices('kind', 'Organization type', [
+                        'nonprofit',
+                        'land_trust',
+                        'community_group',
+                      ]),
+                      field('region', 'Service area', undefined, {
+                        value: state.organization?.region ?? state.region,
+                        max: 120,
+                      }),
+                      field('website', 'Official website (HTTPS)', undefined, {
+                        value: state.organization?.website,
+                        max: 500,
+                      }),
+                      field(
+                        'services',
+                        'How people can take part',
+                        'textarea',
+                        { value: state.organization?.services, max: 1000 },
+                      ),
+                      choices('visibility', 'Profile visibility', [
+                        'members',
+                        'public',
+                      ]),
+                    ]}
+                    submit="Save organization profile"
+                    onSubmit={(v) => mutate('update_organization', v)}
+                  />
+                )}
+                {steward && (
+                  <p className="small mt-4">
+                    First submit the partner’s agreement in Evidence and have
+                    another steward review it. Then link that evidence to the
+                    same project here.
+                  </p>
+                )}
+                {steward && (
+                  <ActionForm
+                    title="Record an agreed conservation partnership"
+                    fields={[
+                      projectField(),
+                      field('name', 'Partner organization name', undefined, {
+                        max: 160,
+                      }),
+                      field(
+                        'website',
+                        'Partner official website (HTTPS)',
+                        undefined,
+                        { max: 500 },
+                      ),
+                      field(
+                        'role',
+                        'Agreed role and responsibilities',
+                        'textarea',
+                        { max: 1000 },
+                      ),
+                      field(
+                        'agreementReference',
+                        'Private reference to the partner’s agreement',
+                        undefined,
+                        { max: 500 },
+                      ),
+                      select(
+                        'evidenceId',
+                        'Reviewed evidence of the partner’s agreement',
+                        state.evidence.filter((e) => e.status === 'reviewed'),
+                        'title',
+                      ),
+                    ]}
+                    submit="Submit partner agreement for review"
+                    onSubmit={(v) => mutate('record_partnership', v)}
+                  />
+                )}
+                <p className="small mt-4">
+                  Profiles are self-reported. Public profiles appear only when
+                  the co-op itself is public. No affiliation is independently
+                  verified by Verge Common.
+                </p>
+              </aside>
+            </div>
+          </>
+        );
+      case 'monitoring':
+        return (
+          <>
+            <MonitoringBoard
+              key={selected}
+              state={state}
+              steward={steward}
+              busy={busy}
+              growthPaused={data.capacity?.growthPaused}
+              mutate={mutate}
+              refresh={() => load(selected, '', true)}
+            />
+          </>
+        );
+      case 'pooling':
+        return (
+          <>
+            <h2>Bring compatible parcels into one pathway</h2>
+            <p>
+              Reviewed parcels can be assessed together for a selected program
+              and methodology. An area total is a planning measure, not a
+              carbon-credit approval.
+            </p>
+            {steward && (
+              <CooperativeParcelMap
+                key={selected}
+                parcels={state.parcels}
+                projects={state.projects}
+                steward={steward}
+              />
+            )}
+            {steward ? (
+              <div className="network-columns">
+                <section>
+                  {state.projects.map((p) => {
+                    const parcels = state.parcels.filter(
+                      (x) => x.projectId === p.id && x.status === 'reviewed',
+                    );
+                    const readiness = projectReadiness(state, p.id);
+                    return (
+                      <article className="network-card" key={p.id}>
+                        <h3>{p.name}</h3>
+                        <h4>Preparation for external review</h4>
+                        <ul>
+                          {readiness.checks.map((check) => (
+                            <li key={check.id}>
+                              {check.complete ? 'Recorded' : 'Needed'}:{' '}
+                              {check.label}
+                            </li>
+                          ))}
+                        </ul>
+                        <p className="small">
+                          This checklist tracks preparation records. It does not
+                          approve carbon credits or payouts.
+                        </p>
+                        <p>
+                          {parcels.length} reviewed parcels ·{' '}
+                          {(
+                            readiness.geometry.areaSquareMetres / 10000
+                          ).toLocaleString(undefined, {
+                            maximumFractionDigits: 3,
+                          })}{' '}
+                          hectares estimated from reviewed boundaries
+                        </p>
+                        {readiness.geometry.problems.map((problem, i) => (
+                          <p
+                            className="notice"
+                            key={`${problem.parcelId}-${i}`}
+                          >
+                            {
+                              state.parcels.find(
+                                (parcel) => parcel.id === problem.parcelId,
+                              )?.name
+                            }
+                            : {label(problem.reason)}. Review the parcel and
+                            boundary in the parcels and monitoring tabs.
+                          </p>
+                        ))}
+                        {readiness.geometry.overlaps.map((overlap) => (
+                          <p
+                            className="notice"
+                            key={overlap.parcelIds.join(':')}
+                          >
+                            Overlap:{' '}
+                            {overlap.parcelIds
+                              .map(
+                                (id) =>
+                                  state.parcels.find(
+                                    (parcel) => parcel.id === id,
+                                  )?.name,
+                              )
+                              .join(' / ')}{' '}
+                            —{' '}
+                            {overlap.areaSquareMetres.toLocaleString(
+                              undefined,
+                              { maximumFractionDigits: 1 },
+                            )}{' '}
+                            m². Correct the boundaries or withdraw the duplicate
+                            parcel before pooling.
+                          </p>
+                        ))}
+                        <p className="small">
+                          Areas use the drawn boundary and a spherical Earth
+                          model. Recorded and drawn areas must agree within 5%
+                          or 1 m², whichever is larger. This is a planning
+                          check, not a survey. Overlaps are checked within this
+                          co-op; qualified reviewers must check other projects
+                          and registry claims separately.
+                        </p>
+                      </article>
+                    );
+                  })}
+                  {(state.assessments ?? []).map((a) => (
+                    <article className="network-card" key={a.id}>
+                      <h3>
+                        {a.program} · {a.methodology}
+                      </h3>
+                      <Status value={a.status} />
+                      {!assessmentIsCurrent(state, a) && (
+                        <p className="notice">
+                          Land records changed, or this older assessment lacks a
+                          versioned snapshot. Record and review a new
+                          assessment.
+                        </p>
+                      )}
+                      <p>
+                        Boundary snapshot:{' '}
+                        {a.areaSquareMetres.toLocaleString(undefined, {
+                          maximumFractionDigits: 1,
+                        })}{' '}
+                        m² across {a.parcelIds.length} reviewed parcels.
+                      </p>
+                      <p>
+                        {a.areaSquareMetres >= a.minimumSquareMetres
+                          ? 'Recorded area meets the entered planning threshold.'
+                          : 'More compatible area is needed for the entered planning threshold.'}
+                      </p>
+                      <a href={a.source} target="_blank" rel="noreferrer">
+                        Methodology reference ↗
+                      </a>
+                      <h4>Compatibility assessment</h4>
+                      <p>{a.criteria}</p>
+                      <h4>Unresolved requirements and next action</h4>
+                      <p>{a.gaps}</p>
+                      {a.status === 'submitted' && (
+                        <ActionForm
+                          fields={[
+                            choices('decision', 'Review decision', [
+                              'approve',
+                              'reject',
+                            ]),
+                          ]}
+                          submit="Record independent review"
+                          onSubmit={(v) =>
+                            mutate('review_assessment', { ...v, id: a.id })
+                          }
+                        />
+                      )}
+                    </article>
+                  ))}
+                </section>
+                <aside className="panel">
+                  <ActionForm
+                    title="Record a pathway assessment"
+                    fields={[
+                      projectField(),
+                      field('program', 'Carbon program'),
+                      field('methodology', 'Methodology and version'),
+                      field(
+                        'source',
+                        'Official methodology URL (HTTPS)',
+                        undefined,
+                        { max: 500 },
+                      ),
+                      field(
+                        'minimumSquareMetres',
+                        'Documented minimum area (m²; 0 if no minimum)',
+                        'number',
+                      ),
+                      field(
+                        'criteria',
+                        'Assess geography, land use, ownership, additionality, permanence, monitoring, and non-overlapping boundaries',
+                        'textarea',
+                        { max: 4000 },
+                      ),
+                      field(
+                        'gaps',
+                        'Unresolved requirements, evidence needed, and next action',
+                        'textarea',
+                        { max: 4000 },
+                      ),
+                    ]}
+                    submit="Save assessment for review"
+                    onSubmit={(v) => mutate('record_assessment', v)}
+                  />
+                  <p className="small mt-4">
+                    This saves the current reviewed-parcel snapshot. Create a
+                    new assessment when land or methodology changes. Another
+                    steward reviews your record; that review does not certify
+                    eligibility or issue credits.
+                  </p>
+                </aside>
+              </div>
+            ) : (
+              <Empty>
+                Stewards manage pooling assessments because they contain private
+                land records. Ask a steward to discuss the pathway with you.
+              </Empty>
+            )}
+          </>
+        );
+      case 'projects':
+        return (
+          <>
+            <div className="network-columns">
+              <section>
+                {state.projects.length === 0 && (
+                  <Empty>
+                    Add your first hedgerow, pollinator meadow, or conservation project.
+                  </Empty>
+                )}
+                {state.projects.map((p) => (
+                  <article className="network-card" key={p.id}>
+                    <p className="eyebrow">
+                      {label(p.kind)} · {p.region}
+                    </p>
+                    <h2>{p.name}</h2>
+                    <p>{p.summary}</p>
+                    <div className="network-meta">
+                      <Status value={p.status} />
+                      <Status value={p.visibility} />
+                    </div>
+                    {steward && (
+                      <ActionForm
+                        fields={[
+                          choices('status', 'Project status', [
+                            'proposed',
+                            'active',
+                            'completed',
+                            'cancelled',
+                          ]),
+                          choices('visibility', 'Project visibility', [
+                            'members',
+                            'public',
+                          ]),
+                        ]}
+                        submit="Update project"
+                        onSubmit={(v) =>
+                          mutate('project_status', { ...v, id: p.id })
+                        }
+                      />
+                    )}
+                    <div className="task-list">
+                      {state.tasks
+                        .filter((t) => t.projectId === p.id)
+                        .map((t) => (
+                          <div className="task-line" key={t.id}>
+                            <div>
+                              <strong>{t.title}</strong>
+                              <span>
+                                {t.due ? `Due ${t.due} · ` : ''}
+                                {label(t.status)}
+                              </span>
+                            </div>
+                            <div className="button-row">
+                              {t.status === 'open' ? (
+                                <Button
+                                  variant="outline"
+                                  disabled={busy}
+                                  onClick={() =>
+                                    quick('task_status', {
+                                      id: t.id,
+                                      status: 'claimed',
+                                    })
+                                  }
+                                >
+                                  I’ll help
+                                </Button>
+                              ) : t.status === 'claimed' ? (
+                                <Button
+                                  disabled={busy}
+                                  onClick={() =>
+                                    quick('task_status', {
+                                      id: t.id,
+                                      status: 'completed',
+                                    })
+                                  }
+                                >
+                                  <CheckCircle2 />
+                                  Complete
+                                </Button>
+                              ) : null}
+                              {t.status !== 'open' && (
+                                <Button
+                                  variant="ghost"
+                                  disabled={busy}
+                                  onClick={() =>
+                                    quick('task_status', {
+                                      id: t.id,
+                                      status: 'open',
+                                    })
+                                  }
+                                >
+                                  Reopen
+                                </Button>
+                              )}
+                            </div>
+                          </div>
+                        ))}
+                    </div>
+                    <ActionForm
+                      fields={[
+                        field('title', 'A useful next action'),
+                        field('due', 'Target date', 'date', {
+                          optional: true,
+                        }),
+                      ]}
+                      submit="Add action"
+                      onSubmit={(v) =>
+                        mutate('create_task', { ...v, projectId: p.id })
+                      }
+                    />
+                  </article>
+                ))}
+                <h2 className="mt-8">Co-op updates</h2>
+                {state.updates
+                  .filter((u) => !u.blocked)
+                  .map((u) => (
+                    <article className="network-card" key={u.id}>
+                      <p className="small">
+                        {u.author} · {date(u.createdAt)} ·{' '}
+                        {u.hidden ? 'hidden' : u.visibility}
+                      </p>
+                      <p>{u.text}</p>
+                      {steward && !u.hidden && (
+                        <Button
+                          variant="outline"
+                          onClick={() => quick('hide_update', { id: u.id })}
+                        >
+                          Hide update
+                        </Button>
+                      )}
+                    </article>
+                  ))}
+              </section>
+              <aside>
+                <div className="panel">
+                  <ActionForm
+                    title="Start a project"
+                    fields={[
+                      field('name', 'Project name', undefined, {
+                        max: 120,
+                      }),
+                      choices('kind', 'Project type', [
+                        'ecohedge',
+                        'landscape',
+                        'restoration',
+                        'grassland',
+                      ]),
+                      field('region', 'General area', undefined, {
+                        max: 120,
+                      }),
+                      field('summary', 'Purpose and next steps', 'textarea'),
+                    ]}
+                    submit="Create private project"
+                    onSubmit={(p) => mutate('create_project', p)}
+                    disabled={busy}
+                  />
+                  <p className="small mt-4">
+                    Choose Grassland & meadow for pollinator habitat conservation.
+                    Describe the habitat goals and planned care in your purpose
+                    and next steps. Keep exact parcel locations private. A steward
+                    can publish the general project description.
+                  </p>
+                </div>
+                {state.projects.length > 0 && (
+                  <div className="panel mt-5">
+                    <ActionForm
+                      title="Share an update"
+                      fields={[
+                        projectField(),
+                        field('text', 'What happened?', 'textarea'),
+                        choices(
+                          'visibility',
+                          'Audience',
+                          steward ? ['members', 'public'] : ['members'],
+                        ),
+                      ]}
+                      submit="Post update"
+                      onSubmit={(p) => mutate('post_update', p)}
+                      disabled={busy}
+                    />
+                  </div>
+                )}
+              </aside>
+            </div>
+          </>
+        );
+      case 'parcels':
+        return (
+          <>
+            <div className="network-columns">
+              <section>
+                {state.parcels.length === 0 && (
+                  <Empty>
+                    Record land rights and consent before bringing a parcel into
+                    a carbon pool.
+                  </Empty>
+                )}
+                {state.parcels.map((p) => (
+                  <article className="network-card" key={p.id}>
+                    <h3>{p.name}</h3>
+                    <p>
+                      {(p.areaSquareMetres / 10000).toLocaleString()} hectares
+                    </p>
+                    <p className="small">
+                      Private land reference: {p.landReference}
+                      <br />
+                      Consent reference: {p.consentReference}
+                    </p>
+                    <p>{p.notes}</p>
+                    <Status value={p.status} />
+                    <p className="small">
+                      {parcelConsentIsCurrent(p)
+                        ? 'Current pooling consent reviewed'
+                        : 'Current pooling consent needed'}
+                    </p>
+                    {p.status !== 'withdrawn' &&
+                      p.boundaries?.at(-1)?.status === 'reviewed' && (
+                        <>
+                          <p className="small">
+                            Boundary estimate:{' '}
+                            {Number.isFinite(
+                              Number(p.boundaries.at(-1)?.areaSquareMetres),
+                            )
+                              ? `${Math.round(Number(p.boundaries.at(-1)?.areaSquareMetres)).toLocaleString()} m²`
+                              : 'shown in the pooling geometry check'}
+                            . A correction requires another parcel review and
+                            new consent.
+                          </p>
+                          <Button
+                            variant="outline"
+                            disabled={busy}
+                            onClick={() =>
+                              quick('use_boundary_area', { parcelId: p.id })
+                            }
+                          >
+                            Use boundary estimate as recorded area
+                          </Button>
+                        </>
+                      )}
+                    {(p.consents ?? []).map((consent) => (
+                      <section className="mt-4" key={consent.id}>
+                        <h4>Pooling consent: {consent.holder}</h4>
+                        <Status value={consent.status} />
+                        <p className="small">
+                          Reference: {consent.reference}
+                          <br />
+                          Authority: {consent.authority}
+                          <br />
+                          Scope: {consent.scope}
+                        </p>
+                        {consent.reviewNote && (
+                          <p className="small">Review: {consent.reviewNote}</p>
+                        )}
+                        {steward &&
+                          consent.status === 'submitted' &&
+                          consent.id === p.consents?.at(-1)?.id && (
+                            <ActionForm
+                              fields={[
+                                choices('decision', 'Consent review decision', [
+                                  'approve',
+                                  'reject',
+                                ]),
+                                field(
+                                  'note',
+                                  'Consent review notes',
+                                  'textarea',
+                                ),
+                              ]}
+                              submit="Review pooling consent"
+                              disabled={busy}
+                              onSubmit={(v) =>
+                                mutate('review_parcel_consent', {
+                                  ...v,
+                                  parcelId: p.id,
+                                  id: consent.id,
+                                })
+                              }
+                            />
+                          )}
+                        {['submitted', 'reviewed'].includes(consent.status) && (
+                          <ActionForm
+                            fields={[
+                              field(
+                                'reason',
+                                'Reason for withdrawing this consent record',
+                                'textarea',
+                                { max: 1000 },
+                              ),
+                            ]}
+                            submit="Revoke pooling consent record"
+                            disabled={busy}
+                            onSubmit={(v) =>
+                              mutate('revoke_parcel_consent', {
+                                ...v,
+                                parcelId: p.id,
+                                id: consent.id,
+                              })
+                            }
+                          />
+                        )}
+                      </section>
+                    ))}
+                    {p.status === 'reviewed' &&
+                      p.boundaries?.at(-1)?.status === 'reviewed' && (
+                        <ActionForm
+                          title="Record consent for this parcel and boundary"
+                          fields={[
+                            field(
+                              'holder',
+                              'Consenting rights holder',
+                              undefined,
+                              { max: 200 },
+                            ),
+                            field(
+                              'authority',
+                              'Authority of the person providing consent',
+                              'textarea',
+                              { max: 1000 },
+                            ),
+                            field(
+                              'reference',
+                              'Signed consent document reference',
+                              undefined,
+                              { max: 300 },
+                            ),
+                            field(
+                              'scope',
+                              'Agreed pooling purpose, duration, and restrictions',
+                              'textarea',
+                              { max: 2000 },
+                            ),
+                            {
+                              ...choices(
+                                'attested',
+                                'The referenced holder consent covers this parcel and its current boundary',
+                                ['confirmed'],
+                              ),
+                              value: '',
+                            },
+                          ]}
+                          submit="Submit pooling consent for review"
+                          disabled={busy}
+                          onSubmit={(v) =>
+                            mutate('record_parcel_consent', {
+                              ...v,
+                              parcelId: p.id,
+                              attested: v.attested === 'confirmed',
+                            })
+                          }
+                        />
+                      )}
+                    {p.status !== 'withdrawn' && (
+                      <ActionForm
+                        fields={[
+                          field(
+                            'reason',
+                            'Reason for withdrawing this parcel from the proposed pool',
+                            'textarea',
+                            { max: 1000 },
+                          ),
+                        ]}
+                        submit="Withdraw parcel from pool"
+                        disabled={busy}
+                        onSubmit={(v) =>
+                          mutate('withdraw_parcel', {
+                            ...v,
+                            parcelId: p.id,
+                          })
+                        }
+                      />
+                    )}
+                    <p className="small">
+                      Consent and withdrawal records do not create or terminate
+                      a legal agreement. Have the rights holder and qualified
+                      advisers confirm those actions separately.
+                    </p>
+                    {steward && p.status === 'submitted' && (
+                      <div className="button-row mt-4">
+                        {['approve', 'reject'].map((decision) => (
+                          <Button
+                            key={decision}
+                            variant="outline"
+                            disabled={busy}
+                            onClick={() =>
+                              quick('review_parcel', { id: p.id, decision })
+                            }
+                          >
+                            {decision === 'approve'
+                              ? 'Record independent review'
+                              : 'Reject record'}
+                          </Button>
+                        ))}
+                      </div>
+                    )}
+                  </article>
+                ))}
+              </section>
+              <aside className="panel">
+                <ActionForm
+                  title="Submit private parcel record"
+                  fields={[
+                    projectField(),
+                    field('name', 'Parcel name', undefined, { max: 120 }),
+                    field(
+                      'landReference',
+                      'Private land-record reference',
+                      undefined,
+                      { max: 300 },
+                    ),
+                    field('area', 'Land area', 'number', { step: 'any' }),
+                    choices('unit', 'Area unit', [
+                      'hectares',
+                      'acres',
+                      'square_metres',
+                    ]),
+                    field(
+                      'consentReference',
+                      'Landowner consent reference',
+                      undefined,
+                      { max: 300 },
+                    ),
+                    field(
+                      'notes',
+                      'Rights, restrictions and access notes',
+                      'textarea',
+                      { optional: true },
+                    ),
+                  ]}
+                  submit="Submit parcel for review"
+                  onSubmit={(p) =>
+                    mutate('record_parcel', {
+                      ...p,
+                      areaSquareMetres: areaToSquareMetres(
+                        Number(p.area),
+                        String(p.unit),
+                      ),
+                    })
+                  }
+                  disabled={busy || !state.projects.length}
+                />
+                <p className="small mt-5">
+                  Only you and co-op stewards can view this record. It does not
+                  map, convey, or verify land ownership automatically.
+                </p>
+              </aside>
+            </div>
+          </>
+        );
+      case 'members':
+        return (
+          <>
+            {steward && (
+              <section className="panel mb-6">
+                <ActionForm
+                  title="Invite someone to your co-op"
+                  fields={[
+                    field(
+                      'label',
+                      'Private reminder of who this is for',
+                      undefined,
+                      { max: 120 },
+                    ),
+                  ]}
+                  submit="Create a single-use invitation"
+                  onSubmit={async (v) => {
+                    const response = await fetch('/api/invitations', {
+                      method: 'POST',
+                      headers: { 'content-type': 'application/json' },
+                      body: JSON.stringify({
+                        action: 'create',
+                        id: selected,
+                        label: v.label,
+                      }),
+                    });
+                    const result: { error: string; link: string } =
+                      await response.json();
+                    if (!response.ok) throw new Error(result.error);
+                    setInvitationLink(location.origin + result.link);
+                    await load(selected, '', true);
+                    return true;
+                  }}
+                />
+                <p className="small">
+                  Expires after seven days. Whoever receives the link can submit
+                  one request; a steward must still approve membership. Share it
+                  privately. Site access restrictions still apply.
+                </p>
+                {invitationLink && (
+                  <ControlLabel>
+                    Copy this invitation before leaving
+                    <Input
+                      readOnly
+                      value={invitationLink}
+                      onFocus={(e) => e.target.select()}
+                    />
+                  </ControlLabel>
+                )}
+                {(state.invitations ?? []).map((i) => (
+                  <div className="network-meta" key={i.id}>
+                    <span>
+                      {i.label} ·{' '}
+                      {i.revoked
+                        ? 'Revoked'
+                        : i.used
+                          ? 'Request received'
+                          : i.expiresAt <= now
+                            ? 'Expired'
+                            : `Expires ${date(i.expiresAt)}`}
+                    </span>
+                    {!i.used && !i.revoked && (
+                      <Button
+                        variant="outline"
+                        onClick={() => quick('revoke_invitation', { id: i.id })}
+                      >
+                        Revoke
+                      </Button>
+                    )}
+                  </div>
+                ))}
+              </section>
+            )}
+
+            <section className="panel mt-5">
+              <h2>People in the commons</h2>
+              <p className="small">
+                Invite people by sharing the public co-op link. No invitations
+                are sent automatically.
+              </p>
+              <p className="small">
+                Blocking hides your updates, replies and events from each other
+                inside this co-op, and prevents replies or event responses
+                between you. Public pages and shared governance records remain
+                visible. Stewards retain moderation access. Report harmful
+                content before blocking so stewards can review it.
+              </p>
+              {state.members.map((m) => (
+                <div className="member-row" key={m.id}>
+                  <div>
+                    <strong>
+                      {m.name}
+                      {m.isYou ? ' (you)' : ''}
+                    </strong>
+                    <span>
+                      {m.role} · {m.status}
+                    </span>
+                  </div>
+                  <div className="button-row">
+                    {!m.isYou && m.status === 'active' && (
+                      <Button
+                        variant="outline"
+                        disabled={busy}
+                        onClick={() =>
+                          quick(
+                            state.blocks?.some((b) => b.memberId === m.id)
+                              ? 'unblock_member'
+                              : 'block_member',
+                            { id: m.id },
+                          )
+                        }
+                      >
+                        {state.blocks?.some((b) => b.memberId === m.id)
+                          ? 'Unblock member'
+                          : 'Block member'}
+                      </Button>
+                    )}
+                    {steward && m.status === 'pending' && (
+                      <>
+                        <Button
+                          disabled={
+                            busy ||
+                            state.visibility === 'archived' ||
+                            data.capacity?.growthPaused
+                          }
+                          onClick={() =>
+                            quick('member_status', {
+                              id: m.id,
+                              status: 'active',
+                            })
+                          }
+                        >
+                          Approve
+                        </Button>
+                        <Button
+                          variant="outline"
+                          disabled={busy}
+                          onClick={() =>
+                            quick('member_status', {
+                              id: m.id,
+                              status: 'rejected',
+                            })
+                          }
+                        >
+                          Decline
+                        </Button>
+                      </>
+                    )}
+                    {data.isOwner && !m.isYou && m.status === 'active' && (
+                      <Button
+                        variant="outline"
+                        disabled={
+                          busy ||
+                          (m.role !== 'steward' &&
+                            (state.visibility === 'archived' ||
+                              data.capacity?.growthPaused))
+                        }
+                        onClick={() =>
+                          quick('member_role', {
+                            id: m.id,
+                            role: m.role === 'steward' ? 'member' : 'steward',
+                          })
+                        }
+                      >
+                        {m.role === 'steward'
+                          ? 'Make member'
+                          : 'Appoint steward'}
+                      </Button>
+                    )}
+                    {steward && !m.isYou && m.status === 'active' && (
+                      <ConfirmAction
+                        title={`Remove ${m.name}?`}
+                        description="They will lose access to private records. Existing obligations and audit records remain. Only the founding steward can remove other stewards."
+                        label="Remove access"
+                        disabled={busy}
+                        onConfirm={() =>
+                          quick('member_status', {
+                            id: m.id,
+                            status: 'removed',
+                          })
+                        }
+                      />
+                    )}
+                    {data.isOwner &&
+                      !m.isYou &&
+                      m.status === 'active' &&
+                      m.role === 'steward' && (
+                        <ConfirmAction
+                          title={`Transfer responsibility to ${m.name}?`}
+                          description="Confirm this steward has agreed to take over. They will control steward appointments and co-op archival. You remain a steward but cannot reverse the transfer yourself. Land rights, legal authority and financial records do not change."
+                          label="Transfer responsibility"
+                          disabled={busy}
+                          onConfirm={() =>
+                            quick('transfer_stewardship', {
+                              id: m.id,
+                              confirmation: 'TRANSFER',
+                            })
+                          }
+                        />
+                      )}
+                  </div>
+                </div>
+              ))}
+              {!!state.blocks?.length && (
+                <details className="mt-5">
+                  <summary>Members you have blocked</summary>
+                  {state.blocks.map((b) => (
+                    <div className="network-meta" key={b.memberId}>
+                      <span>{b.name}</span>
+                      <Button
+                        variant="outline"
+                        disabled={busy}
+                        onClick={() =>
+                          quick('unblock_member', { id: b.memberId })
+                        }
+                      >
+                        Unblock member
+                      </Button>
+                    </div>
+                  ))}
+                </details>
+              )}
+              <p className="notice mt-5">
+                Evidence and financial records need a different steward to
+                review them. Appoint a trusted second steward before progressing
+                those records.
+              </p>
+            </section>
+          </>
+        );
+      case 'agreements':
+        return (
+          <>
+            <div className="network-columns">
+              <section>
+                {state.agreements.length === 0 && (
+                  <Empty>
+                    Your authorized agreement records will appear here.
+                  </Empty>
+                )}
+                {state.agreements.map((a) => (
+                  <article className="network-card" key={a.id}>
+                    <p className="eyebrow">{label(a.kind)}</p>
+                    <h3>
+                      {state.projects.find((p) => p.id === a.projectId)?.name}
+                    </h3>
+                    <p>
+                      {a.holder} · {a.jurisdiction}
+                    </p>
+                    <p>{a.notes}</p>
+                    <Status value={a.status} />
+                    <p className="small">
+                      Covered parcels:{' '}
+                      {(a.parcelIds ?? [])
+                        .map(
+                          (id: string) =>
+                            state.parcels.find((p) => p.id === id)?.name ??
+                            'Private parcel',
+                        )
+                        .join(', ') ||
+                        'Not recorded — submit a scoped replacement'}
+                    </p>
+                    {!agreementIsCurrent(state, a) && (
+                      <p className="notice">
+                        Coverage or consent is missing or out of date. A new
+                        agreement record must reference the current parcels
+                        before this record can count toward readiness.
+                      </p>
+                    )}
+                    {a.status === 'execution_recorded' && steward && (
+                      <ActionForm
+                        fields={[
+                          field(
+                            'reason',
+                            'Reason this agreement no longer supports the pool',
+                            'textarea',
+                            { max: 1000 },
+                          ),
+                        ]}
+                        submit="Revoke agreement record"
+                        disabled={busy}
+                        onSubmit={(v) =>
+                          mutate('revoke_agreement', { ...v, id: a.id })
+                        }
+                      />
+                    )}
+                    {a.reference && (
+                      <p>
+                        <a
+                          className="text-link"
+                          href={a.reference}
+                          target="_blank"
+                          rel="noreferrer"
+                        >
+                          Supporting reference ↗
+                        </a>
+                      </p>
+                    )}
+                    {a.reviewNote && (
+                      <p className="small">Review: {a.reviewNote}</p>
+                    )}
+                    {a.executionReference && (
+                      <p className="small">
+                        Execution reference: {a.executionReference}
+                        <br />
+                        Recording reference:{' '}
+                        {a.recordingReference || 'Not applicable'}
+                      </p>
+                    )}
+                    {steward &&
+                      !['execution_recorded', 'revoked'].includes(a.status) && (
+                        <ActionForm
+                          fields={[
+                            choices(
+                              'status',
+                              'Review outcome',
+                              a.status === 'reviewed'
+                                ? ['changes_requested', 'execution_recorded']
+                                : ['changes_requested', 'reviewed'],
+                            ),
+                            field('note', 'Review notes', 'textarea'),
+                            field(
+                              'executionReference',
+                              'Executed instrument reference',
+                              undefined,
+                              {
+                                optional: a.status !== 'reviewed',
+                                max: 300,
+                              },
+                            ),
+                            field(
+                              'recordingReference',
+                              'Recording reference (required for executed easements)',
+                              undefined,
+                              { optional: true, max: 300 },
+                            ),
+                          ]}
+                          submit="Save review"
+                          onSubmit={(p) =>
+                            mutate('review_agreement', { ...p, id: a.id })
+                          }
+                          disabled={busy}
+                        />
+                      )}
+                  </article>
+                ))}
+              </section>
+              <aside className="panel">
+                <ActionForm
+                  title="Submit an agreement record"
+                  fields={[
+                    projectField(),
+                    {
+                      name: 'parcelIds',
+                      label:
+                        'Specific covered parcels (choose only parcels in the selected project)',
+                      type: 'multiselect',
+                      options: state.parcels
+                        .filter((p) => p.status !== 'withdrawn')
+                        .map((p) => ({
+                          value: p.id,
+                          label: `${state.projects.find((project) => project.id === p.projectId)?.name}: ${p.name}`,
+                        })),
+                    },
+                    choices('kind', 'Instrument', [
+                      'enrollment',
+                      'easement',
+                      'carbon_rights',
+                    ]),
+                    field('jurisdiction', 'Jurisdiction', undefined, {
+                      max: 120,
+                    }),
+                    field(
+                      'holder',
+                      'Proposed holder / counterparty',
+                      undefined,
+                      { max: 160 },
+                    ),
+                    field(
+                      'notes',
+                      'Rights, obligations, and unresolved questions',
+                      'textarea',
+                      { max: 3000 },
+                    ),
+                    field(
+                      'reference',
+                      'Private HTTPS document reference',
+                      undefined,
+                      { optional: true, max: 1500 },
+                    ),
+                  ]}
+                  submit="Submit for review"
+                  onSubmit={(p) => mutate('submit_agreement', p)}
+                  disabled={busy || !state.projects.length}
+                />
+                <p className="small mt-5">
+                  Records are visible to the submitter and stewards. Recording
+                  an execution reference does not execute or legally validate an
+                  instrument.
+                </p>
+                <a
+                  href="https://github.com/jdhart81/verge-common/tree/main/templates"
+                  className="text-link"
+                >
+                  Open agreement templates ↗
+                </a>
+              </aside>
+            </div>
+          </>
+        );
+      case 'evidence':
+        return (
+          <>
+            <div className="network-columns">
+              <section>
+                {state.evidence.length === 0 && (
+                  <Empty>No evidence visible to you yet.</Empty>
+                )}
+                {state.evidence.map((e) => (
+                  <article className="network-card" key={e.id}>
+                    <h3>{e.title}</h3>
+                    <p className="small">
+                      {e.method} · {e.period}
+                    </p>
+                    <p>{e.notes}</p>
+                    <Status value={e.status} />
+                    {e.asset && (
+                      <>
+                        <p>
+                          <Link
+                            href={`/api/files?id=${e.asset.id}`}
+                            className="text-link"
+                            prefetch={false}
+                            target="_top"
+                          >
+                            <Download size={16} />
+                            {e.asset.filename}
+                          </Link>
+                        </p>
+                        <p className="digest">SHA-256: {e.asset.sha256}</p>
+                      </>
+                    )}
+                    {e.reference && (
+                      <a
+                        className="text-link"
+                        href={e.reference}
+                        target="_blank"
+                        rel="noreferrer"
+                      >
+                        Evidence reference ↗
+                      </a>
+                    )}
+                    {e.reviewNote && (
+                      <p className="small mt-3">{e.reviewNote}</p>
+                    )}
+                    {steward && e.status === 'submitted' && (
+                      <ActionForm
+                        fields={[
+                          choices('decision', 'Decision', [
+                            'approve',
+                            'reject',
+                          ]),
+                          field('note', 'Review basis', 'textarea'),
+                        ]}
+                        submit="Record independent review"
+                        onSubmit={(p) =>
+                          mutate('review_evidence', { ...p, id: e.id })
+                        }
+                      />
+                    )}
+                  </article>
+                ))}
+              </section>
+              <aside className="panel">
+                <EvidenceForm
+                  key={selected}
+                  workspaceId={selected}
+                  projects={state.projects}
+                  disabled={busy}
+                  onSubmit={(p) => mutate('submit_evidence', p)}
+                />
+                <p className="small mt-5">
+                  Files are private to the uploader and stewards. Review records
+                  document a human review; they do not constitute carbon-program
+                  verification.
+                </p>
+              </aside>
+            </div>
+          </>
+        );
+      case 'governance':
+        return (
+          <>
+            <PayoutPreview
+              currency={state.currency ?? 'USD'}
+              members={state.members.filter((m) => m.status === 'active')}
+            />
+            <div className="network-columns">
+              <section>
+                {state.proposals.length === 0 && (
+                  <Empty>
+                    Adopt a versioned allocation policy with a recorded member
+                    vote.
+                  </Empty>
+                )}
+                {state.proposals.map((p) => (
+                  <article className="network-card" key={p.id}>
+                    <h3>{p.title}</h3>
+                    <p>{p.text}</p>
+                    <Status value={p.status} />
+                    <p className="small">
+                      {p.votes.length} of {p.electorate.length} votes · closes{' '}
+                      {new Date(p.closesAt).toLocaleString()} · quorum{' '}
+                      {p.quorum}
+                    </p>
+                    <dl className="ledger">
+                      {p.shares.map((m) => (
+                        <div key={m.id}>
+                          <dt>{m.name}</dt>
+                          <dd>{m.shareBps / 100}%</dd>
+                        </div>
+                      ))}
+                    </dl>
+                    <p className="small mt-3">
+                      Stewardship {p.stewardshipBps / 100}% · treasury{' '}
+                      {p.treasuryBps / 100}% of settled proceeds. Member shares
+                      apply to the remainder.
+                    </p>
+                    {p.status === 'open' && (
+                      <>
+                        {now > 0 &&
+                        now < p.closesAt &&
+                        p.electorate.includes(data.memberId ?? '') ? (
+                          <div className="button-row mt-4">
+                            {['approve', 'oppose', 'abstain'].map((choice) => (
+                              <Button
+                                variant={
+                                  p.votes.find(
+                                    (v) => v.memberId === data.memberId,
+                                  )?.choice === choice
+                                    ? 'default'
+                                    : 'outline'
+                                }
+                                key={choice}
+                                disabled={
+                                  busy ||
+                                  state.visibility === 'archived' ||
+                                  data.capacity?.growthPaused
+                                }
+                                onClick={() =>
+                                  quick('vote', { id: p.id, choice })
+                                }
+                              >
+                                {label(choice)}
+                              </Button>
+                            ))}
+                          </div>
+                        ) : (
+                          <p className="small mt-4">
+                            {now === 0
+                              ? 'Checking the voting deadline…'
+                              : now >= p.closesAt
+                                ? 'The voting deadline has passed. A steward can tally the result.'
+                                : 'This proposal is open to the members named when voting began.'}
+                          </p>
+                        )}
+                        {steward && (
+                          <Button
+                            variant="outline"
+                            className="mt-4"
+                            disabled={
+                              busy ||
+                              state.visibility === 'archived' ||
+                              data.capacity?.growthPaused ||
+                              now === 0 ||
+                              (now < p.closesAt &&
+                                p.votes.length < p.electorate.length)
+                            }
+                            onClick={() =>
+                              quick('close_proposal', { id: p.id })
+                            }
+                          >
+                            Close and tally
+                          </Button>
+                        )}
+                      </>
+                    )}
+                  </article>
+                ))}
+              </section>
+              <aside className="panel">
+                {steward ? (
+                  <ActionForm
+                    title="Propose allocation charter"
+                    fields={[
+                      field('title', 'Policy title'),
+                      field(
+                        'text',
+                        'Policy and member obligations',
+                        'textarea',
+                        { max: 4000 },
+                      ),
+                      field('days', 'Voting period (days)', 'number', {
+                        value: 7,
+                      }),
+                      field(
+                        'stewardshipPercent',
+                        'Stewardship budget (%)',
+                        'number',
+                        { value: 15, step: '0.01' },
+                      ),
+                      field(
+                        'treasuryPercent',
+                        'Treasury reserve (%)',
+                        'number',
+                        { value: 10, step: '0.01' },
+                      ),
+                      ...state.members
+                        .filter((m) => m.status === 'active')
+                        .map((m) =>
+                          field(
+                            `share_${m.id}`,
+                            `${m.name}: member-pool share (%)`,
+                            'number',
+                            { value: 0, step: '0.01' },
+                          ),
+                        ),
+                    ]}
+                    submit="Open member vote"
+                    onSubmit={(p) =>
+                      mutate('propose_charter', {
+                        title: p.title,
+                        text: p.text,
+                        days: p.days,
+                        stewardshipBps: Math.round(
+                          Number(p.stewardshipPercent) * 100,
+                        ),
+                        treasuryBps: Math.round(
+                          Number(p.treasuryPercent) * 100,
+                        ),
+                        shares: state.members
+                          .filter((m) => m.status === 'active')
+                          .map((m) => ({
+                            id: m.id,
+                            shareBps: Math.round(
+                              Number(p[`share_${m.id}`]) * 100,
+                            ),
+                          })),
+                      })
+                    }
+                    disabled={busy}
+                  />
+                ) : (
+                  <p>Stewards propose policy; eligible members vote here.</p>
+                )}
+                <p className="small mt-5">
+                  The electorate is frozen when a proposal opens. Adoption
+                  requires two-thirds participation and approval by more than
+                  half of that electorate. Voting closes at the deadline, or
+                  early once everyone has voted.
+                </p>
+                <p className="notice mt-4">
+                  An adopted software policy does not establish a legal co-op or
+                  replace its legally required governance.
+                </p>
+              </aside>
+            </div>
+          </>
+        );
+      case 'ledger':
+        return (
+          <>
+            <Ledger
+              state={state}
+              steward={steward}
+              growthPaused={data?.capacity?.growthPaused}
+              busy={busy}
+              mutate={mutate}
+              quick={quick}
+            />
+          </>
+        );
+      case 'authority':
+        if (!steward) return null;
+        return (
+          <div className="mt-8">
+            <h2>Legal authority record</h2>
+            {state.authority ? (
+              <>
+                <p>
+                  {state.authority.legalName} · {state.authority.jurisdiction}
+                </p>
+                <p className="small">{state.authority.reference}</p>
+                <Status value={state.authority.status} />
+                {steward && state.authority.status === 'submitted' && (
+                  <div className="button-row mt-4">
+                    {['approve', 'reject'].map((decision) => (
+                      <Button
+                        variant="outline"
+                        key={decision}
+                        disabled={busy}
+                        onClick={() => quick('review_authority', { decision })}
+                      >
+                        {decision === 'approve'
+                          ? 'Record independent authority review'
+                          : 'Reject authority record'}
+                      </Button>
+                    ))}
+                  </div>
+                )}
+              </>
+            ) : (
+              <p className="small">
+                No external legal authority has been recorded. Issued holding
+                records stay blocked.
+              </p>
+            )}
+            {steward && state.authority?.status !== 'reviewed' && (
+              <ActionForm
+                fields={[
+                  field('legalName', 'Legal co-op / project-holder name'),
+                  field('jurisdiction', 'Jurisdiction'),
+                  field(
+                    'reference',
+                    'Formation / authority document reference',
+                    undefined,
+                    { max: 300 },
+                  ),
+                  evidenceField(),
+                ]}
+                submit="Submit authority record"
+                onSubmit={(p) => mutate('record_authority', p)}
+                disabled={busy}
+              />
+            )}
+            <p className="small mt-4">
+              This records human review of external documents. It does not form
+              a legal entity.
+            </p>
+          </div>
+        );
+      default:
+        return null;
+    }
+  }
   const visibleCoops = coops;
   return (
     <>
@@ -673,8 +2345,7 @@ export function NetworkApp({
       </a>
       <header className="nav">
         <Link className="brand" href="/" prefetch={false} target="_top">
-          <Sprout />
-          verge common
+          <BrandLogo />
         </Link>
         <nav aria-label="Main navigation">
           <Link href="/app/" prefetch={false} target="_top">
@@ -722,6 +2393,7 @@ export function NetworkApp({
               variant="outline"
               className="h-11"
               onClick={() => chooseCoop('')}
+              disabled={busy}
             >
               <ArrowLeft />
               All co-ops
@@ -758,8 +2430,8 @@ export function NetworkApp({
         )}
         {!selected && (
           <p className="intro">
-            Bring an EcoHedge corridor, a woodlot, or a larger conservation
-            project into a community that can care for it together.
+            Bring a hedgerow, a pollinator meadow, a woodlot, or a larger
+            conservation project into a community that can care for it together.
           </p>
         )}
         {error && (
@@ -768,13 +2440,19 @@ export function NetworkApp({
             <Button
               variant="outline"
               className="ml-4"
-              onClick={() => load(selected)}
+              onClick={() => load(selected, '', true)}
             >
               Retry
             </Button>
           </div>
         )}
         {notice && <output className="notice mt-5">{notice}</output>}
+        {refreshIssue && (
+          <output className="notice">
+            We could not refresh the workspace. Displayed records may be out of
+            date. Reconnect and use Refresh to check access and recent changes.
+          </output>
+        )}
         {loading ? (
           <output className="empty">Loading co-op records…</output>
         ) : mode === 'network' ? (
@@ -980,7 +2658,11 @@ export function NetworkApp({
               </span>
               <Status value={state.visibility} />
               <span>Your role: {data.role}</span>
-              <Button variant="outline" onClick={() => load(selected)}>
+              <Button
+                variant="outline"
+                disabled={busy}
+                onClick={() => load(selected, '', true)}
+              >
                 <RefreshCw />
                 Refresh
               </Button>
@@ -999,6 +2681,12 @@ export function NetworkApp({
               Saved workspace · version {data.version}. Registry and bank
               actions happen outside Verge Common; reviewed records document
               those external actions.
+            </p>
+            <p className="small">
+              Checks for changes every 30 seconds while this page is visible and
+              online. No email or push notifications are sent.
+              {lastRefreshedAt > 0 &&
+                ` Last checked ${new Date(lastRefreshedAt).toLocaleTimeString()}.`}
             </p>
             {state.visibility === 'archived' && (
               <div className="notice">
@@ -1053,6 +2741,19 @@ export function NetworkApp({
                   busy={busy}
                   growthPaused={data.capacity?.growthPaused}
                   mutate={mutate}
+                  conversationActions={
+                    <ConversationJourney
+                      key={`${selected}:${data.memberId}:${data.role}`}
+                      actions={conversationActions(state, {
+                        steward,
+                        memberId: data.memberId ?? '',
+                        now,
+                        growthPaused: data.capacity?.growthPaused,
+                      })}
+                      renderAction={renderWorkspacePanel}
+                      busy={busy}
+                    />
+                  }
                 />
               </TabsContent>
               <TabsContent value="start">
@@ -1066,7 +2767,7 @@ export function NetworkApp({
                     [
                       'projects',
                       '1. Add a place',
-                      'Describe your EcoHedge, woodlot, or conservation project.',
+                      'Describe your hedgerow, pollinator meadow, woodlot, or conservation project.',
                       state.projects.length > 0,
                     ],
                     [
@@ -1122,1499 +2823,34 @@ export function NetworkApp({
                 </p>
               </TabsContent>
               <TabsContent value="organizations">
-                <div className="network-columns">
-                  <section>
-                    <h2>Your organizing group</h2>
-                    {state.organization ? (
-                      <OrganizationCard organization={state.organization} />
-                    ) : (
-                      <Empty>
-                        Add the group organizing this co-op. Do not list an
-                        organization as a partner without its agreement.
-                      </Empty>
-                    )}
-                    <OrganizationDiscovery coops={[]} />
-                    <PartnerParticipation
-                      records={state.partnerships ?? []}
-                      steward={steward}
-                      members={state.members}
-                      projects={state.projects}
-                      disabled={busy}
-                      growthPaused={
-                        state.visibility === 'archived' ||
-                        data.capacity?.growthPaused
-                      }
-                      mutate={mutate}
-                    />
-                    {steward &&
-                      (state.partnerships ?? []).map((partner) => (
-                        <article className="network-card" key={partner.id}>
-                          <h3>{partner.name}</h3>
-                          <Status value={partner.status} />
-                          <p>{partner.role}</p>
-                          <p>
-                            Agreement reference: {partner.agreementReference}
-                          </p>
-                          <a
-                            href={partner.website}
-                            target="_blank"
-                            rel="noreferrer"
-                          >
-                            Partner website ↗
-                          </a>
-                          <p className="small">
-                            Private co-op record. A steward review does not
-                            independently verify the nonprofit or its authority.
-                          </p>
-                          {partner.status === 'submitted' && (
-                            <ActionForm
-                              fields={[
-                                choices('decision', 'Partner review decision', [
-                                  'approve',
-                                  'reject',
-                                ]),
-                              ]}
-                              submit="Review partner agreement"
-                              onSubmit={(v) =>
-                                mutate('review_partnership', {
-                                  ...v,
-                                  id: partner.id,
-                                })
-                              }
-                            />
-                          )}
-                          {partner.status === 'reviewed' && (
-                            <ActionForm
-                              fields={[
-                                field(
-                                  'reason',
-                                  'Reason for ending this partnership record',
-                                  'textarea',
-                                  { max: 1000 },
-                                ),
-                              ]}
-                              submit="Revoke partner record"
-                              onSubmit={(v) =>
-                                mutate('revoke_partnership', {
-                                  ...v,
-                                  id: partner.id,
-                                })
-                              }
-                            />
-                          )}
-                        </article>
-                      ))}
-                  </section>
-                  <aside className="panel">
-                    {steward && (
-                      <ActionForm
-                        title="Organization profile"
-                        fields={[
-                          field('name', 'Organization name', undefined, {
-                            value: state.organization?.name,
-                            max: 160,
-                          }),
-                          choices('kind', 'Organization type', [
-                            'nonprofit',
-                            'land_trust',
-                            'community_group',
-                          ]),
-                          field('region', 'Service area', undefined, {
-                            value: state.organization?.region ?? state.region,
-                            max: 120,
-                          }),
-                          field(
-                            'website',
-                            'Official website (HTTPS)',
-                            undefined,
-                            { value: state.organization?.website, max: 500 },
-                          ),
-                          field(
-                            'services',
-                            'How people can take part',
-                            'textarea',
-                            { value: state.organization?.services, max: 1000 },
-                          ),
-                          choices('visibility', 'Profile visibility', [
-                            'members',
-                            'public',
-                          ]),
-                        ]}
-                        submit="Save organization profile"
-                        onSubmit={(v) => mutate('update_organization', v)}
-                      />
-                    )}
-                    {steward && (
-                      <p className="small mt-4">
-                        First submit the partner’s agreement in Evidence and
-                        have another steward review it. Then link that evidence
-                        to the same project here.
-                      </p>
-                    )}
-                    {steward && (
-                      <ActionForm
-                        title="Record an agreed conservation partnership"
-                        fields={[
-                          projectField(),
-                          field(
-                            'name',
-                            'Partner organization name',
-                            undefined,
-                            { max: 160 },
-                          ),
-                          field(
-                            'website',
-                            'Partner official website (HTTPS)',
-                            undefined,
-                            { max: 500 },
-                          ),
-                          field(
-                            'role',
-                            'Agreed role and responsibilities',
-                            'textarea',
-                            { max: 1000 },
-                          ),
-                          field(
-                            'agreementReference',
-                            'Private reference to the partner’s agreement',
-                            undefined,
-                            { max: 500 },
-                          ),
-                          select(
-                            'evidenceId',
-                            'Reviewed evidence of the partner’s agreement',
-                            state.evidence.filter(
-                              (e) => e.status === 'reviewed',
-                            ),
-                            'title',
-                          ),
-                        ]}
-                        submit="Submit partner agreement for review"
-                        onSubmit={(v) => mutate('record_partnership', v)}
-                      />
-                    )}
-                    <p className="small mt-4">
-                      Profiles are self-reported. Public profiles appear only
-                      when the co-op itself is public. No affiliation is
-                      independently verified by Verge Common.
-                    </p>
-                  </aside>
-                </div>
+                {renderWorkspacePanel('organizations')}
               </TabsContent>
               <TabsContent value="monitoring">
-                <MonitoringBoard
-                  key={selected}
-                  state={state}
-                  steward={steward}
-                  busy={busy}
-                  growthPaused={data.capacity?.growthPaused}
-                  mutate={mutate}
-                  refresh={() => load(selected)}
-                />
+                {renderWorkspacePanel('monitoring')}
               </TabsContent>
               <TabsContent value="pooling">
-                <h2>Bring compatible parcels into one pathway</h2>
-                <p>
-                  Reviewed parcels can be assessed together for a selected
-                  program and methodology. An area total is a planning measure,
-                  not a carbon-credit approval.
-                </p>
-                {steward && (
-                  <CooperativeParcelMap
-                    key={selected}
-                    parcels={state.parcels}
-                    projects={state.projects}
-                    steward={steward}
-                  />
-                )}
-                {steward ? (
-                  <div className="network-columns">
-                    <section>
-                      {state.projects.map((p) => {
-                        const parcels = state.parcels.filter(
-                          (x) =>
-                            x.projectId === p.id && x.status === 'reviewed',
-                        );
-                        const readiness = projectReadiness(state, p.id);
-                        return (
-                          <article className="network-card" key={p.id}>
-                            <h3>{p.name}</h3>
-                            <h4>Preparation for external review</h4>
-                            <ul>
-                              {readiness.checks.map((check) => (
-                                <li key={check.id}>
-                                  {check.complete ? 'Recorded' : 'Needed'}:{' '}
-                                  {check.label}
-                                </li>
-                              ))}
-                            </ul>
-                            <p className="small">
-                              This checklist tracks preparation records. It does
-                              not approve carbon credits or payouts.
-                            </p>
-                            <p>
-                              {parcels.length} reviewed parcels ·{' '}
-                              {(
-                                readiness.geometry.areaSquareMetres / 10000
-                              ).toLocaleString(undefined, {
-                                maximumFractionDigits: 3,
-                              })}{' '}
-                              hectares estimated from reviewed boundaries
-                            </p>
-                            {readiness.geometry.problems.map((problem, i) => (
-                              <p
-                                className="notice"
-                                key={`${problem.parcelId}-${i}`}
-                              >
-                                {
-                                  state.parcels.find(
-                                    (parcel) => parcel.id === problem.parcelId,
-                                  )?.name
-                                }
-                                : {label(problem.reason)}. Review the parcel and
-                                boundary in the parcels and monitoring tabs.
-                              </p>
-                            ))}
-                            {readiness.geometry.overlaps.map((overlap) => (
-                              <p
-                                className="notice"
-                                key={overlap.parcelIds.join(':')}
-                              >
-                                Overlap:{' '}
-                                {overlap.parcelIds
-                                  .map(
-                                    (id) =>
-                                      state.parcels.find(
-                                        (parcel) => parcel.id === id,
-                                      )?.name,
-                                  )
-                                  .join(' / ')}{' '}
-                                —{' '}
-                                {overlap.areaSquareMetres.toLocaleString(
-                                  undefined,
-                                  { maximumFractionDigits: 1 },
-                                )}{' '}
-                                m². Correct the boundaries or withdraw the
-                                duplicate parcel before pooling.
-                              </p>
-                            ))}
-                            <p className="small">
-                              Areas use the drawn boundary and a spherical Earth
-                              model. Recorded and drawn areas must agree within
-                              5% or 1 m², whichever is larger. This is a
-                              planning check, not a survey. Overlaps are checked
-                              within this co-op; qualified reviewers must check
-                              other projects and registry claims separately.
-                            </p>
-                          </article>
-                        );
-                      })}
-                      {(state.assessments ?? []).map((a) => (
-                        <article className="network-card" key={a.id}>
-                          <h3>
-                            {a.program} · {a.methodology}
-                          </h3>
-                          <Status value={a.status} />
-                          {!assessmentIsCurrent(state, a) && (
-                            <p className="notice">
-                              Land records changed, or this older assessment
-                              lacks a versioned snapshot. Record and review a
-                              new assessment.
-                            </p>
-                          )}
-                          <p>
-                            Boundary snapshot:{' '}
-                            {a.areaSquareMetres.toLocaleString(undefined, {
-                              maximumFractionDigits: 1,
-                            })}{' '}
-                            m² across {a.parcelIds.length} reviewed parcels.
-                          </p>
-                          <p>
-                            {a.areaSquareMetres >= a.minimumSquareMetres
-                              ? 'Recorded area meets the entered planning threshold.'
-                              : 'More compatible area is needed for the entered planning threshold.'}
-                          </p>
-                          <a href={a.source} target="_blank" rel="noreferrer">
-                            Methodology reference ↗
-                          </a>
-                          <h4>Compatibility assessment</h4>
-                          <p>{a.criteria}</p>
-                          <h4>Unresolved requirements and next action</h4>
-                          <p>{a.gaps}</p>
-                          {a.status === 'submitted' && (
-                            <ActionForm
-                              fields={[
-                                choices('decision', 'Review decision', [
-                                  'approve',
-                                  'reject',
-                                ]),
-                              ]}
-                              submit="Record independent review"
-                              onSubmit={(v) =>
-                                mutate('review_assessment', { ...v, id: a.id })
-                              }
-                            />
-                          )}
-                        </article>
-                      ))}
-                    </section>
-                    <aside className="panel">
-                      <ActionForm
-                        title="Record a pathway assessment"
-                        fields={[
-                          projectField(),
-                          field('program', 'Carbon program'),
-                          field('methodology', 'Methodology and version'),
-                          field(
-                            'source',
-                            'Official methodology URL (HTTPS)',
-                            undefined,
-                            { max: 500 },
-                          ),
-                          field(
-                            'minimumSquareMetres',
-                            'Documented minimum area (m²; 0 if no minimum)',
-                            'number',
-                          ),
-                          field(
-                            'criteria',
-                            'Assess geography, land use, ownership, additionality, permanence, monitoring, and non-overlapping boundaries',
-                            'textarea',
-                            { max: 4000 },
-                          ),
-                          field(
-                            'gaps',
-                            'Unresolved requirements, evidence needed, and next action',
-                            'textarea',
-                            { max: 4000 },
-                          ),
-                        ]}
-                        submit="Save assessment for review"
-                        onSubmit={(v) => mutate('record_assessment', v)}
-                      />
-                      <p className="small mt-4">
-                        This saves the current reviewed-parcel snapshot. Create
-                        a new assessment when land or methodology changes.
-                        Another steward reviews your record; that review does
-                        not certify eligibility or issue credits.
-                      </p>
-                    </aside>
-                  </div>
-                ) : (
-                  <Empty>
-                    Stewards manage pooling assessments because they contain
-                    private land records. Ask a steward to discuss the pathway
-                    with you.
-                  </Empty>
-                )}
+                {renderWorkspacePanel('pooling')}
               </TabsContent>
               <TabsContent value="projects">
-                <div className="network-columns">
-                  <section>
-                    {state.projects.length === 0 && (
-                      <Empty>
-                        Add your first EcoHedge or conservation project.
-                      </Empty>
-                    )}
-                    {state.projects.map((p) => (
-                      <article className="network-card" key={p.id}>
-                        <p className="eyebrow">
-                          {label(p.kind)} · {p.region}
-                        </p>
-                        <h2>{p.name}</h2>
-                        <p>{p.summary}</p>
-                        <div className="network-meta">
-                          <Status value={p.status} />
-                          <Status value={p.visibility} />
-                        </div>
-                        {steward && (
-                          <ActionForm
-                            fields={[
-                              choices('status', 'Project status', [
-                                'proposed',
-                                'active',
-                                'completed',
-                                'cancelled',
-                              ]),
-                              choices('visibility', 'Project visibility', [
-                                'members',
-                                'public',
-                              ]),
-                            ]}
-                            submit="Update project"
-                            onSubmit={(v) =>
-                              mutate('project_status', { ...v, id: p.id })
-                            }
-                          />
-                        )}
-                        <div className="task-list">
-                          {state.tasks
-                            .filter((t) => t.projectId === p.id)
-                            .map((t) => (
-                              <div className="task-line" key={t.id}>
-                                <div>
-                                  <strong>{t.title}</strong>
-                                  <span>
-                                    {t.due ? `Due ${t.due} · ` : ''}
-                                    {label(t.status)}
-                                  </span>
-                                </div>
-                                <div className="button-row">
-                                  {t.status === 'open' ? (
-                                    <Button
-                                      variant="outline"
-                                      disabled={busy}
-                                      onClick={() =>
-                                        quick('task_status', {
-                                          id: t.id,
-                                          status: 'claimed',
-                                        })
-                                      }
-                                    >
-                                      I’ll help
-                                    </Button>
-                                  ) : t.status === 'claimed' ? (
-                                    <Button
-                                      disabled={busy}
-                                      onClick={() =>
-                                        quick('task_status', {
-                                          id: t.id,
-                                          status: 'completed',
-                                        })
-                                      }
-                                    >
-                                      <CheckCircle2 />
-                                      Complete
-                                    </Button>
-                                  ) : null}
-                                  {t.status !== 'open' && (
-                                    <Button
-                                      variant="ghost"
-                                      disabled={busy}
-                                      onClick={() =>
-                                        quick('task_status', {
-                                          id: t.id,
-                                          status: 'open',
-                                        })
-                                      }
-                                    >
-                                      Reopen
-                                    </Button>
-                                  )}
-                                </div>
-                              </div>
-                            ))}
-                        </div>
-                        <ActionForm
-                          fields={[
-                            field('title', 'A useful next action'),
-                            field('due', 'Target date', 'date', {
-                              optional: true,
-                            }),
-                          ]}
-                          submit="Add action"
-                          onSubmit={(v) =>
-                            mutate('create_task', { ...v, projectId: p.id })
-                          }
-                        />
-                      </article>
-                    ))}
-                    <h2 className="mt-8">Co-op updates</h2>
-                    {state.updates
-                      .filter((u) => !u.blocked)
-                      .map((u) => (
-                        <article className="network-card" key={u.id}>
-                          <p className="small">
-                            {u.author} · {date(u.createdAt)} ·{' '}
-                            {u.hidden ? 'hidden' : u.visibility}
-                          </p>
-                          <p>{u.text}</p>
-                          {steward && !u.hidden && (
-                            <Button
-                              variant="outline"
-                              onClick={() => quick('hide_update', { id: u.id })}
-                            >
-                              Hide update
-                            </Button>
-                          )}
-                        </article>
-                      ))}
-                  </section>
-                  <aside>
-                    <div className="panel">
-                      <ActionForm
-                        title="Start a project"
-                        fields={[
-                          field('name', 'Project name', undefined, {
-                            max: 120,
-                          }),
-                          choices('kind', 'Project type', [
-                            'ecohedge',
-                            'landscape',
-                            'restoration',
-                          ]),
-                          field('region', 'General area', undefined, {
-                            max: 120,
-                          }),
-                          field(
-                            'summary',
-                            'Purpose and next steps',
-                            'textarea',
-                          ),
-                        ]}
-                        submit="Create private project"
-                        onSubmit={(p) => mutate('create_project', p)}
-                        disabled={busy}
-                      />
-                      <p className="small mt-4">
-                        Keep exact parcel locations private. A steward can
-                        publish the general project description.
-                      </p>
-                    </div>
-                    {state.projects.length > 0 && (
-                      <div className="panel mt-5">
-                        <ActionForm
-                          title="Share an update"
-                          fields={[
-                            projectField(),
-                            field('text', 'What happened?', 'textarea'),
-                            choices(
-                              'visibility',
-                              'Audience',
-                              steward ? ['members', 'public'] : ['members'],
-                            ),
-                          ]}
-                          submit="Post update"
-                          onSubmit={(p) => mutate('post_update', p)}
-                          disabled={busy}
-                        />
-                      </div>
-                    )}
-                  </aside>
-                </div>
+                {renderWorkspacePanel('projects')}
               </TabsContent>
               <TabsContent value="parcels">
-                <div className="network-columns">
-                  <section>
-                    {state.parcels.length === 0 && (
-                      <Empty>
-                        Record land rights and consent before bringing a parcel
-                        into a carbon pool.
-                      </Empty>
-                    )}
-                    {state.parcels.map((p) => (
-                      <article className="network-card" key={p.id}>
-                        <h3>{p.name}</h3>
-                        <p>
-                          {(p.areaSquareMetres / 10000).toLocaleString()}{' '}
-                          hectares
-                        </p>
-                        <p className="small">
-                          Private land reference: {p.landReference}
-                          <br />
-                          Consent reference: {p.consentReference}
-                        </p>
-                        <p>{p.notes}</p>
-                        <Status value={p.status} />
-                        <p className="small">
-                          {parcelConsentIsCurrent(p)
-                            ? 'Current pooling consent reviewed'
-                            : 'Current pooling consent needed'}
-                        </p>
-                        {p.status !== 'withdrawn' &&
-                          p.boundaries?.at(-1)?.status === 'reviewed' && (
-                            <>
-                              <p className="small">
-                                Boundary estimate:{' '}
-                                {Number.isFinite(
-                                  Number(p.boundaries.at(-1)?.areaSquareMetres),
-                                )
-                                  ? `${Math.round(Number(p.boundaries.at(-1)?.areaSquareMetres)).toLocaleString()} m²`
-                                  : 'shown in the pooling geometry check'}
-                                . A correction requires another parcel review
-                                and new consent.
-                              </p>
-                              <Button
-                                variant="outline"
-                                disabled={busy}
-                                onClick={() =>
-                                  quick('use_boundary_area', { parcelId: p.id })
-                                }
-                              >
-                                Use boundary estimate as recorded area
-                              </Button>
-                            </>
-                          )}
-                        {(p.consents ?? []).map((consent) => (
-                          <section className="mt-4" key={consent.id}>
-                            <h4>Pooling consent: {consent.holder}</h4>
-                            <Status value={consent.status} />
-                            <p className="small">
-                              Reference: {consent.reference}
-                              <br />
-                              Authority: {consent.authority}
-                              <br />
-                              Scope: {consent.scope}
-                            </p>
-                            {consent.reviewNote && (
-                              <p className="small">
-                                Review: {consent.reviewNote}
-                              </p>
-                            )}
-                            {steward &&
-                              consent.status === 'submitted' &&
-                              consent.id === p.consents?.at(-1)?.id && (
-                                <ActionForm
-                                  fields={[
-                                    choices(
-                                      'decision',
-                                      'Consent review decision',
-                                      ['approve', 'reject'],
-                                    ),
-                                    field(
-                                      'note',
-                                      'Consent review notes',
-                                      'textarea',
-                                    ),
-                                  ]}
-                                  submit="Review pooling consent"
-                                  disabled={busy}
-                                  onSubmit={(v) =>
-                                    mutate('review_parcel_consent', {
-                                      ...v,
-                                      parcelId: p.id,
-                                      id: consent.id,
-                                    })
-                                  }
-                                />
-                              )}
-                            {['submitted', 'reviewed'].includes(
-                              consent.status,
-                            ) && (
-                              <ActionForm
-                                fields={[
-                                  field(
-                                    'reason',
-                                    'Reason for withdrawing this consent record',
-                                    'textarea',
-                                    { max: 1000 },
-                                  ),
-                                ]}
-                                submit="Revoke pooling consent record"
-                                disabled={busy}
-                                onSubmit={(v) =>
-                                  mutate('revoke_parcel_consent', {
-                                    ...v,
-                                    parcelId: p.id,
-                                    id: consent.id,
-                                  })
-                                }
-                              />
-                            )}
-                          </section>
-                        ))}
-                        {p.status === 'reviewed' &&
-                          p.boundaries?.at(-1)?.status === 'reviewed' && (
-                            <ActionForm
-                              title="Record consent for this parcel and boundary"
-                              fields={[
-                                field(
-                                  'holder',
-                                  'Consenting rights holder',
-                                  undefined,
-                                  { max: 200 },
-                                ),
-                                field(
-                                  'authority',
-                                  'Authority of the person providing consent',
-                                  'textarea',
-                                  { max: 1000 },
-                                ),
-                                field(
-                                  'reference',
-                                  'Signed consent document reference',
-                                  undefined,
-                                  { max: 300 },
-                                ),
-                                field(
-                                  'scope',
-                                  'Agreed pooling purpose, duration, and restrictions',
-                                  'textarea',
-                                  { max: 2000 },
-                                ),
-                                choices(
-                                  'attested',
-                                  'The referenced holder consent covers this parcel and its current boundary',
-                                  ['confirmed'],
-                                ),
-                              ]}
-                              submit="Submit pooling consent for review"
-                              disabled={busy}
-                              onSubmit={(v) =>
-                                mutate('record_parcel_consent', {
-                                  ...v,
-                                  parcelId: p.id,
-                                  attested: v.attested === 'confirmed',
-                                })
-                              }
-                            />
-                          )}
-                        {p.status !== 'withdrawn' && (
-                          <ActionForm
-                            fields={[
-                              field(
-                                'reason',
-                                'Reason for withdrawing this parcel from the proposed pool',
-                                'textarea',
-                                { max: 1000 },
-                              ),
-                            ]}
-                            submit="Withdraw parcel from pool"
-                            disabled={busy}
-                            onSubmit={(v) =>
-                              mutate('withdraw_parcel', {
-                                ...v,
-                                parcelId: p.id,
-                              })
-                            }
-                          />
-                        )}
-                        <p className="small">
-                          Consent and withdrawal records do not create or
-                          terminate a legal agreement. Have the rights holder
-                          and qualified advisers confirm those actions
-                          separately.
-                        </p>
-                        {steward && p.status === 'submitted' && (
-                          <div className="button-row mt-4">
-                            {['approve', 'reject'].map((decision) => (
-                              <Button
-                                key={decision}
-                                variant="outline"
-                                disabled={busy}
-                                onClick={() =>
-                                  quick('review_parcel', { id: p.id, decision })
-                                }
-                              >
-                                {decision === 'approve'
-                                  ? 'Record independent review'
-                                  : 'Reject record'}
-                              </Button>
-                            ))}
-                          </div>
-                        )}
-                      </article>
-                    ))}
-                  </section>
-                  <aside className="panel">
-                    <ActionForm
-                      title="Submit private parcel record"
-                      fields={[
-                        projectField(),
-                        field('name', 'Parcel name', undefined, { max: 120 }),
-                        field(
-                          'landReference',
-                          'Private land-record reference',
-                          undefined,
-                          { max: 300 },
-                        ),
-                        field('area', 'Land area', 'number', { step: 'any' }),
-                        choices('unit', 'Area unit', [
-                          'hectares',
-                          'acres',
-                          'square_metres',
-                        ]),
-                        field(
-                          'consentReference',
-                          'Landowner consent reference',
-                          undefined,
-                          { max: 300 },
-                        ),
-                        field(
-                          'notes',
-                          'Rights, restrictions and access notes',
-                          'textarea',
-                          { optional: true },
-                        ),
-                      ]}
-                      submit="Submit parcel for review"
-                      onSubmit={(p) =>
-                        mutate('record_parcel', {
-                          ...p,
-                          areaSquareMetres: areaToSquareMetres(
-                            Number(p.area),
-                            String(p.unit),
-                          ),
-                        })
-                      }
-                      disabled={busy || !state.projects.length}
-                    />
-                    <p className="small mt-5">
-                      Only you and co-op stewards can view this record. It does
-                      not map, convey, or verify land ownership automatically.
-                    </p>
-                  </aside>
-                </div>
+                {renderWorkspacePanel('parcels')}
               </TabsContent>
               <TabsContent value="members">
-                {steward && (
-                  <section className="panel mb-6">
-                    <ActionForm
-                      title="Invite someone to your co-op"
-                      fields={[
-                        field(
-                          'label',
-                          'Private reminder of who this is for',
-                          undefined,
-                          { max: 120 },
-                        ),
-                      ]}
-                      submit="Create a single-use invitation"
-                      onSubmit={async (v) => {
-                        const response = await fetch('/api/invitations', {
-                          method: 'POST',
-                          headers: { 'content-type': 'application/json' },
-                          body: JSON.stringify({
-                            action: 'create',
-                            id: selected,
-                            label: v.label,
-                          }),
-                        });
-                        const result: { error: string; link: string } =
-                          await response.json();
-                        if (!response.ok) throw new Error(result.error);
-                        setInvitationLink(location.origin + result.link);
-                        await load(selected);
-                        return true;
-                      }}
-                    />
-                    <p className="small">
-                      Expires after seven days. Whoever receives the link can
-                      submit one request; a steward must still approve
-                      membership. Share it privately. Site access restrictions
-                      still apply.
-                    </p>
-                    {invitationLink && (
-                      <ControlLabel>
-                        Copy this invitation before leaving
-                        <Input
-                          readOnly
-                          value={invitationLink}
-                          onFocus={(e) => e.target.select()}
-                        />
-                      </ControlLabel>
-                    )}
-                    {(state.invitations ?? []).map((i) => (
-                      <div className="network-meta" key={i.id}>
-                        <span>
-                          {i.label} ·{' '}
-                          {i.revoked
-                            ? 'Revoked'
-                            : i.used
-                              ? 'Request received'
-                              : i.expiresAt <= now
-                                ? 'Expired'
-                                : `Expires ${date(i.expiresAt)}`}
-                        </span>
-                        {!i.used && !i.revoked && (
-                          <Button
-                            variant="outline"
-                            onClick={() =>
-                              quick('revoke_invitation', { id: i.id })
-                            }
-                          >
-                            Revoke
-                          </Button>
-                        )}
-                      </div>
-                    ))}
-                  </section>
-                )}
-
-                <section className="panel mt-5">
-                  <h2>People in the commons</h2>
-                  <p className="small">
-                    Invite people by sharing the public co-op link. No
-                    invitations are sent automatically.
-                  </p>
-                  <p className="small">
-                    Blocking hides your updates, replies and events from each
-                    other inside this co-op, and prevents replies or event
-                    responses between you. Public pages and shared governance
-                    records remain visible. Stewards retain moderation access.
-                    Report harmful content before blocking so stewards can
-                    review it.
-                  </p>
-                  {state.members.map((m) => (
-                    <div className="member-row" key={m.id}>
-                      <div>
-                        <strong>
-                          {m.name}
-                          {m.isYou ? ' (you)' : ''}
-                        </strong>
-                        <span>
-                          {m.role} · {m.status}
-                        </span>
-                      </div>
-                      <div className="button-row">
-                        {!m.isYou && m.status === 'active' && (
-                          <Button
-                            variant="outline"
-                            disabled={busy}
-                            onClick={() =>
-                              quick(
-                                state.blocks?.some((b) => b.memberId === m.id)
-                                  ? 'unblock_member'
-                                  : 'block_member',
-                                { id: m.id },
-                              )
-                            }
-                          >
-                            {state.blocks?.some((b) => b.memberId === m.id)
-                              ? 'Unblock member'
-                              : 'Block member'}
-                          </Button>
-                        )}
-                        {steward && m.status === 'pending' && (
-                          <>
-                            <Button
-                              disabled={
-                                busy ||
-                                state.visibility === 'archived' ||
-                                data.capacity?.growthPaused
-                              }
-                              onClick={() =>
-                                quick('member_status', {
-                                  id: m.id,
-                                  status: 'active',
-                                })
-                              }
-                            >
-                              Approve
-                            </Button>
-                            <Button
-                              variant="outline"
-                              disabled={busy}
-                              onClick={() =>
-                                quick('member_status', {
-                                  id: m.id,
-                                  status: 'rejected',
-                                })
-                              }
-                            >
-                              Decline
-                            </Button>
-                          </>
-                        )}
-                        {data.isOwner && !m.isYou && m.status === 'active' && (
-                          <Button
-                            variant="outline"
-                            disabled={
-                              busy ||
-                              (m.role !== 'steward' &&
-                                (state.visibility === 'archived' ||
-                                  data.capacity?.growthPaused))
-                            }
-                            onClick={() =>
-                              quick('member_role', {
-                                id: m.id,
-                                role:
-                                  m.role === 'steward' ? 'member' : 'steward',
-                              })
-                            }
-                          >
-                            {m.role === 'steward'
-                              ? 'Make member'
-                              : 'Appoint steward'}
-                          </Button>
-                        )}
-                        {steward && !m.isYou && m.status === 'active' && (
-                          <ConfirmAction
-                            title={`Remove ${m.name}?`}
-                            description="They will lose access to private records. Existing obligations and audit records remain. Only the founding steward can remove other stewards."
-                            label="Remove access"
-                            disabled={busy}
-                            onConfirm={() =>
-                              quick('member_status', {
-                                id: m.id,
-                                status: 'removed',
-                              })
-                            }
-                          />
-                        )}
-                        {data.isOwner &&
-                          !m.isYou &&
-                          m.status === 'active' &&
-                          m.role === 'steward' && (
-                            <ConfirmAction
-                              title={`Transfer responsibility to ${m.name}?`}
-                              description="Confirm this steward has agreed to take over. They will control steward appointments and co-op archival. You remain a steward but cannot reverse the transfer yourself. Land rights, legal authority and financial records do not change."
-                              label="Transfer responsibility"
-                              disabled={busy}
-                              onConfirm={() =>
-                                quick('transfer_stewardship', {
-                                  id: m.id,
-                                  confirmation: 'TRANSFER',
-                                })
-                              }
-                            />
-                          )}
-                      </div>
-                    </div>
-                  ))}
-                  {!!state.blocks?.length && (
-                    <details className="mt-5">
-                      <summary>Members you have blocked</summary>
-                      {state.blocks.map((b) => (
-                        <div className="network-meta" key={b.memberId}>
-                          <span>{b.name}</span>
-                          <Button
-                            variant="outline"
-                            disabled={busy}
-                            onClick={() =>
-                              quick('unblock_member', { id: b.memberId })
-                            }
-                          >
-                            Unblock member
-                          </Button>
-                        </div>
-                      ))}
-                    </details>
-                  )}
-                  <p className="notice mt-5">
-                    Evidence and financial records need a different steward to
-                    review them. Appoint a trusted second steward before
-                    progressing those records.
-                  </p>
-                </section>
+                {renderWorkspacePanel('members')}
               </TabsContent>
               <TabsContent value="agreements">
-                <div className="network-columns">
-                  <section>
-                    {state.agreements.length === 0 && (
-                      <Empty>
-                        Your authorized agreement records will appear here.
-                      </Empty>
-                    )}
-                    {state.agreements.map((a) => (
-                      <article className="network-card" key={a.id}>
-                        <p className="eyebrow">{label(a.kind)}</p>
-                        <h3>
-                          {
-                            state.projects.find((p) => p.id === a.projectId)
-                              ?.name
-                          }
-                        </h3>
-                        <p>
-                          {a.holder} · {a.jurisdiction}
-                        </p>
-                        <p>{a.notes}</p>
-                        <Status value={a.status} />
-                        <p className="small">
-                          Covered parcels:{' '}
-                          {(a.parcelIds ?? [])
-                            .map(
-                              (id: string) =>
-                                state.parcels.find((p) => p.id === id)?.name ??
-                                'Private parcel',
-                            )
-                            .join(', ') ||
-                            'Not recorded — submit a scoped replacement'}
-                        </p>
-                        {!agreementIsCurrent(state, a) && (
-                          <p className="notice">
-                            Coverage or consent is missing or out of date. A new
-                            agreement record must reference the current parcels
-                            before this record can count toward readiness.
-                          </p>
-                        )}
-                        {a.status === 'execution_recorded' && steward && (
-                          <ActionForm
-                            fields={[
-                              field(
-                                'reason',
-                                'Reason this agreement no longer supports the pool',
-                                'textarea',
-                                { max: 1000 },
-                              ),
-                            ]}
-                            submit="Revoke agreement record"
-                            disabled={busy}
-                            onSubmit={(v) =>
-                              mutate('revoke_agreement', { ...v, id: a.id })
-                            }
-                          />
-                        )}
-                        {a.reference && (
-                          <p>
-                            <a
-                              className="text-link"
-                              href={a.reference}
-                              target="_blank"
-                              rel="noreferrer"
-                            >
-                              Supporting reference ↗
-                            </a>
-                          </p>
-                        )}
-                        {a.reviewNote && (
-                          <p className="small">Review: {a.reviewNote}</p>
-                        )}
-                        {a.executionReference && (
-                          <p className="small">
-                            Execution reference: {a.executionReference}
-                            <br />
-                            Recording reference:{' '}
-                            {a.recordingReference || 'Not applicable'}
-                          </p>
-                        )}
-                        {steward &&
-                          !['execution_recorded', 'revoked'].includes(
-                            a.status,
-                          ) && (
-                            <ActionForm
-                              fields={[
-                                choices(
-                                  'status',
-                                  'Review outcome',
-                                  a.status === 'reviewed'
-                                    ? [
-                                        'changes_requested',
-                                        'execution_recorded',
-                                      ]
-                                    : ['changes_requested', 'reviewed'],
-                                ),
-                                field('note', 'Review notes', 'textarea'),
-                                field(
-                                  'executionReference',
-                                  'Executed instrument reference',
-                                  undefined,
-                                  {
-                                    optional: a.status !== 'reviewed',
-                                    max: 300,
-                                  },
-                                ),
-                                field(
-                                  'recordingReference',
-                                  'Recording reference (required for executed easements)',
-                                  undefined,
-                                  { optional: true, max: 300 },
-                                ),
-                              ]}
-                              submit="Save review"
-                              onSubmit={(p) =>
-                                mutate('review_agreement', { ...p, id: a.id })
-                              }
-                              disabled={busy}
-                            />
-                          )}
-                      </article>
-                    ))}
-                  </section>
-                  <aside className="panel">
-                    <ActionForm
-                      title="Submit an agreement record"
-                      fields={[
-                        projectField(),
-                        {
-                          name: 'parcelIds',
-                          label:
-                            'Specific covered parcels (choose only parcels in the selected project)',
-                          type: 'multiselect',
-                          options: state.parcels
-                            .filter((p) => p.status !== 'withdrawn')
-                            .map((p) => ({
-                              value: p.id,
-                              label: `${state.projects.find((project) => project.id === p.projectId)?.name}: ${p.name}`,
-                            })),
-                        },
-                        choices('kind', 'Instrument', [
-                          'enrollment',
-                          'easement',
-                          'carbon_rights',
-                        ]),
-                        field('jurisdiction', 'Jurisdiction', undefined, {
-                          max: 120,
-                        }),
-                        field(
-                          'holder',
-                          'Proposed holder / counterparty',
-                          undefined,
-                          { max: 160 },
-                        ),
-                        field(
-                          'notes',
-                          'Rights, obligations, and unresolved questions',
-                          'textarea',
-                          { max: 3000 },
-                        ),
-                        field(
-                          'reference',
-                          'Private HTTPS document reference',
-                          undefined,
-                          { optional: true, max: 1500 },
-                        ),
-                      ]}
-                      submit="Submit for review"
-                      onSubmit={(p) => mutate('submit_agreement', p)}
-                      disabled={busy || !state.projects.length}
-                    />
-                    <p className="small mt-5">
-                      Records are visible to the submitter and stewards.
-                      Recording an execution reference does not execute or
-                      legally validate an instrument.
-                    </p>
-                    <a
-                      href="https://github.com/jdhart81/verge-common/tree/main/templates"
-                      className="text-link"
-                    >
-                      Open agreement templates ↗
-                    </a>
-                  </aside>
-                </div>
+                {renderWorkspacePanel('agreements')}
               </TabsContent>
               <TabsContent value="evidence">
-                <div className="network-columns">
-                  <section>
-                    {state.evidence.length === 0 && (
-                      <Empty>No evidence visible to you yet.</Empty>
-                    )}
-                    {state.evidence.map((e) => (
-                      <article className="network-card" key={e.id}>
-                        <h3>{e.title}</h3>
-                        <p className="small">
-                          {e.method} · {e.period}
-                        </p>
-                        <p>{e.notes}</p>
-                        <Status value={e.status} />
-                        {e.asset && (
-                          <>
-                            <p>
-                              <Link
-                                href={`/api/files?id=${e.asset.id}`}
-                                className="text-link"
-                                prefetch={false}
-                                target="_top"
-                              >
-                                <Download size={16} />
-                                {e.asset.filename}
-                              </Link>
-                            </p>
-                            <p className="digest">SHA-256: {e.asset.sha256}</p>
-                          </>
-                        )}
-                        {e.reference && (
-                          <a
-                            className="text-link"
-                            href={e.reference}
-                            target="_blank"
-                            rel="noreferrer"
-                          >
-                            Evidence reference ↗
-                          </a>
-                        )}
-                        {e.reviewNote && (
-                          <p className="small mt-3">{e.reviewNote}</p>
-                        )}
-                        {steward && e.status === 'submitted' && (
-                          <ActionForm
-                            fields={[
-                              choices('decision', 'Decision', [
-                                'approve',
-                                'reject',
-                              ]),
-                              field('note', 'Review basis', 'textarea'),
-                            ]}
-                            submit="Record independent review"
-                            onSubmit={(p) =>
-                              mutate('review_evidence', { ...p, id: e.id })
-                            }
-                          />
-                        )}
-                      </article>
-                    ))}
-                  </section>
-                  <aside className="panel">
-                    <EvidenceForm
-                      key={selected}
-                      workspaceId={selected}
-                      projects={state.projects}
-                      disabled={busy}
-                      onSubmit={(p) => mutate('submit_evidence', p)}
-                    />
-                    <p className="small mt-5">
-                      Files are private to the uploader and stewards. Review
-                      records document a human review; they do not constitute
-                      carbon-program verification.
-                    </p>
-                  </aside>
-                </div>
+                {renderWorkspacePanel('evidence')}
               </TabsContent>
               <TabsContent value="governance">
-                <PayoutPreview
-                  currency={state.currency ?? 'USD'}
-                  members={state.members.filter((m) => m.status === 'active')}
-                />
-                <div className="network-columns">
-                  <section>
-                    {state.proposals.length === 0 && (
-                      <Empty>
-                        Adopt a versioned allocation policy with a recorded
-                        member vote.
-                      </Empty>
-                    )}
-                    {state.proposals.map((p) => (
-                      <article className="network-card" key={p.id}>
-                        <h3>{p.title}</h3>
-                        <p>{p.text}</p>
-                        <Status value={p.status} />
-                        <p className="small">
-                          {p.votes.length} of {p.electorate.length} votes ·
-                          closes {new Date(p.closesAt).toLocaleString()} ·
-                          quorum {p.quorum}
-                        </p>
-                        <dl className="ledger">
-                          {p.shares.map((m) => (
-                            <div key={m.id}>
-                              <dt>{m.name}</dt>
-                              <dd>{m.shareBps / 100}%</dd>
-                            </div>
-                          ))}
-                        </dl>
-                        <p className="small mt-3">
-                          Stewardship {p.stewardshipBps / 100}% · treasury{' '}
-                          {p.treasuryBps / 100}% of settled proceeds. Member
-                          shares apply to the remainder.
-                        </p>
-                        {p.status === 'open' && (
-                          <>
-                            <div className="button-row mt-4">
-                              {['approve', 'oppose', 'abstain'].map(
-                                (choice) => (
-                                  <Button
-                                    variant={
-                                      p.votes.find(
-                                        (v) => v.memberId === data.memberId,
-                                      )?.choice === choice
-                                        ? 'default'
-                                        : 'outline'
-                                    }
-                                    key={choice}
-                                    disabled={busy}
-                                    onClick={() =>
-                                      quick('vote', { id: p.id, choice })
-                                    }
-                                  >
-                                    {label(choice)}
-                                  </Button>
-                                ),
-                              )}
-                            </div>
-                            {steward && (
-                              <Button
-                                variant="outline"
-                                className="mt-4"
-                                disabled={busy}
-                                onClick={() =>
-                                  quick('close_proposal', { id: p.id })
-                                }
-                              >
-                                Close and tally
-                              </Button>
-                            )}
-                          </>
-                        )}
-                      </article>
-                    ))}
-                  </section>
-                  <aside className="panel">
-                    {steward ? (
-                      <ActionForm
-                        title="Propose allocation charter"
-                        fields={[
-                          field('title', 'Policy title'),
-                          field(
-                            'text',
-                            'Policy and member obligations',
-                            'textarea',
-                            { max: 4000 },
-                          ),
-                          field('days', 'Voting period (days)', 'number', {
-                            value: 7,
-                          }),
-                          field(
-                            'stewardshipPercent',
-                            'Stewardship budget (%)',
-                            'number',
-                            { value: 15, step: '0.01' },
-                          ),
-                          field(
-                            'treasuryPercent',
-                            'Treasury reserve (%)',
-                            'number',
-                            { value: 10, step: '0.01' },
-                          ),
-                          ...state.members
-                            .filter((m) => m.status === 'active')
-                            .map((m) =>
-                              field(
-                                `share_${m.id}`,
-                                `${m.name}: member-pool share (%)`,
-                                'number',
-                                { value: 0, step: '0.01' },
-                              ),
-                            ),
-                        ]}
-                        submit="Open member vote"
-                        onSubmit={(p) =>
-                          mutate('propose_charter', {
-                            title: p.title,
-                            text: p.text,
-                            days: p.days,
-                            stewardshipBps: Math.round(
-                              Number(p.stewardshipPercent) * 100,
-                            ),
-                            treasuryBps: Math.round(
-                              Number(p.treasuryPercent) * 100,
-                            ),
-                            shares: state.members
-                              .filter((m) => m.status === 'active')
-                              .map((m) => ({
-                                id: m.id,
-                                shareBps: Math.round(
-                                  Number(p[`share_${m.id}`]) * 100,
-                                ),
-                              })),
-                          })
-                        }
-                        disabled={busy}
-                      />
-                    ) : (
-                      <p>
-                        Stewards propose policy; eligible members vote here.
-                      </p>
-                    )}
-                    <p className="small mt-5">
-                      The electorate is frozen when a proposal opens. Adoption
-                      requires two-thirds participation and approval by more
-                      than half of that electorate. Voting closes at the
-                      deadline, or early once everyone has voted.
-                    </p>
-                    <p className="notice mt-4">
-                      An adopted software policy does not establish a legal
-                      co-op or replace its legally required governance.
-                    </p>
-                  </aside>
-                </div>
+                {renderWorkspacePanel('governance')}
               </TabsContent>
               <TabsContent value="ledger">
-                <Ledger
-                  state={state}
-                  steward={steward}
-                  busy={busy}
-                  mutate={mutate}
-                  quick={quick}
-                />
+                {renderWorkspacePanel('ledger')}
               </TabsContent>
               <TabsContent value="history">
                 <section className="panel mt-5">
@@ -2710,67 +2946,7 @@ export function NetworkApp({
                   ) : (
                     <p>Your stewards manage the co-op profile.</p>
                   )}
-                  <div className="mt-8">
-                    <h2>Legal authority record</h2>
-                    {state.authority ? (
-                      <>
-                        <p>
-                          {state.authority.legalName} ·{' '}
-                          {state.authority.jurisdiction}
-                        </p>
-                        <p className="small">{state.authority.reference}</p>
-                        <Status value={state.authority.status} />
-                        {steward && state.authority.status === 'submitted' && (
-                          <div className="button-row mt-4">
-                            {['approve', 'reject'].map((decision) => (
-                              <Button
-                                variant="outline"
-                                key={decision}
-                                disabled={busy}
-                                onClick={() =>
-                                  quick('review_authority', { decision })
-                                }
-                              >
-                                {decision === 'approve'
-                                  ? 'Record independent authority review'
-                                  : 'Reject authority record'}
-                              </Button>
-                            ))}
-                          </div>
-                        )}
-                      </>
-                    ) : (
-                      <p className="small">
-                        No external legal authority has been recorded. Issued
-                        holding records stay blocked.
-                      </p>
-                    )}
-                    {steward && state.authority?.status !== 'reviewed' && (
-                      <ActionForm
-                        fields={[
-                          field(
-                            'legalName',
-                            'Legal co-op / project-holder name',
-                          ),
-                          field('jurisdiction', 'Jurisdiction'),
-                          field(
-                            'reference',
-                            'Formation / authority document reference',
-                            undefined,
-                            { max: 300 },
-                          ),
-                          evidenceField(),
-                        ]}
-                        submit="Submit authority record"
-                        onSubmit={(p) => mutate('record_authority', p)}
-                        disabled={busy}
-                      />
-                    )}
-                    <p className="small mt-4">
-                      This records human review of external documents. It does
-                      not form a legal entity.
-                    </p>
-                  </div>
+                  {renderWorkspacePanel('authority')}
                   <p className="notice mt-5">
                     Public profiles expose the introduction, general region,
                     active member count, and explicitly public projects/updates.
@@ -2815,7 +2991,9 @@ export function NetworkApp({
               Your membership status is {label(data.membershipStatus)}. A
               steward manages access.
             </p>
-            <Button onClick={() => load(selected)}>Refresh status</Button>
+            <Button onClick={() => load(selected, '', true)}>
+              Refresh status
+            </Button>
           </Empty>
         ) : (
           <div className="network-columns">
@@ -3122,16 +3300,23 @@ function EvidenceForm({
 function Ledger({
   state,
   steward,
+  growthPaused,
   busy,
   mutate,
   quick,
 }: {
   state: Workspace;
   steward: boolean;
+  growthPaused?: boolean;
   busy: boolean;
   mutate: (op: string, p: CommandPayload) => Promise<boolean>;
   quick: (op: string, p: CommandPayload) => Promise<void>;
 }) {
+  const canRecord =
+    steward &&
+    !growthPaused &&
+    !state.financialRecordsRedactedAt &&
+    state.visibility !== 'archived';
   const money = (n: number) => formatMoney(n, state.currency ?? 'USD');
   const reviewed = state.evidence.filter((e) => e.status === 'reviewed');
   const evidence = () =>
@@ -3140,6 +3325,7 @@ function Ledger({
     <div className="button-row mt-4">
       {steward &&
         r.status === 'submitted' &&
+        r.canReview === true &&
         ['approve', 'reject'].map((decision) => (
           <Button
             variant="outline"
@@ -3161,6 +3347,12 @@ function Ledger({
         registry transfers, or send payments. Stewards record and independently
         review supporting receipts. Amounts below come from those records.
       </div>
+      {state.financialRecordsRedactedAt && (
+        <p className="notice mt-4">
+          Financial recording is paused because identifying records were erased.
+          Preserved amounts remain available for historical review.
+        </p>
+      )}
       <Tabs defaultValue="holdings" className="mt-5">
         <TabsList className="coop-tabs">
           {['holdings', 'settlements', 'allocations', 'retirements'].map(
@@ -3189,6 +3381,10 @@ function Ledger({
                     Issuance receipt: {l.reference}
                   </p>
                   <Status value={l.status} />
+                  <FinancialEvidence
+                    id={l.evidenceId}
+                    evidence={state.evidence}
+                  />
                   {review('lot', l)}
                 </article>
               ))}
@@ -3199,7 +3395,7 @@ function Ledger({
                 </Empty>
               )}
             </section>
-            {steward && (
+            {canRecord && (
               <aside className="panel">
                 <ActionForm
                   title="Record external issued holding"
@@ -3243,6 +3439,10 @@ function Ledger({
                   </h3>
                   <p>{s.reference}</p>
                   <Status value={s.status} />
+                  <FinancialEvidence
+                    id={s.evidenceId}
+                    evidence={state.evidence}
+                  />
                   {review('settlement', s)}
                 </article>
               ))}
@@ -3250,7 +3450,7 @@ function Ledger({
                 <Empty>No external settled-cash records.</Empty>
               )}
             </section>
-            {steward && (
+            {canRecord && (
               <aside className="panel">
                 <ActionForm
                   title="Record an external settlement"
@@ -3296,108 +3496,15 @@ function Ledger({
           <div className="network-columns">
             <section>
               {state.allocations.map((a) => (
-                <article className="network-card" key={a.id}>
-                  <h3>Allocation · {money(a.amounts.grossCents)}</h3>
-                  <Status value={a.status} />
-                  <dl className="ledger">
-                    <div>
-                      <dt>Stewardship</dt>
-                      <dd>{money(a.amounts.stewardshipCents)}</dd>
-                    </div>
-                    <div>
-                      <dt>Treasury reserve</dt>
-                      <dd>{money(a.amounts.treasuryCents)}</dd>
-                    </div>
-                    <div>
-                      <dt>Platform percentage cut</dt>
-                      <dd>{money(0)}</dd>
-                    </div>
-                    {a.amounts.members.map((m) => (
-                      <div key={m.id}>
-                        <dt>{m.name}</dt>
-                        <dd>{money(m.cents)}</dd>
-                      </div>
-                    ))}
-                  </dl>
-                  {steward && a.status === 'draft' && (
-                    <Button
-                      className="mt-4"
-                      disabled={busy}
-                      onClick={() => quick('approve_allocation', { id: a.id })}
-                    >
-                      Approve allocation
-                    </Button>
-                  )}
-                  {a.payments.map((p) => (
-                    <div className="network-card" key={p.id}>
-                      <p>
-                        {
-                          a.amounts.members.find((m) => m.id === p.memberId)
-                            ?.name
-                        }{' '}
-                        · {money(p.cents)}
-                      </p>
-                      <p className="small">
-                        External payment receipt: {p.reference}
-                      </p>
-                      <Status value={p.status} />
-                      {steward && p.status === 'submitted' && (
-                        <div className="button-row">
-                          {['approve', 'reject'].map((decision) => (
-                            <Button
-                              variant="outline"
-                              key={decision}
-                              disabled={busy}
-                              onClick={() =>
-                                quick('review_payment', {
-                                  id: a.id,
-                                  paymentId: p.id,
-                                  decision,
-                                })
-                              }
-                            >
-                              {decision === 'approve'
-                                ? 'Confirm receipt review'
-                                : 'Reject receipt'}
-                            </Button>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                  ))}
-                  {steward && a.status === 'approved' && (
-                    <ActionForm
-                      title="Record a completed external member payment"
-                      fields={[
-                        select(
-                          'memberId',
-                          'Member',
-                          a.amounts.members.filter(
-                            (m) =>
-                              m.cents > 0 &&
-                              !a.payments.some(
-                                (p) =>
-                                  p.memberId === m.id &&
-                                  p.status !== 'rejected',
-                              ),
-                          ),
-                        ),
-                        field(
-                          'reference',
-                          'Unique external payment reference',
-                          undefined,
-                          { max: 300 },
-                        ),
-                        evidence(),
-                      ]}
-                      submit="Submit payment receipt"
-                      onSubmit={(p) =>
-                        mutate('record_payment', { ...p, id: a.id })
-                      }
-                      disabled={busy}
-                    />
-                  )}
-                </article>
+                <AllocationRecord
+                  key={a.id}
+                  allocation={a}
+                  state={state}
+                  steward={canRecord}
+                  busy={busy}
+                  mutate={mutate}
+                  quick={quick}
+                />
               ))}
               {!state.allocations.length && (
                 <Empty>
@@ -3406,7 +3513,7 @@ function Ledger({
                 </Empty>
               )}
             </section>
-            {steward && (
+            {canRecord && (
               <aside className="panel">
                 <ActionForm
                   title="Allocate reconciled proceeds"
@@ -3449,6 +3556,10 @@ function Ledger({
                   </h3>
                   <p>{r.reference}</p>
                   <Status value={r.status} />
+                  <FinancialEvidence
+                    id={r.evidenceId}
+                    evidence={state.evidence}
+                  />
                   {review('retirement', r)}
                 </article>
               ))}
@@ -3456,7 +3567,7 @@ function Ledger({
                 <Empty>No external retirement receipts recorded.</Empty>
               )}
             </section>
-            {steward && (
+            {canRecord && (
               <aside className="panel">
                 <ActionForm
                   title="Record an external retirement"
@@ -3712,5 +3823,305 @@ function PayoutPreview({
         shares for later allocations.
       </p>
     </section>
+  );
+}
+
+function FinancialEvidence({
+  id,
+  evidence,
+}: {
+  id?: string;
+  evidence: Evidence[];
+}) {
+  const record = evidence.find((item) => item.id === id);
+  if (!record)
+    return (
+      <p className="small mt-3">
+        Supporting evidence is restricted or no longer available in your
+        records. A receipt alone does not verify external activity.
+      </p>
+    );
+  return (
+    <details className="mt-3">
+      <summary>Supporting evidence: {record.title}</summary>
+      <p className="small">
+        {record.method} · {record.period}
+      </p>
+      <p className="small">{record.notes}</p>
+      {record.reviewNote && (
+        <p className="small">Evidence review: {record.reviewNote}</p>
+      )}
+      {record.reference && (
+        <p>
+          <a
+            className="text-link"
+            href={record.reference}
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            Open supporting reference ↗
+          </a>
+        </p>
+      )}
+      {record.asset && (
+        <p>
+          <a
+            className="text-link"
+            href={`/api/files?id=${encodeURIComponent(record.asset.id)}`}
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            Open private file: {record.asset.filename}
+          </a>
+        </p>
+      )}
+    </details>
+  );
+}
+
+function AllocationRecord({
+  allocation: a,
+  state,
+  steward,
+  busy,
+  mutate,
+  quick,
+}: {
+  allocation: Workspace['allocations'][number];
+  state: Workspace;
+  steward: boolean;
+  busy: boolean;
+  mutate: (op: string, p: CommandPayload) => Promise<boolean>;
+  quick: (op: string, p: CommandPayload) => Promise<void>;
+}) {
+  const money = (n: number) => formatMoney(n, state.currency ?? 'USD');
+  const reconciliation = allocationReconciliation(a);
+  const settlement = state.settlements.find((s) => s.id === a.settlementId);
+  const projectId = state.lots.find(
+    (l) => l.id === settlement?.lotId,
+  )?.projectId;
+  const evidence = () =>
+    select(
+      'evidenceId',
+      'Reviewed evidence from this project',
+      state.evidence.filter(
+        (e) => e.status === 'reviewed' && e.projectId === projectId,
+      ),
+      'title',
+    );
+  const members = a.amounts.members.filter(
+    (m) =>
+      m.cents > 0 &&
+      !a.payments.some((p) => p.memberId === m.id && p.status !== 'rejected'),
+  );
+  const receiptReview = (
+    kind: 'payment' | 'disbursement',
+    record: ReviewRecord,
+  ) =>
+    steward &&
+    record.canReview === true &&
+    record.status === 'submitted' && (
+      <div className="button-row mt-3">
+        {['approve', 'reject'].map((decision) => (
+          <Button
+            variant="outline"
+            key={decision}
+            disabled={busy}
+            onClick={() =>
+              quick(`review_${kind}`, {
+                id: a.id,
+                [kind === 'payment' ? 'paymentId' : 'disbursementId']:
+                  record.id,
+                decision,
+              })
+            }
+          >
+            {decision === 'approve'
+              ? 'Confirm receipt review'
+              : 'Reject receipt'}
+          </Button>
+        ))}
+      </div>
+    );
+  return (
+    <article className="network-card">
+      <h3>Cleared proceeds allocated · {money(a.amounts.grossCents)}</h3>
+      <Status value={a.status} />
+      <p className="small mt-3">
+        These balances reconcile recorded external receipts. They are not a live
+        bank balance or instructions to send money. Pending receipts await a
+        different steward’s review.
+      </p>
+      <div className="mt-4 space-y-4">
+        {(
+          [
+            ['total', 'All allocated proceeds'],
+            ['memberPool', 'Member payments'],
+            ['stewardship', 'Conservation stewardship'],
+            ['treasury', 'Treasury reserve transfers'],
+          ] as const
+        ).map(([key, title]) => (
+          <section key={key} aria-label={title}>
+            <h4 className="font-semibold">{title}</h4>
+            <dl className="ledger">
+              <div>
+                <dt>Allocated</dt>
+                <dd>{money(reconciliation[key].allocatedCents)}</dd>
+              </div>
+              <div>
+                <dt>Reviewed receipts</dt>
+                <dd>{money(reconciliation[key].reviewedReceiptCents)}</dd>
+              </div>
+              <div>
+                <dt>Pending review</dt>
+                <dd>{money(reconciliation[key].pendingReceiptCents)}</dd>
+              </div>
+              <div>
+                <dt>Without a recorded receipt</dt>
+                <dd>{money(reconciliation[key].remainingUnrecordedCents)}</dd>
+              </div>
+            </dl>
+          </section>
+        ))}
+      </div>
+      <details className="mt-4">
+        <summary>Member allocations and platform share</summary>
+        <dl className="ledger">
+          {a.amounts.members.map((m) => (
+            <div key={m.id}>
+              <dt>{m.name}</dt>
+              <dd>{money(m.cents)}</dd>
+            </div>
+          ))}
+          <div>
+            <dt>Platform percentage cut</dt>
+            <dd>{money(0)}</dd>
+          </div>
+        </dl>
+      </details>
+      {steward && a.status === 'draft' && a.canReview === true && (
+        <Button
+          className="mt-4"
+          disabled={busy}
+          onClick={() => quick('approve_allocation', { id: a.id })}
+        >
+          Approve allocation
+        </Button>
+      )}
+      {a.payments.map((p) => (
+        <div className="network-card" key={p.id}>
+          <p>
+            {a.amounts.members.find((m) => m.id === p.memberId)?.name} ·{' '}
+            {money(p.cents)}
+          </p>
+          <p className="small">
+            External member payment receipt: {p.reference}
+          </p>
+          <Status value={p.status} />
+          <FinancialEvidence id={p.evidenceId} evidence={state.evidence} />
+          {receiptReview('payment', p)}
+        </div>
+      ))}
+      {(a.disbursements ?? []).map((d) => (
+        <div className="network-card" key={d.id}>
+          <p>
+            {d.budget === 'stewardship'
+              ? 'Stewardship payment'
+              : 'Treasury transfer'}{' '}
+            · {money(d.cents)}
+          </p>
+          <p>
+            {d.recipientLabel} · {d.purpose}
+          </p>
+          <p className="small">External receipt: {d.reference}</p>
+          <Status value={d.status} />
+          <FinancialEvidence id={d.evidenceId} evidence={state.evidence} />
+          {receiptReview('disbursement', d)}
+        </div>
+      ))}
+      {steward && a.status === 'approved' && (
+        <>
+          {members.length > 0 && (
+            <ActionForm
+              title="Record a completed external member payment"
+              fields={[
+                select('memberId', 'Member', members),
+                field(
+                  'reference',
+                  'Unique external payment reference',
+                  undefined,
+                  { max: 300 },
+                ),
+                evidence(),
+              ]}
+              submit="Submit payment receipt"
+              onSubmit={(p) => mutate('record_payment', { ...p, id: a.id })}
+              disabled={busy}
+            />
+          )}
+          {(['stewardship', 'treasury'] as const).map(
+            (budget) =>
+              reconciliation[budget].remainingUnrecordedCents > 0 && (
+                <section key={budget} className="mt-5">
+                  <p className="small">
+                    {budget === 'stewardship'
+                      ? 'Record a completed conservation payment to a partner or provider. An allocation alone does not mean they have been paid.'
+                      : 'Record a completed transfer into the co-op treasury reserve. This is not a conservation expense or a payment to a nonprofit.'}{' '}
+                    Recipient and purpose are visible to co-op members; omit
+                    bank account numbers.
+                  </p>
+                  <ActionForm
+                    title={
+                      budget === 'stewardship'
+                        ? 'Record completed stewardship payment'
+                        : 'Record completed treasury transfer'
+                    }
+                    fields={[
+                      field(
+                        'amount',
+                        `Completed amount (${state.currency ?? 'USD'})`,
+                      ),
+                      field(
+                        'recipientLabel',
+                        budget === 'stewardship'
+                          ? 'Recipient name'
+                          : 'Treasury recipient or reserve label',
+                        undefined,
+                        { max: 160 },
+                      ),
+                      field(
+                        'purpose',
+                        'Purpose of the completed payment or transfer',
+                        'textarea',
+                        { max: 1000 },
+                      ),
+                      field(
+                        'reference',
+                        'Unique external receipt reference',
+                        undefined,
+                        { max: 300 },
+                      ),
+                      evidence(),
+                    ]}
+                    submit="Submit completed transfer receipt"
+                    onSubmit={(p) =>
+                      mutate('record_disbursement', {
+                        ...p,
+                        id: a.id,
+                        budget,
+                        cents: toMinor(
+                          String(p.amount),
+                          state.currency ?? 'USD',
+                        ),
+                      })
+                    }
+                    disabled={busy}
+                  />
+                </section>
+              ),
+          )}
+        </>
+      )}
+    </article>
   );
 }

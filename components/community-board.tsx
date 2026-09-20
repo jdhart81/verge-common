@@ -231,12 +231,14 @@ export function CommunityBoard({
   steward,
   busy,
   growthPaused = false,
+  conversationActions,
   mutate,
 }: {
   state: CommunityState;
   steward: boolean;
   busy: boolean;
   growthPaused?: boolean;
+  conversationActions?: React.ReactNode;
   mutate: Save;
 }) {
   const zone = useSyncExternalStore(
@@ -304,10 +306,10 @@ export function CommunityBoard({
         </span>
       </div>
       {notice && <output className="notice mt-4">{notice}</output>}
-      <Tabs defaultValue="events" className="mt-6">
+      <Tabs defaultValue="discussion" className="mt-6">
         <TabsList>
-          <TabsTrigger value="events">Events</TabsTrigger>
           <TabsTrigger value="discussion">Discussion</TabsTrigger>
+          <TabsTrigger value="events">Events</TabsTrigger>
           <TabsTrigger value="reports">
             {steward ? 'Moderation' : 'My reports'}
           </TabsTrigger>
@@ -378,7 +380,11 @@ export function CommunityBoard({
                       ].map(([response, title]) => (
                         <Button
                           key={response}
-                          disabled={response === 'not_going' && !!e.yourResponse ? busy : disabled}
+                          disabled={
+                            response === 'not_going' && !!e.yourResponse
+                              ? busy
+                              : disabled
+                          }
                           variant={
                             e.yourResponse === response ? 'default' : 'outline'
                           }
@@ -624,6 +630,7 @@ export function CommunityBoard({
           </div>
         </TabsContent>
         <TabsContent value="discussion">
+          {conversationActions}
           <div className="network-columns">
             <section>
               {!state.updates.some((u) => !u.blocked) && (

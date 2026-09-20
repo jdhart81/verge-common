@@ -70,7 +70,7 @@ const nodeFetch = (url, options = {}) =>
     );
   });
 
-async function fixture(t, lifecycle = {}) {
+async function fixture(t, lifecycle = {}, gatewayOptions = {}) {
   const db = new DatabaseSync(':memory:');
   db.exec('PRAGMA foreign_keys=ON');
   const auth = createAuth(db, Date.now, lifecycle);
@@ -114,7 +114,12 @@ async function fixture(t, lifecycle = {}) {
     return send(200, { id, version: input ? 5 : 4, actor, input });
   });
   const upstreamPort = await listen(upstream);
-  const { server } = createGateway({ origin, upstreamPort, auth });
+  const { server } = createGateway({
+    origin,
+    upstreamPort,
+    auth,
+    ...gatewayOptions,
+  });
   const port = await listen(server);
   t.after(async () => {
     await close(server);
@@ -208,6 +213,15 @@ await test('router-generated account URLs preserve the gateway destination', asy
   }
   const account = await f.request('/account');
   assert.equal(account.status, 200);
+  const policy = account.headers.get('content-security-policy');
+  assert.ok(policy.includes("default-src 'none'"));
+  assert.equal(
+    policy
+      .split(';')
+      .map((part) => part.trim())
+      .find((part) => part.startsWith('img-src ')),
+    `img-src ${origin}/brand/shared-canopy-logo-v1.png ${origin}/icons/`,
+  );
   assert.match(await account.text(), /Welcome back/);
 });
 
@@ -872,4 +886,69 @@ await test('erasure blockers roll back changes and preserve login until stewards
   assert.ok(
     f.db.prepare('SELECT id FROM users WHERE id=?').get(f.alice.user.id),
   );
+});
+
+await test('provider preview keeps ordinary login unchanged and reveals only configured providers on the preview link', async (t) => {
+  const f = await fixture(
+    t,
+    {},
+    {
+      socialPreview: true,
+      social: {
+        available: () => [{ id: 'apple', name: 'Apple', linked: false }],
+      },
+    },
+  );
+  assert.doesNotMatch(
+    await (await f.request('/account')).text(),
+    /Continue with Apple/,
+  );
+  assert.doesNotMatch(
+    await (await f.request('/account?socialPreview=0')).text(),
+    /Continue with Apple/,
+  );
+  const signedIn = await f.request('/account', {
+    headers: { cookie: `vc_session=${f.alice.session}` },
+  });
+  assert.match(await signedIn.text(), /Link Apple/);
+  const preview = await f.request('/account?socialPreview=1');
+  assert.match(await preview.text(), /Continue with Apple/);
+  assert.match(
+    preview.headers.get('content-security-policy'),
+    /https:\/\/appleid.apple.com/,
+  );
+});
+
+await test('Supabase login forms allow the exact broker redirect without broadening other CSP directives', async (t) => {
+  const broker = 'https://tizcemlockjetjaqnnlt.supabase.co';
+  const f = await fixture(
+    t,
+    {},
+    {
+      socialPreview: true,
+      social: {
+        available: () => [{ id: 'google', name: 'Google', linked: false }],
+        formActionOrigins: [
+          'https://accounts.google.com',
+          'https://appleid.apple.com',
+          broker,
+        ],
+      },
+    },
+  );
+  const response = await f.request('/account?socialPreview=1');
+  const policy = response.headers.get('content-security-policy');
+  const directives = Object.fromEntries(
+    policy.split(';').map((value) => {
+      const [name, ...sources] = value.trim().split(/\s+/);
+      return [name, sources.join(' ')];
+    }),
+  );
+  assert.equal(
+    directives['form-action'],
+    `'self' https://accounts.google.com https://appleid.apple.com ${broker}`,
+  );
+  assert.equal(directives['default-src'], "'none'");
+  assert.equal(directives['frame-ancestors'], "'none'");
+  assert(!policy.includes('*.supabase.co'));
 });

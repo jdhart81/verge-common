@@ -69,6 +69,7 @@ struct WorkspaceView: Decodable {
     let state: MemberWorkspace
     let version: Int
     let role: String
+    var canParticipate: Bool { state.visibility != "archived" && ["member", "steward"].contains(role) }
 }
 struct MemberWorkspace: Decodable, Identifiable {
     let id: String
@@ -82,7 +83,14 @@ struct MemberWorkspace: Decodable, Identifiable {
     let observations: [MemberObservation]
     let members: [WorkspaceMember]?
     let blocks: [MemberBlock]?
+    let comments: [MemberComment]?
     var visibleUpdates: [MemberUpdate] { updates.filter(\.isVisible).sorted { $0.createdAt > $1.createdAt } }
+    func visibleComments(for updateID: String) -> [MemberComment] {
+        guard visibleUpdates.contains(where: { $0.id == updateID }) else { return [] }
+        return (comments ?? []).filter { $0.updateId == updateID && $0.isVisible }.sorted {
+            $0.createdAt == $1.createdAt ? $0.id < $1.id : $0.createdAt < $1.createdAt
+        }
+    }
     var blockableMembers: [WorkspaceMember] {
         (members ?? []).filter { member in
             !member.isYou && member.status == "active" && !(blocks ?? []).contains(where: { $0.memberId == member.id })
@@ -108,6 +116,17 @@ struct MemberUpdate: Decodable, Identifiable {
     let blocked: Bool?
     var isVisible: Bool { !hidden && blocked != true }
 }
+struct MemberComment: Decodable, Identifiable {
+    let id: String
+    let updateId: String
+    let text: String
+    let author: String
+    let createdAt: Double
+    let hidden: Bool
+    let blocked: Bool?
+    let isYou: Bool?
+    var isVisible: Bool { !hidden && blocked != true }
+}
 struct MemberTask: Decodable, Identifiable {
     let id: String
     let title: String
@@ -131,6 +150,9 @@ struct MemberObservation: Decodable, Identifiable {
 }
 enum WorkspaceError: Error, LocalizedError {
     case unauthorized, denied, inactive(String), conflict, invalid, oversized, unavailable, rejected(String)
+    var requiresAccessRefresh: Bool {
+        switch self { case .unauthorized, .denied, .inactive: return true; default: return false }
+    }
     var errorDescription: String? {
         switch self {
         case .unauthorized: return "Your sign-in is missing, expired or revoked. Sign out or remove the saved sign-in in My co-ops, then sign in again."
@@ -159,6 +181,23 @@ struct WorkspaceCommand: Encodable {
     let payload: [String: CommandValue]
     init(id: String, version: Int, op: String, payload: [String: CommandValue], requestId: String = UUID().uuidString.lowercased()) {
         self.id = id; self.version = version; self.op = op; self.payload = payload; self.requestId = requestId
+    }
+    static func reply(_ updateID: String, text: String, workspace: WorkspaceView, requestID: String = UUID().uuidString.lowercased()) throws -> WorkspaceCommand {
+        let text = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard workspace.canParticipate, workspace.state.visibleUpdates.contains(where: { $0.id == updateID }),
+              !text.isEmpty, text.utf16.count <= 2000 else {
+            throw WorkspaceError.rejected("Choose an available member discussion and write a reply of up to 2,000 characters.")
+        }
+        return WorkspaceCommand(id: workspace.state.id, version: workspace.version, op: "post_comment", payload: ["updateId": .text(updateID), "text": .text(text)], requestId: requestID)
+    }
+    static func reportComment(_ commentID: String, reason: String, workspace: WorkspaceView) throws -> WorkspaceCommand {
+        let text = reason.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !text.isEmpty, text.utf16.count <= 2000,
+              let comment = workspace.state.comments?.first(where: { $0.id == commentID }),
+              workspace.state.visibleComments(for: comment.updateId).contains(where: { $0.id == commentID }) else {
+            throw WorkspaceError.rejected("Choose an available reply and explain the concern in up to 2,000 characters.")
+        }
+        return WorkspaceCommand(id: workspace.state.id, version: workspace.version, op: "report_content", payload: ["kind": .text("comment"), "targetId": .text(commentID), "reason": .text(text)])
     }
     static func reportUpdate(_ updateId: String, reason: String, workspace: WorkspaceView) throws -> WorkspaceCommand {
         let text = reason.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -256,6 +295,8 @@ struct WorkspaceClient {
         try await send(WorkspaceView.self, request: request(id: id), configuration: configuration)
     }
     func submit(_ command: WorkspaceCommand, configuration: URLSessionConfiguration = .ephemeral) async throws -> WorkspaceView {
-        try await send(WorkspaceView.self, request: request(method: "POST", command: command), configuration: configuration)
+        let result = try await send(WorkspaceView.self, request: request(method: "POST", command: command), configuration: configuration)
+        guard result.state.id == command.id else { throw WorkspaceError.invalid }
+        return result
     }
 }

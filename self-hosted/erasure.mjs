@@ -395,6 +395,16 @@ export function eraseWorkspaceState(
           })
         : p,
     );
+    allocation.disbursements = rows(a, 'disbursements').map((receipt) =>
+      authored(receipt, userId) || deletedEvidenceIds.has(receipt.evidenceId)
+        ? redactFinancial(receipt, ['budget', 'cents', 'status'], {
+            recipientLabel: deletedLabel,
+            purpose: '',
+            reference: '',
+            evidenceId: null,
+          })
+        : receipt,
+    );
     return allocation;
   });
   s.retirements = rows(s, 'retirements').map((r) =>

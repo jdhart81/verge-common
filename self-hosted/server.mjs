@@ -21,6 +21,7 @@ import {
   drainErasureFiles,
 } from './erasure.mjs';
 import { accountPage } from './account.mjs';
+import { createSocialAuth } from './social-auth.mjs';
 import { createHttpHandler, mcpDiscovery } from '../mcp/http.mjs';
 const safeReturn = (value) => {
   try {
@@ -51,6 +52,8 @@ export function createGateway({
   upstreamPort,
   auth,
   safety,
+  social = null,
+  socialPreview = false,
   maintenanceHealthy = () => true,
   host = '127.0.0.1',
 }) {
@@ -136,10 +139,23 @@ export function createGateway({
       res.writeHead(status, {
         'content-type': 'text/html; charset=utf-8',
         'cache-control': 'no-store',
-        'content-security-policy':
-          "default-src 'none'; style-src 'unsafe-inline'; form-action 'self'; base-uri 'none'; frame-ancestors 'none'",
+        'content-security-policy': `default-src 'none'; img-src ${base.origin}/brand/shared-canopy-logo-v1.png ${base.origin}/icons/; style-src 'unsafe-inline'; form-action 'self'${social ? ` ${(social.formActionOrigins ?? ['https://accounts.google.com', 'https://appleid.apple.com']).join(' ')}` : ''}; base-uri 'none'; frame-ancestors 'none'`,
       });
-      res.end(accountPage(options));
+      res.end(
+        accountPage({
+          ...options,
+          providerPreview:
+            socialPreview &&
+            new URL(req.url, origin).searchParams.get('socialPreview') === '1',
+          socialProviders:
+            options.user ||
+            !socialPreview ||
+            new URL(req.url, origin).searchParams.get('socialPreview') === '1'
+              ? (social?.available(options.user?.id) ?? [])
+              : [],
+          hasPassword: options.user ? auth.hasPassword(options.user.id) : true,
+        }),
+      );
     };
     const redirect = (path) => {
       res.writeHead(303, { location: path, 'cache-control': 'no-store' });
@@ -162,6 +178,22 @@ export function createGateway({
       const principal = auth.authenticate(req.headers);
       if (req.headers.authorization && !principal)
         return json(401, { error: 'Token expired, revoked or invalid.' });
+      if (url.pathname.startsWith('/auth/social/')) {
+        if (!social)
+          return json(404, { error: 'Social sign-in is not configured.' });
+        return await social.handle({
+          req,
+          res,
+          url,
+          principal,
+          readBody,
+          page,
+          json,
+          redirect,
+          cookie,
+          client,
+        });
+      }
       const isWrite = !['GET', 'HEAD', 'OPTIONS'].includes(req.method);
       if (isWrite && req.headers.origin && req.headers.origin !== origin)
         return json(403, { error: 'Cross-origin requests are not allowed.' });
@@ -566,6 +598,7 @@ export async function start() {
   const db = getDatabase();
   const ledgerDirectory = resolve(dataDir, 'deletion-ledger');
   const store = objectStore();
+  let social = null;
   const auth = createAuth(db, Date.now, {
     eraseAccountData: (id, now) =>
       eraseAccountData(db, id, now, { ledgerDirectory }),
@@ -574,24 +607,36 @@ export async function start() {
       try {
         commitErasureIntent(ledgerDirectory, id);
         await drainErasureFiles(db, store);
+        if (
+          !social &&
+          db.prepare('SELECT id FROM social_revocations LIMIT 1').get()
+        )
+          throw new Error('Provider configuration required for revocation');
+        await social?.drainRevocations();
         const checkpoint = db.prepare('PRAGMA wal_checkpoint(TRUNCATE)').get();
         if (checkpoint.busy) throw new Error('Deletion checkpoint is busy');
       } catch {
         throw Object.assign(
           new Error(
-            'Your account access has been removed. Private-file cleanup needs operator attention and will retry on restart. Contact justin@viridisconservation.com.',
+            'Your account access has been removed. Private-file or provider authorization cleanup needs operator attention and will retry on restart. Contact justin@viridisconservation.com.',
           ),
           { status: 503 },
         );
       }
     },
   });
+  social = await createSocialAuth({ db, auth, origin });
   const safety = createSafety(db);
   // Recovery must reconcile committed deletions before any request can reach
   // the app, including after restoring an older database beside a newer ledger.
   recoverErasureIntents(db, ledgerDirectory);
   replayErasureLedger(db, { ledgerDirectory });
   await drainErasureFiles(db, store);
+  if (!social && db.prepare('SELECT id FROM social_revocations LIMIT 1').get())
+    throw new Error(
+      'Configure social providers to finish pending authorization revocations before reopening.',
+    );
+  await social?.drainRevocations();
   await cleanupExpiredUploads(d1Adapter(db), store);
   await reconcileEvidence(db);
   db.exec('PRAGMA wal_checkpoint(TRUNCATE)');
@@ -602,6 +647,7 @@ export async function start() {
       if (maintenanceBusy) return;
       maintenanceBusy = true;
       void cleanupExpiredUploads(d1Adapter(db), store)
+        .then(() => social?.drainRevocations())
         .then(() => {
           maintenanceFailed = false;
         })
@@ -628,6 +674,8 @@ export async function start() {
     upstreamPort: internal.port,
     auth,
     safety,
+    social,
+    socialPreview: process.env.VERGE_SOCIAL_PREVIEW === '1',
     maintenanceHealthy: () => !maintenanceFailed,
   });
   await new Promise((resolve) =>

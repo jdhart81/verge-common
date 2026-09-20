@@ -8,7 +8,8 @@
 - Private parcels, consent references, agreement/evidence review, and pooling-assessment snapshots.
 - Reviewed GeoJSON boundary versions, live satellite-scene discovery with consent, source receipts, and field observations.
 - Boundary mapping: optional MapLibre/OpenFreeMap basemap, boundary drawing and corner editing, undo/redo, bounded GeoJSON imports/exports, and reuse of historical geometry through the existing review workflow.
-- Charter proposals and member voting, exact allocations, and independently reviewed external credit/payment records.
+- Charter proposals and member voting, exact allocations, independently reviewed external credit/payment records, and stewardship/treasury receipts with allocation reconciliation.
+- Automatic foreground browser refresh, independently actionable monitoring/financial review queues, and native discussion replies with protected exact retries.
 - Audit history, scoped exports, membership removal, and archival.
 
 The [19 September launch candidate](docs/LAUNCH_BUILD_2026-09-19.md) additionally implements same-tab invitation continuity, safe upload discard/expiry/retry, current setup indicators, an independent operator report queue with private receipts, event editing/calendar revisions, pending-work notices, a private steward parcel overview, public directory search with stable pagination, and native calendar-date/reporting/search improvements. Candidate implementation is not a deployment or Apple distribution receipt. No real partner adoption or verified environmental impact is claimed.
@@ -33,7 +34,7 @@ Recruit one consenting organizer and a small real group. Use two stewards, creat
 
 - Extract all interface text into translation catalogs; recruit native-language reviewers and test right-to-left layouts.
 - Low-bandwidth mobile design and accessibility testing with real participants.
-- Expand implemented public co-op text search and stable pagination as pilot use requires; add opt-in geographic filtering and independently verified organization claims. Nonprofit-controlled enrollment/acceptance and affiliation verification remain to build.
+- Expand implemented public co-op text search and stable pagination as pilot use requires; add opt-in geographic filtering and independently verified organization claims. A named member can accept a partner invitation with authority evidence and independent review. Organization-managed accounts, consented document sharing and independent affiliation verification remain to build.
 - Replace the bounded co-op JSON aggregate with scalable storage while preserving audit and transaction rules.
 - Document regional hosting/data-residency options and provide a production deployment installer with trusted identity configuration.
 
@@ -50,6 +51,10 @@ Choose a real jurisdiction, legal structure, easement or tenure arrangement, and
 Registry provenance and cross-co-op serial reconciliation; authenticated settlement/payment receipts; governed payment execution; geospatial evidence and monitoring integrations. Select providers only for a real partner's requirements. New financial execution requires explicit authorization and provider controls.
 
 **Exit evidence:** externally reconciled records and demonstrated controls. Reviewed input is distinct from independently authenticated money movement.
+
+## Next conservation-care increment
+
+Add structured obligations and disturbance/reversal cases tied to projects, parcels, due dates, responsible members, supporting evidence and independent closure. Generic shared tasks and observations do not yet enforce this continuing loop. See the [service coverage audit](docs/SERVICE_COVERAGE.md).
 
 ## Next monitoring increment
 

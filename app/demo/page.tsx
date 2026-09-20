@@ -1,4 +1,5 @@
 'use client';
+import { BrandLogo } from '@/components/brand-logo';
 import { useEffect, useRef, useState, useSyncExternalStore } from 'react';
 import Link from 'next/link';
 import { ArrowLeft, Sprout, Download, Copy, Plus, Trash2 } from 'lucide-react';
@@ -172,8 +173,7 @@ function Planner({ ready }: { ready: boolean }) {
       </a>
       <header className="nav">
         <Link className="brand" href="/">
-          <Sprout />
-          verge common
+          <BrandLogo />
         </Link>
         <Link className="text-link" href="/">
           <ArrowLeft size={16} />

@@ -1,3 +1,40 @@
+# Deployed service update — September 20, 2026 UTC
+
+## Pollinator grassland conservation — deployed September 20, 2026 UTC
+
+Added **Grassland & meadow (pollinators)** to co-op project creation and the cooperative planner. The saved project kind is `grassland`, supported by the workspace API and MCP agent tools. Existing privacy, independent review and pooling-scope rules continue to apply; selecting a habitat type does not calculate carbon benefits or establish credit eligibility. Homepage and discovery copy now include pollinator meadows.
+
+Validation: 39 focused network/planner/MCP tests, lint, TypeScript, self-hosted build, isolated multi-account HTTP acceptance with a saved grassland project, and browser selection in the planner. Exact-commit CI [35483007673](https://github.com/jdhart81/verge-common/actions/runs/35483007673) passed all four jobs.
+
+Deployed source `9c39c14e55a47c990b65e00769346069c6bf0b21` at approximately 02:06 UTC. Image: `sha256:31b2b66d51645322366d0cc8103bb9bdcba63bd1a2525b08d3f7bd949aac01f3`. Seven-page/seven-asset checks and an in-memory grassland creation/privacy check passed in the isolated and live images; the public HTTPS planner shows the new option. No production accounts or co-ops were created for this check.
+
+Recovery receipts are in `/opt/vergecommon/deployments/20260920-grassland-9c39c14`. Before-switch backup `/backups/2026-09-20T02-06-11-336Z-806XId` and after-switch backup `/backups/2026-09-20T02-06-15-492Z-iziAKw` both passed restore verification. Current data mounts and the daily backup timer are preserved. The immediately preceding compatible image remains stopped as `vergecommon-pre-grassland-37a53ed`; any rollback preserves the current data and deletion ledger.
+
+
+## Shared Canopy branding — deployed September 20, 2026 UTC
+
+The approved logo is live across public and member web pages, account screens, browser icons and installable web-app icons. Native Discover/sign-in branding and the iOS app icon are updated in source; the unsigned simulator build passed, with Apple distribution still separate. [Deployment and recovery receipt](DEPLOYMENT_BRANDING_2026-09-20.md).
+
+Source `750f7f3` is live at https://vergecommon.com on the dedicated server. The exact image passed an on-server restored-copy migration rehearsal, canonical-hostname health check and full live HTTPS account/co-op/file/native/MCP acceptance. Fresh before/after backups passed isolated restore verification. Existing data and private mounts were preserved; no offhost transfer or Apple submission occurred. See the [deployment receipt](DEPLOYMENT_SERVICE_2026-09-20.md). Remaining service and release gaps below still apply; earlier candidate language records its historical checkpoint.
+
+---
+
+# Service follow-through candidate — September 19, 2026
+
+Adds automatic foreground workspace refresh with retained drafts, native private discussion replies with protected explicit retries, a complete monitoring/financial review queue, and external stewardship/treasury receipts with exact allocation reconciliation. Receipt evidence must match its originating project; reviewers can inspect their authorized supporting evidence from each receipt. Independent reviews, budget limits, reference uniqueness, account erasure and capacity pauses remain enforced.
+
+Validation: 226 Node tests, 82 Swift tests, full lint and TypeScript checks, self-hosted build, unsigned simulator compilation, isolated multi-account HTTP acceptance and browser/phone-width walkthrough passed. The fictional rehearsal now covers 110 successful commands and 26 expected denials. See [service build and verification](SERVICE_BUILD_2026-09-19.md) and [claim-by-claim coverage](SERVICE_COVERAGE.md). This candidate has not been deployed or submitted to Apple. Continuing conservation obligations, provider transactions, funding activation and release operations remain separate unfinished work.
+
+---
+
+# Conversation actions candidate — September 19, 2026
+
+Community now opens on Discussion with private guided actions for land intake, mapping, explicit pooling consent, evidence, partner participation, agreements, legal authority, governance and external receipts. The same structured forms remain available in workspace tabs. Retained drafts survive closing an action and same-workspace refresh; conflicting edits preserve the draft for review and retry. Voting controls respect the frozen electorate and deadline. Pooling consent requires choosing the confirmation rather than accepting a preselected answer.
+
+Local validation: 210 Node tests, TypeScript, repository lint and the self-hosted build pass. The fictional co-op rehearsal now runs in CI (100 successful commands and 19 expected denials). See [conversation scope and verification](CONVERSATION_ACTIONS.md). This candidate is not a hosted deployment, Apple distribution or registry/payment integration. Earlier entries below describe their historical checkpoints.
+
+---
+
 # Deployed cooperative pilot — September 19, 2026
 
 The shared website is live at https://vergecommon.com on its dedicated server, with self-hosted accounts, private co-ops, durable SQLite/evidence storage, and scoped hosted MCP. Native source now includes authenticated participation. Land preparation adds boundary-area and overlap checks, current parcel consent, explicit agreement coverage, and withdrawal/revocation safeguards.

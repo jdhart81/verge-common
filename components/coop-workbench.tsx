@@ -1,7 +1,8 @@
 'use client';
+import { BrandLogo } from '@/components/brand-logo';
 import { useMemo, useState } from 'react';
 import Link from 'next/link';
-import { Sprout, ArrowLeft, Download, Plus, Trash2 } from 'lucide-react';
+import { ArrowLeft, Download, Plus, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
@@ -72,8 +73,7 @@ export function CoopWorkbench() {
       </a>
       <header className="nav">
         <Link className="brand" href="/">
-          <Sprout />
-          verge common
+          <BrandLogo />
         </Link>
         <Link href="/" className="text-link">
           <ArrowLeft size={16} />
@@ -181,6 +181,9 @@ export function CoopWorkbench() {
                       </NativeSelectOption>
                       <NativeSelectOption value="landscape">
                         Conservation parcel
+                      </NativeSelectOption>
+                      <NativeSelectOption value="grassland">
+                        Grassland & meadow (pollinators)
                       </NativeSelectOption>
                     </NativeSelect>
                   </div>
