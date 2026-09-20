@@ -1,6 +1,6 @@
 # Supabase sign-in for VergeCommon
 
-Status on September 20, 2026: Google and Apple are saved and enabled in the dedicated Supabase project. **Supabase login is deployed behind the existing preview link, not publicly activated.** Real Google/Apple account acceptance is still required. Email links remain disabled pending a production sender.
+Status on September 20, 2026: Google and Apple are saved and enabled in the dedicated Supabase project. **Supabase login is deployed behind the existing preview link, not publicly activated.** Google first-login acceptance has passed in Chrome; returning-login and Apple acceptance remain open. Email links remain disabled pending a production sender.
 
 ## Dedicated resources
 
@@ -102,3 +102,11 @@ References: [Supabase Google sign-in](https://supabase.com/docs/guides/auth/soci
 - Isolated full-app acceptance, candidate login-routing/CSP checks, pre/post deployment backups and restore checks passed. Public `/healthz` returns ok; the backup timer remains active and the app exposes no host ports.
 - Chrome verification reached Apple's VergeCommon sign-in page with the exact Supabase callback, then Google's account chooser with the dedicated web client and email/profile scopes. No provider account was selected and no external callback/account-creation round trip has completed.
 - Next: owner Google sign-in, returning-account continuity, Apple sign-in, explicit linking, cancellation and controlled cleanup acceptance. Provider-enabled status is not successful end-to-end authentication.
+
+## Google confirmation fix and successful first login — September 20, 2026
+
+- Current runtime source: `1f98cec`; image `sha256:f67d58501848cf99223540f981fede70f96733f20a559b337e9d54ed7a5bdcb0`. This supersedes the earlier runtime receipt above.
+- The owner completed Google authentication, but the final form returned `Submit this form from VergeCommon.` The social pages used `Referrer-Policy: no-referrer`, which makes basic browser form POSTs send an opaque Origin. Social pages now use `strict-origin`: paths and query strings remain absent from referrers, and same-origin form proof works. The exact Origin check is unchanged; a regression assertion keeps `Origin: null` rejected. See [MDN referrer-policy behavior](https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Headers/Referrer-Policy).
+- All 259 tests, lint and type checks passed. The server production build, isolated full-app acceptance, live preview checks, backup restoration and health checks passed. Receipts: `/opt/vergecommon/deployments/20260920-supabase-1f98cec`.
+- Chrome resumed the still-valid verified Google flow, submitted the real confirmation form, and displayed the authenticated Your account page with Google linked and a one-time recovery code. The code was not recorded in this receipt. This establishes Google first login through Supabase and a local VergeCommon session, not returning-login, Apple, linking or deletion acceptance.
+- The recovery-code page remains open for the owner to save the code. Public social activation and email links remain off. Current rollback image is `vergecommon:supabase-9e533a1`; it preserves broker cleanup metadata but predates the confirmation-policy fix.
