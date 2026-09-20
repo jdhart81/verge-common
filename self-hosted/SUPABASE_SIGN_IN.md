@@ -1,6 +1,6 @@
 # Supabase sign-in for VergeCommon
 
-Status on September 20, 2026: Google and Apple are saved and enabled in the dedicated Supabase project. **Supabase login is deployed behind the existing preview link, not publicly activated.** Google first-login acceptance has passed in Chrome; returning-login and Apple acceptance remain open. Email links remain disabled pending a production sender.
+Status on September 20, 2026: Google and Apple are saved and enabled in the dedicated Supabase project. **Google and Apple buttons are now publicly active on the regular account page.** Google first-login acceptance has passed in Chrome; returning-login and Apple acceptance remain open. Email links remain disabled pending a production sender.
 
 ## Dedicated resources
 
@@ -110,3 +110,11 @@ References: [Supabase Google sign-in](https://supabase.com/docs/guides/auth/soci
 - All 259 tests, lint and type checks passed. The server production build, isolated full-app acceptance, live preview checks, backup restoration and health checks passed. Receipts: `/opt/vergecommon/deployments/20260920-supabase-1f98cec`.
 - Chrome resumed the still-valid verified Google flow, submitted the real confirmation form, and displayed the authenticated Your account page with Google linked and a one-time recovery code. The code was not recorded in this receipt. This establishes Google first login through Supabase and a local VergeCommon session, not returning-login, Apple, linking or deletion acceptance.
 - The recovery-code page remains open for the owner to save the code. Public social activation and email links remain off. Current rollback image is `vergecommon:supabase-9e533a1`; it preserves broker cleanup metadata but predates the confirmation-policy fix.
+
+## Public login activation — September 20, 2026
+
+At the owner's explicit request, the public-page preview restriction was removed. Runtime source remains `1f98cec`; both provider buttons are active at `/account` and `/account?mode=register`, without a preview parameter. The private server environment now persists `VERGE_SOCIAL_PREVIEW=0`, `VERGE_SOCIAL_BACKEND=supabase`, both provider enable flags, and email disabled. Existing token-vault and provider credentials were preserved.
+
+The activation passed pre/post backup restoration, public-page button checks and health checks. Chrome reloaded the owner's actual `/account` tab and showed enabled Continue with Google / Continue with Apple controls, with no Coming soon labels. Receipts: `/opt/vergecommon/deployments/20260920-public-social-1f98cec`. The stopped pre-activation container `vergecommon-pre-public-social-1f98cec` uses the same image and data format, providing a compatible return to preview mode. Its prior private environment is retained only in the root-only deployment directory.
+
+Google first login has completed successfully. Returning-login, Apple end-to-end, explicit linking and controlled external cleanup acceptance remain distinct outstanding checks; public button activation is not evidence that those have passed. Email-link sign-in still requires a production sender.
