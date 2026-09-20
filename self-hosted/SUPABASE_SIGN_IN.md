@@ -26,12 +26,14 @@ Provider callback registered with **both Google and Apple**:
 
 `https://tizcemlockjetjaqnnlt.supabase.co/auth/v1/callback`
 
-Google OAuth type: Web application. JavaScript origin: `https://vergecommon.com`. Scopes: `openid`, email and profile only. Consent-screen contact and policies must be reviewed before publishing. Support email selection was blocked by automatic approval review pending the owner's choice; no OAuth client has been created yet.
+Google OAuth type: Web application. JavaScript origin: `https://vergecommon.com`. Scopes: `openid`, email and profile only. The owner explicitly approved `hartjustin6@gmail.com` as the public support contact; it is selected in the draft branding wizard. External/testing audience and contact details are prepared. Saving is waiting for separate acceptance of Google's API Services User Data Policy; no OAuth client has been created yet.
 
-Apple: keep the existing Services ID `com.vergecommon.web` and existing team/key configuration documented in [SOCIAL_SIGN_IN.md](./SOCIAL_SIGN_IN.md). Add the dedicated Supabase hostname and callback; retain the existing direct callback until cutover acceptance. Configure the same Services ID in Supabase and supply a signed Apple OAuth client secret securely. Rotate that Supabase secret before its maximum six-month expiry; the existing server's short-lived Apple assertions alone do not rotate Supabase's configured secret.
+Apple: the owner explicitly approved the additional Supabase authentication destination. The dedicated Supabase hostname and callback were saved on existing Services ID `com.vergecommon.web`, retaining the existing direct callback. Apple reviewed four website URL entries before Save returned to the identifiers list. Keep the existing team/key configuration documented in [SOCIAL_SIGN_IN.md](./SOCIAL_SIGN_IN.md).
 
-Supabase Site URL: `https://vergecommon.com`.
-Additional allowed redirects (only these paths, with the generated state query):
+The Supabase Apple provider form has Client IDs `com.vergecommon.web` prepared but is not saved/enabled. A 90-day Apple client secret was generated locally, signature/issuer/audience/subject verified, and stored in a git-ignored owner-only file for secure entry. Its expiry is **2026-12-19 18:12:51 UTC**. Credential entry and submission through the browser require an owner handoff. The signing private key was not copied. Rotate the configured secret before that expiry; the existing server's short-lived Apple assertions alone do not rotate Supabase's configured secret.
+
+Supabase Site URL was saved and read back as `https://vergecommon.com`.
+These two additional allowed redirects were saved and read back (only these paths, with the generated state query):
 
 ```
 https://vergecommon.com/auth/social/google/supabase-callback?state=*
@@ -69,4 +71,4 @@ References: [Supabase Google sign-in](https://supabase.com/docs/guides/auth/soci
 - Lint, TypeScript, whitespace check and the production self-hosted build passed.
 - An isolated local build passed full-app acceptance with disposable accounts: co-op membership, private content/evidence, account linking boundaries covered by authentication tests, native scoped access/recovery/deletion, hosted MCP, representative permissions and erasure. Social providers were disabled in this full-app acceptance run.
 - Dedicated Supabase security advisors returned no lints. No application tables or policies were added to Supabase.
-- Production configuration has not changed. Provider secrets, Google consent/client setup, Apple Supabase callback registration, redirect allow-list configuration, secret rotation and real-provider acceptance remain open. The Supabase project incurs the approved recurring cost while setup is pending.
+- Production runtime configuration has not changed. Apple callback registration and Supabase site/redirect configuration are saved. Provider secrets, Google policy/client setup, secret rotation and real-provider acceptance remain open. The Supabase project incurs the approved recurring cost while setup is pending.
