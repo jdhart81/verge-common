@@ -1,3 +1,9 @@
+# Deployed service update — September 20, 2026 UTC
+
+Source `750f7f3` is live at https://vergecommon.com on the dedicated server. The exact image passed an on-server restored-copy migration rehearsal, canonical-hostname health check and full live HTTPS account/co-op/file/native/MCP acceptance. Fresh before/after backups passed isolated restore verification. Existing data and private mounts were preserved; no offhost transfer or Apple submission occurred. See the [deployment receipt](DEPLOYMENT_SERVICE_2026-09-20.md). Remaining service and release gaps below still apply; earlier candidate language records its historical checkpoint.
+
+---
+
 # Service follow-through candidate — September 19, 2026
 
 Adds automatic foreground workspace refresh with retained drafts, native private discussion replies with protected explicit retries, a complete monitoring/financial review queue, and external stewardship/treasury receipts with exact allocation reconciliation. Receipt evidence must match its originating project; reviewers can inspect their authorized supporting evidence from each receipt. Independent reviews, budget limits, reference uniqueness, account erasure and capacity pauses remain enforced.

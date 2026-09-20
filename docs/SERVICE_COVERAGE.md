@@ -1,5 +1,7 @@
 # Service coverage and remaining work
 
+> Deployment update: source `750f7f3` is live on the dedicated VergeCommon server. See the [20 September UTC deployment receipt](DEPLOYMENT_SERVICE_2026-09-20.md) for exact image, migration, acceptance and recovery evidence. Apple distribution and the remaining service gaps are unchanged.
+
 Initially reviewed against source revision `baa2ffd` on 19 September 2026 and updated for the continuing, unreleased build below. This is a claim-to-implementation audit, not a deployment receipt or evidence of real conservation activity. Production was not inspected for this audit; the current live revision must be checked separately before describing a source feature as available on the website.
 
 The homepage's present service is community coordination and conservation preparation: bring neighbors together, map contributions, document consent, work with a willing partner, record field work, and make cooperative decisions. Its carbon-income answer explicitly leaves eligibility, verification, issuance, sales and payments to external parties. Source supports much of that bounded service. It does not yet support the broader end-to-end operating model described in [COOPERATIVE_SYSTEM.md](COOPERATIVE_SYSTEM.md), particularly continuing obligations and complete financial reconciliation.

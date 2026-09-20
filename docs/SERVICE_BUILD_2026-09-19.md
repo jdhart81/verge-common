@@ -1,5 +1,7 @@
 # Service follow-through candidate — 19 September 2026
 
+> Deployment update: source `750f7f3` is live on the dedicated VergeCommon server. See the [20 September UTC deployment receipt](DEPLOYMENT_SERVICE_2026-09-20.md) for exact image, migration, acceptance and recovery evidence. Apple distribution and the remaining service gaps are unchanged.
+
 This candidate follows the [conversation-actions build](CONVERSATION_ACTIONS.md). It addresses gaps found in the [service coverage audit](SERVICE_COVERAGE.md). It is an implementation record; its source does not establish production deployment, Apple distribution or completed external conservation/financial activity.
 
 ## Changes
