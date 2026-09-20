@@ -208,6 +208,12 @@ await test('router-generated account URLs preserve the gateway destination', asy
   }
   const account = await f.request('/account');
   assert.equal(account.status, 200);
+  const policy = account.headers.get('content-security-policy');
+  assert.ok(policy.includes("default-src 'none'"));
+  assert.equal(
+    policy.split(';').map((part) => part.trim()).find((part) => part.startsWith('img-src ')),
+    `img-src ${origin}/brand/shared-canopy-logo-v1.png ${origin}/icons/`,
+  );
   assert.match(await account.text(), /Welcome back/);
 });
 

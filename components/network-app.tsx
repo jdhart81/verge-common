@@ -1,4 +1,5 @@
 'use client';
+import { BrandLogo } from '@/components/brand-logo';
 import {
   currencies,
   toMinor,
@@ -2340,8 +2341,7 @@ export function NetworkApp({
       </a>
       <header className="nav">
         <Link className="brand" href="/" prefetch={false} target="_top">
-          <Sprout />
-          verge common
+          <BrandLogo />
         </Link>
         <nav aria-label="Main navigation">
           <Link href="/app/" prefetch={false} target="_top">

@@ -231,6 +231,21 @@ struct DraftEditor: View {
     }
     func retry() async { if failedNextPage { await loadMore() } else { await refresh() } }
 }
+struct BrandLogo: View {
+    var body: some View {
+        Image("BrandLogo")
+            .resizable()
+            .scaledToFit()
+            .frame(width: 240, height: 96)
+            .frame(height: 60)
+            .clipped()
+            .padding(.horizontal, 8)
+            .background(Color(red: 247.0 / 255, green: 249.0 / 255, blue: 246.0 / 255))
+            .clipShape(RoundedRectangle(cornerRadius: 8))
+            .accessibilityLabel("VergeCommon")
+    }
+}
+
 struct CommunityDiscovery: View {
     @EnvironmentObject var safety: PublicSafetyStore
     @StateObject private var model = CommunityModel()
@@ -239,6 +254,7 @@ struct CommunityDiscovery: View {
         NavigationStack {
             List {
                 Section {
+                    BrandLogo()
                     Text("Find people caring for a place. Only information a co-op has made public appears here.").foregroundStyle(.secondary)
                     Link("Open my co-ops in the browser", destination: CommunityService.page("workspace/"))
                 }

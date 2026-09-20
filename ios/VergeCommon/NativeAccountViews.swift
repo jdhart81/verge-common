@@ -18,6 +18,7 @@ struct NativeSignInForm: View {
     @State private var pastedToken = ""
     var body: some View {
         Section("Join your conservation community") {
+            BrandLogo()
             Text("Sign in to see your co-ops and share field observations. You can use Discover and your local field journal without an account.")
             Picker("Account action", selection: $mode) {
                 ForEach(AccountFormMode.allCases) { Text($0.rawValue).tag($0) }
