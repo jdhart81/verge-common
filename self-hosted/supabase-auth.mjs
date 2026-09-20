@@ -1,4 +1,16 @@
 import { createHash } from 'node:crypto';
+import { decodeJwt } from 'jose';
+
+export function normalizeLoginEmail(value) {
+  if (typeof value !== 'string')
+    throw new Error('Enter a valid email address.');
+  const email = value.trim().toLowerCase();
+  if (email.length > 254 || !/^[^\s@<>]+@[^\s@<>]+\.[^\s@<>]+$/.test(email))
+    throw new Error('Enter a valid email address.');
+  return email;
+}
+export const emailDigest = (email) =>
+  createHash('sha256').update(normalizeLoginEmail(email)).digest('hex');
 
 const fail = () => new Error('Supabase authentication could not be completed.');
 const validToken = (value) =>
@@ -61,6 +73,21 @@ export function createSupabaseProviderAdapter({
   };
   return {
     supportsSupabase: true,
+    async sendEmail(flow, state, redirectUri, address) {
+      const callback = new URL(redirectUri);
+      callback.searchParams.set('state', state);
+      await request(`/otp?redirect_to=${encodeURIComponent(callback.href)}`, {
+        method: 'POST',
+        body: {
+          email: normalizeLoginEmail(address),
+          create_user: true,
+          code_challenge: createHash('sha256')
+            .update(flow.verifier)
+            .digest('base64url'),
+          code_challenge_method: 's256',
+        },
+      });
+    },
     async authorize(provider, flow, state, redirectUri) {
       if (!['google', 'apple'].includes(provider)) throw fail();
       const callback = new URL(redirectUri);
@@ -79,7 +106,7 @@ export function createSupabaseProviderAdapter({
     },
     async exchange(provider, flow, callback) {
       if (
-        !['google', 'apple'].includes(provider) ||
+        !['google', 'apple', 'email'].includes(provider) ||
         callback.searchParams.get('state') !== flow.state ||
         callback.searchParams.has('error') ||
         !validToken(callback.searchParams.get('code'))
@@ -101,6 +128,33 @@ export function createSupabaseProviderAdapter({
           !Array.isArray(user.identities)
         )
           throw fail();
+        if (provider === 'email') {
+          // /user has already validated this exact token with Supabase. Never
+          // authorize using a decoded token without that server validation.
+          const claims = decodeJwt(tokens.access_token);
+          const identity = user.identities.filter(
+            (item) => item.provider === 'email' && item.user_id === user.id,
+          );
+          if (
+            claims.sub !== user.id ||
+            claims.iss !== `${url.origin}/auth/v1` ||
+            !Array.isArray(claims.amr) ||
+            !claims.amr.some((item) =>
+              ['otp', 'magiclink', 'signup'].includes(item.method),
+            ) ||
+            !user.email_confirmed_at ||
+            emailDigest(user.email) !== flow.nonce ||
+            identity.length !== 1 ||
+            identity[0].id !== user.id
+          )
+            throw fail();
+          return {
+            provider,
+            subject: user.id,
+            name: '',
+            credential: { broker: { userId: user.id, project: url.origin } },
+          };
+        }
         const token =
           provider === 'apple'
             ? tokens.provider_refresh_token
@@ -161,7 +215,9 @@ export function createSupabaseProviderAdapter({
         throw new Error(
           'Original Supabase project required for account cleanup.',
         );
-      await direct.revoke(provider, credential);
+      if (provider === 'email') {
+        if (!credential.broker) throw fail();
+      } else await direct.revoke(provider, credential);
       if (credential.broker && !isReferenced(credential.broker.userId)) {
         await request(`/admin/users/${credential.broker.userId}`, {
           method: 'DELETE',

@@ -16,6 +16,8 @@ Status on September 20, 2026: dedicated infrastructure created; runtime integrat
 
 Supabase tokens are exchanged on the server and never sent to the browser or used as VergeCommon bearer tokens. The server validates the user with Supabase's `/user` endpoint and independently checks the selected provider credential: Google UserInfo or an Apple refresh grant with signed ID-token validation. It matches the verified provider subject against Supabase's read-only identity record (`id`, not its database field name `provider_id`). User-editable metadata is used only for an optional display name, never account selection or permissions. The temporary Supabase session is signed out with local scope after verification.
 
+Supabase is used for authentication only. Co-op records, chat, parcel maps and evidence files remain on the dedicated VergeCommon server. No Supabase Storage bucket or application-data migration is needed for this integration.
+
 The same provider + subject retains an existing local identity, including identities created through the direct integration. Supabase automatic email linking cannot silently join local accounts. Existing members still sign in and explicitly link a provider from Your account.
 
 Revocation credentials and the Supabase profile reference are encrypted in the existing token vault. Unlink/deletion queues revoke Google/Apple authorization; if no other linked local identity references the broker profile, cleanup deletes that Supabase user. Failures remain queued. Startup must retain Supabase configuration for pending broker cleanup. After broker identities exist, do not roll back to a release that cannot preserve and process their cleanup metadata.
@@ -26,7 +28,7 @@ Provider callback registered with **both Google and Apple**:
 
 `https://tizcemlockjetjaqnnlt.supabase.co/auth/v1/callback`
 
-Google OAuth type: Web application. JavaScript origin: `https://vergecommon.com`. Scopes: `openid`, email and profile only. The owner explicitly approved `hartjustin6@gmail.com` as the public support contact; it is selected in the draft branding wizard. External/testing audience and contact details are prepared. Saving is waiting for separate acceptance of Google's API Services User Data Policy; no OAuth client has been created yet.
+Google OAuth type: Web application. JavaScript origin: `https://vergecommon.com`. Scopes: `openid`, email and profile only. The owner explicitly approved `hartjustin6@gmail.com` as the public support contact and approved Google's API Services User Data Policy. The console now confirms "OAuth configuration created!" and shows the saved VergeCommon name/contact with Testing status. The web client form `VergeCommon Supabase Web` is prepared with the origin and Supabase callback above; creation awaits action-time confirmation. No OAuth client has been created yet. Homepage/privacy branding links and real sign-in acceptance remain to be completed.
 
 Apple: the owner explicitly approved the additional Supabase authentication destination. The dedicated Supabase hostname and callback were saved on existing Services ID `com.vergecommon.web`, retaining the existing direct callback. Apple reviewed four website URL entries before Save returned to the identifiers list. Keep the existing team/key configuration documented in [SOCIAL_SIGN_IN.md](./SOCIAL_SIGN_IN.md).
 
@@ -41,6 +43,22 @@ https://vergecommon.com/auth/social/apple/supabase-callback?state=*
 ```
 
 Both app callbacks use GET. Apple's cross-site POST terminates at Supabase, not the VergeCommon callback. The app still enforces a separate HttpOnly browser proof, single-use flow, expiry and same-origin confirmation. Do not allow wildcard domains or unrelated callback paths.
+
+## Email-link sign-in
+
+Implemented, opt-in and not enabled in production: `VERGE_EMAIL_ENABLED=1` requires the Supabase backend. Email is shown first, followed by Google/Apple, with existing username/password access retained in a disclosure. The same email action handles new and returning members. Existing members explicitly link email from their account settings; addresses never merge local accounts automatically.
+
+Add this third allowed return address before enabling email (prepared requirement, **not yet saved**):
+
+`https://vergecommon.com/auth/social/email/supabase-callback?state=*`
+
+The server sends `/otp` requests with an S256 challenge and an exact return address. The default `ConfirmationURL` signup and magic-link templates must retain Supabase verification. Callback codes are exchanged server-side. The token is validated through `/user` before its authentication-method claims are read; confirmed email, the requested address hash, email identity and subject must match. No broker token reaches the browser. A local session is created only after the same-browser confirmation POST. Links expire locally after ten minutes and cannot be replayed. Opening in another browser requires starting again there.
+
+Requests are limited per address (one/minute), client (five/15 minutes), and application (30/hour), in addition to existing sign-in and Supabase limits. Only an address hash is retained temporarily in flow/rate-limit records. Delivery failure removes the pending local proof and offers another sign-in method; it does not expose upstream errors. An abandoned request can leave an unconfirmed authentication profile in Supabase; operator retention must account for unconfirmed signups. Verified email identities use the same encrypted broker reference and queued profile cleanup as social identities. Email cleanup does not revoke Google/Apple authorization.
+
+Live readback on September 20: Supabase public settings report email enabled, Google disabled and Apple disabled. The dashboard explicitly reports use of the built-in email sender. **A production SMTP sender is still required** before public email-link activation; Supabase's default sender only supports authorized team addresses and is intended for testing. No email was sent during local validation. Keep email and social exposure behind the preview gate until real delivery and return-flow acceptance pass.
+
+References: [passwordless email](https://supabase.com/docs/guides/auth/auth-email-passwordless), [SMTP requirements](https://supabase.com/docs/guides/auth/auth-smtp), [official auth-js OTP/PKCE implementation](https://github.com/supabase/auth-js/blob/master/src/GoTrueClient.ts).
 
 ## Private server environment
 
@@ -67,8 +85,9 @@ References: [Supabase Google sign-in](https://supabase.com/docs/guides/auth/soci
 
 ## Validation receipt
 
-- 251 automated tests passed, including 21 social/provider tests. Signed Apple refresh-token responses reject invalid issuer, audience and signature; Google subject verification uses provider UserInfo. Broker tests use synthetic upstream responses, not real provider accounts.
+- 258 automated tests passed, including 28 social/provider/email tests. Signed Apple refresh-token responses reject invalid issuer, audience and signature; Google subject verification uses provider UserInfo. Email checks reject mismatched/unconfirmed addresses, non-email proof and invalid tokens; delivery failure, limits, replay and returning-member behavior are covered. Broker tests use synthetic upstream responses, not real provider accounts.
 - Lint, TypeScript, whitespace check and the production self-hosted build passed.
 - An isolated local build passed full-app acceptance with disposable accounts: co-op membership, private content/evidence, account linking boundaries covered by authentication tests, native scoped access/recovery/deletion, hosted MCP, representative permissions and erasure. Social providers were disabled in this full-app acceptance run.
 - Dedicated Supabase security advisors returned no lints. No application tables or policies were added to Supabase.
-- Production runtime configuration has not changed. Apple callback registration and Supabase site/redirect configuration are saved. Provider secrets, Google policy/client setup, secret rotation and real-provider acceptance remain open. The Supabase project incurs the approved recurring cost while setup is pending.
+- The email-enabled login layout was checked in a local browser fixture with form submission disabled. This is UI evidence only.
+- Production runtime configuration has not changed. Apple callback registration, the two social return addresses and Google's initial consent configuration are saved. Both Apple and Google were still shown as Disabled in Supabase on the latest readback. Provider secrets (including the server-only Supabase cleanup key), Google client setup, email return-address registration/SMTP, secret rotation and real-provider acceptance remain open. The Supabase project incurs the approved recurring cost while setup is pending.

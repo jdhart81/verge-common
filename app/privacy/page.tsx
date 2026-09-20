@@ -63,6 +63,16 @@ export default function PrivacyPage() {
           <a href="https://supabase.com/privacy">Supabase’s privacy policy</a>.
         </p>
         <p>
+          When email-link sign-in is enabled, your email address is sent to
+          Supabase and its configured mail sender to deliver a one-time link.
+          The link must be opened in the browser that requested it within ten
+          minutes. VergeCommon temporarily stores a hash of the address for
+          request matching and abuse limits, and retains the verified
+          authentication identifier for returning sign-in. We do not publish
+          your address or match it to an existing co-op account. Existing
+          members must explicitly link email from their account settings.
+        </p>
+        <p>
           The hosted service keeps co-op records in a private database and
           uploaded evidence on its dedicated server. Operators manage that
           server and its backups. The host may process request metadata such as

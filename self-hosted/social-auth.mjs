@@ -4,9 +4,13 @@ import { randomBytes, createCipheriv, createDecipheriv } from 'node:crypto';
 import { readFile } from 'node:fs/promises';
 import { digest } from './auth.mjs';
 import { escape } from './account.mjs';
-import { createSupabaseProviderAdapter } from './supabase-auth.mjs';
+import {
+  createSupabaseProviderAdapter,
+  normalizeLoginEmail,
+  emailDigest,
+} from './supabase-auth.mjs';
 
-const labels = { google: 'Google', apple: 'Apple' };
+const labels = { google: 'Google', apple: 'Apple', email: 'Email' };
 const issuers = {
   google: 'https://accounts.google.com',
   apple: 'https://appleid.apple.com',
@@ -63,6 +67,14 @@ export function configuredProviders(env = process.env) {
   for (const id of Object.keys(labels)) {
     const prefix = `VERGE_${id.toUpperCase()}_`;
     if (env[prefix + 'ENABLED'] !== '1') continue;
+    if (id === 'email') {
+      if (env.VERGE_SOCIAL_BACKEND !== 'supabase')
+        throw new Error(
+          'Email links require the Supabase authentication backend.',
+        );
+      providers.email = {};
+      continue;
+    }
     const keys =
       id === 'google'
         ? ['CLIENT_ID', 'CLIENT_SECRET']
@@ -230,7 +242,11 @@ export async function createSocialAuth({
     throw new Error('Social login requires HTTPS.');
   const vault = tokenVault(env.VERGE_OAUTH_TOKEN_KEY);
   if (!adapter) {
-    const direct = await createProviderAdapter(settings);
+    const direct = await createProviderAdapter(
+      Object.fromEntries(
+        Object.entries(settings).filter(([id]) => id !== 'email'),
+      ),
+    );
     const backend = env.VERGE_SOCIAL_BACKEND || 'direct';
     if (!['direct', 'supabase'].includes(backend))
       throw new Error('Unknown social sign-in backend.');
@@ -345,7 +361,7 @@ export async function createSocialAuth({
           });
         db.prepare('DELETE FROM social_flows WHERE expires_at<=?').run(now());
         const callbackMatch =
-          /^\/auth\/social\/(google|apple)\/(callback|supabase-callback)$/.exec(
+          /^\/auth\/social\/(google|apple|email)\/(callback|supabase-callback)$/.exec(
             url.pathname,
           );
         if (callbackMatch) {
@@ -519,6 +535,20 @@ export async function createSocialAuth({
         const state = secret(),
           proof = secret(),
           flow = { nonce: secret(), verifier: oidc.randomPKCECodeVerifier() };
+        let email;
+        if (data.provider === 'email') {
+          email = normalizeLoginEmail(data.email);
+          flow.nonce = emailDigest(email);
+          if (
+            !auth.rateLimit(`email:${flow.nonce}`, 1, 60000) ||
+            !auth.rateLimit(`email-client:${client}`, 5, 15 * 60000) ||
+            !auth.rateLimit('email:global', 30, 60 * 60000)
+          )
+            return json(429, {
+              error:
+                'Too many email requests. Wait a minute before trying again.',
+            });
+        }
         db.prepare(
           'INSERT INTO social_flows VALUES (?,?,?,?,?,?,?,?,?,?,?,NULL)',
         ).run(
@@ -535,6 +565,31 @@ export async function createSocialAuth({
           'pending',
         );
         res.setHeader('set-cookie', flowCookie(proof));
+        if (data.provider === 'email') {
+          try {
+            await adapter.sendEmail(
+              flow,
+              state,
+              `${origin}/auth/social/email/supabase-callback`,
+              email,
+            );
+          } catch {
+            db.prepare('DELETE FROM social_flows WHERE hash=?').run(
+              digest(state),
+            );
+            res.setHeader('set-cookie', flowCookie('', 0));
+            return page(503, {
+              user: principal,
+              message:
+                'We could not send the sign-in link. Wait a minute and try again, or use another sign-in method.',
+            });
+          }
+          return page(200, {
+            user: principal,
+            socialContent:
+              '<h1>Check your email</h1><p role="status">If this address can receive sign-in emails, a one-time link is on its way. Open it in this same browser within 10 minutes to continue.</p><p>Your first verified sign-in can create an account. Existing members should link email from Your account to keep their co-ops.</p><p><a href="/account">Use another sign-in method or request a new link</a></p>',
+          });
+        }
         return redirect(
           await adapter.authorize(
             data.provider,

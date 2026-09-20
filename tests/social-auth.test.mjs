@@ -30,11 +30,11 @@ const identity = (subject = 'subject') => ({
   }),
   startedAt: Date.now() + 100,
 });
-function fixture(t) {
+function fixture(t, now = Date.now) {
   const db = new DatabaseSync(':memory:');
   db.exec('PRAGMA foreign_keys=ON');
   t.after(() => db.close());
-  return { db, auth: createAuth(db) };
+  return { db, auth: createAuth(db, now) };
 }
 
 await test('provider configuration is opt-in and incomplete configuration fails closed; encrypted tokens detect tampering', async (t) => {
@@ -151,12 +151,17 @@ await test('concurrent first sign-ins create only one account', async (t) => {
 });
 
 async function flowFixture(t, options = {}) {
-  const f = fixture(t);
   let now = Date.now();
+  const f = fixture(t, () => now);
   let exchanges = 0;
+  const emailRequests = [];
   let failRevoke = false;
   const adapter = {
     supportsSupabase: options.supabase,
+    sendEmail: async (flow, state, callback, email) => {
+      emailRequests.push({ flow, state, callback, email });
+      if (options.emailFails) throw new Error('private upstream failure');
+    },
     authorize: async (provider, flow, state) =>
       `https://provider.invalid/?state=${state}`,
     exchange: async (provider) => {
@@ -221,6 +226,7 @@ async function flowFixture(t, options = {}) {
     request,
     advance: () => (now += 600001),
     exchanges: () => exchanges,
+    emailRequests,
     failRevocation: () => (failRevoke = true),
   };
 }
@@ -663,4 +669,93 @@ await test('Apple broker refresh verifies signed identity, issuer and audience b
       }),
     );
   }
+});
+
+const emailEnv = { VERGE_SOCIAL_BACKEND: 'supabase', VERGE_EMAIL_ENABLED: '1' };
+await test('email link creates and returns to one account; proof, confirmation, replay and address limits apply', async (t) => {
+  const f = await flowFixture(t, { supabase: true, env: emailEnv });
+  const start = await f.request('/auth/social/start', {
+    method: 'POST',
+    body: 'action=login&provider=email&email=member%40example.com&returnTo=%2Fworkspace%2F',
+  });
+  assert.equal(start.status, 200);
+  assert.match(start.data.socialContent, /same browser within 10 minutes/);
+  const { state, callback } = f.emailRequests[0];
+  assert.equal(f.db.prepare('SELECT count(*) n FROM users').get().n, 0);
+  assert.ok(
+    !JSON.stringify(f.db.prepare('SELECT * FROM social_flows').all()).includes(
+      'member@example.com',
+    ),
+  );
+  const cookies = start.headers['set-cookie'].split(';')[0];
+  const path = new URL(callback).pathname + `?state=${state}&code=email-code`;
+  assert.equal((await f.request(path)).status, 400);
+  assert.equal((await f.request(path, { cookies })).status, 303);
+  assert.equal((await f.request(path, { cookies })).status, 400);
+  assert.equal(
+    (
+      await f.request('/auth/social/finish', {
+        method: 'POST',
+        body: `state=${state}`,
+        cookies,
+        requestOrigin: 'https://wrong.invalid',
+      })
+    ).status,
+    403,
+  );
+  const completed = await f.request('/auth/social/finish', {
+    method: 'POST',
+    body: `state=${state}`,
+    cookies,
+  });
+  assert.equal(completed.status, 201);
+  assert.deepEqual(f.auth.identities(completed.data.user.id), ['email']);
+  assert.equal(
+    (
+      await f.request('/auth/social/start', {
+        method: 'POST',
+        body: 'action=login&provider=email&email=MEMBER%40example.com',
+      })
+    ).status,
+    429,
+  );
+  assert.equal(f.emailRequests.length, 1);
+  f.advance();
+  const retry = await f.request('/auth/social/start', {
+    method: 'POST',
+    body: 'action=login&provider=email&email=member%40example.com',
+  });
+  const retryState = f.emailRequests[1].state;
+  const retryCookie = retry.headers['set-cookie'].split(';')[0];
+  await f.request(
+    `/auth/social/email/supabase-callback?state=${retryState}&code=new-code`,
+    { cookies: retryCookie },
+  );
+  const returning = await f.request('/auth/social/finish', {
+    method: 'POST',
+    body: `state=${retryState}`,
+    cookies: retryCookie,
+  });
+  assert.equal(returning.status, 303);
+  assert.equal(f.db.prepare('SELECT count(*) n FROM users').get().n, 1);
+});
+await test('email request failures remove pending proof, do not expose provider errors, and preserve other login paths', async (t) => {
+  const f = await flowFixture(t, {
+    supabase: true,
+    env: emailEnv,
+    emailFails: true,
+  });
+  const result = await f.request('/auth/social/start', {
+    method: 'POST',
+    body: 'action=login&provider=email&email=member%40example.com',
+  });
+  assert.equal(result.status, 503);
+  assert.match(result.data.message, /could not send/);
+  assert.ok(!JSON.stringify(result).includes('private upstream'));
+  assert.equal(f.db.prepare('SELECT count(*) n FROM social_flows').get().n, 0);
+  assert.match(result.headers['set-cookie'], /Max-Age=0/);
+  assert.throws(
+    () => configuredProviders({ VERGE_EMAIL_ENABLED: '1' }),
+    /Supabase/,
+  );
 });
