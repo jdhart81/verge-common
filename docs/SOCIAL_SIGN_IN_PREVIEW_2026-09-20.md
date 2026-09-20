@@ -22,3 +22,9 @@ Apple sign-in is available for acceptance at `https://vergecommon.com/account?so
 4. Complete final provider-button branding review, then turn off preview mode only after real-provider acceptance. Native Google/Apple sign-in UI and App Store delivery remain separate work.
 
 The preceding pre-social image is retained for incident reference. Once any provider-only account, identity or revocation entry exists, do not reopen that old authentication image against current data. Preserve the database and use a compatible image or forward repair; never restore an old backup to remove a failed deployment.
+
+## Account design follow-up
+
+The owner supplied a split-screen login reference. Release `77fafd83c4dd0f2b5117e0ae1cb358e565a3eb1b` deploys an original conservation landscape beside the form, rounded inputs/provider buttons, provider icons and responsive registration/recovery layouts. Unconfigured options are explicitly disabled; Google setup and real Apple acceptance remain pending. Signed-in members retain linked-provider management even while public provider buttons are in preview.
+
+Image: `sha256:5182cfef01d348c4970c540c1ab8e9da4c2d1b5bed9dcdd4c957eb14187514e5`. The design passed 239 regression tests; the subsequent provider-management correction passed all 13 gateway tests. Lint, production build, fresh isolated acceptance, live smoke checks, and pre/post backup restore passed. Desktop and phone-width layouts were reviewed; the deployed HTTPS preview was visually verified. Receipts: `/opt/vergecommon/deployments/20260920-account-77fafd8/`. No provider credentials, billing choices, or public activation flags changed during this design update.
