@@ -331,7 +331,7 @@ export function createGateway({
         if (!data || typeof data !== 'object' || Array.isArray(data))
           return json(400, { error: 'Send a valid JSON object.' });
         if (
-          !auth.rateLimit(`auth:${client}`, 20, 15 * 60000) ||
+          !auth.rateLimit(`auth:${client}`, 60, 15 * 60000) ||
           !auth.rateLimit('auth:global', 200, 60000)
         )
           return json(429, {
@@ -469,7 +469,7 @@ export function createGateway({
           new URLSearchParams((await readBody(req, 12000)).toString()),
         );
         if (
-          !auth.rateLimit(`auth:${client}`, 20, 15 * 60000) ||
+          !auth.rateLimit(`auth:${client}`, 60, 15 * 60000) ||
           !auth.rateLimit(`auth:global`, 200, 60000)
         )
           return json(429, {

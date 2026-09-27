@@ -328,6 +328,27 @@ type Field = {
 const date = (n: number) => new Date(n).toLocaleDateString();
 const label = (s: string) =>
   s === 'grassland' ? 'Grassland & meadow (pollinators)' : s.replaceAll('_', ' ');
+const TAB_LABELS: Record<string, string> = {
+  community: 'Community',
+  start: 'Get started',
+  organizations: 'Organizations',
+  monitoring: 'Map & monitor',
+  pooling: 'Land pooling',
+  projects: 'Projects',
+  parcels: 'Parcels',
+  members: 'Members',
+  agreements: 'Agreements',
+  evidence: 'Evidence',
+  governance: 'Governance',
+  ledger: 'Records ledger',
+  history: 'History',
+  settings: 'Settings',
+  holdings: 'Holdings',
+  settlements: 'Settlements',
+  allocations: 'Allocations',
+  retirements: 'Retirements',
+};
+const tabLabel = (s: string) => TAB_LABELS[s] ?? label(s);
 function Status({ value }: { value: string }) {
   return <span className={`state-tag state-${value}`}>{label(value)}</span>;
 }
@@ -2730,7 +2751,7 @@ export function NetworkApp({
                   'settings',
                 ].map((t) => (
                   <TabsTrigger key={t} value={t}>
-                    {label(t)}
+                    {tabLabel(t)}
                   </TabsTrigger>
                 ))}
               </TabsList>
@@ -3358,7 +3379,7 @@ function Ledger({
           {['holdings', 'settlements', 'allocations', 'retirements'].map(
             (t) => (
               <TabsTrigger key={t} value={t}>
-                {label(t)}
+                {tabLabel(t)}
               </TabsTrigger>
             ),
           )}

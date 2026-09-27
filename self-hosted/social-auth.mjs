@@ -368,7 +368,7 @@ export async function createSocialAuth({
         if (req.headers.authorization)
           throw new Error('Use a signed-in browser for account changes.');
         if (
-          !auth.rateLimit(`social:${client}`, 20, 15 * 60000) ||
+          !auth.rateLimit(`social:${client}`, 60, 15 * 60000) ||
           !auth.rateLimit('social:global', 100, 60000)
         )
           return json(429, {

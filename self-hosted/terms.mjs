@@ -11,7 +11,7 @@ export function termsAccepted(value) {
 }
 
 export function termsCheckbox() {
-  return `<label class="terms-consent"><input type="checkbox" name="acceptTerms" value="yes" required> I agree to the <a href="${TERMS_PATH}" target="_blank" rel="noopener">Terms of Use</a> and have read the <a href="/privacy/" target="_blank" rel="noopener">Privacy policy</a>.</label>`;
+  return `<label class="terms-consent"><input type="checkbox" name="acceptTerms" value="yes" required><span>I agree to the <a href="${TERMS_PATH}" target="_blank" rel="noopener">Terms of Use</a> and have read the <a href="/privacy/" target="_blank" rel="noopener">Privacy policy</a>.</span></label>`;
 }
 
 export const TERMS_REQUIRED_MESSAGE =
