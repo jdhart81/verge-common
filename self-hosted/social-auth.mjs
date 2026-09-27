@@ -1,5 +1,11 @@
 import * as oidc from 'openid-client';
 import { isSafeRelativePath } from './client-key.mjs';
+import {
+  TERMS_VERSION,
+  TERMS_REQUIRED_MESSAGE,
+  termsAccepted,
+  termsCheckbox,
+} from './terms.mjs';
 import { importPKCS8, SignJWT } from 'jose';
 import { randomBytes, createCipheriv, createDecipheriv } from 'node:crypto';
 import { readFile } from 'node:fs/promises';
@@ -453,6 +459,9 @@ export async function createSocialAuth({
           const state = url.searchParams.get('state'),
             flow = getFlow(state, req.headers, 'verified');
           sameAccount(flow, req.headers, principal);
+          const newAccount =
+            flow.action === 'login' &&
+            !auth.hasSocialIdentity(JSON.parse(flow.result));
           const verb =
             flow.action === 'delete'
               ? 'Permanently delete my account'
@@ -461,7 +470,7 @@ export async function createSocialAuth({
                 : 'Continue to VergeCommon';
           return page(200, {
             user: principal,
-            socialContent: `<h1>${flow.action === 'delete' ? 'Confirm account deletion' : 'Account verified'}</h1><p>Your ${escape(labels[flow.provider])} account was verified.</p>${flow.action === 'delete' ? '<p>This permanently removes your VergeCommon account and authored personal records. Shared de-identified governance records may remain. This does not delete your Google or Apple account.</p>' : ''}<form method="post" action="/auth/social/finish"><input type="hidden" name="state" value="${escape(state)}">${flow.action === 'link' ? '<label><input type="checkbox" name="consent" value="yes" required> I agree to link this provider identity to my VergeCommon account and records.</label>' : ''}<button>${verb}</button></form><p><a href="/account">Cancel and return to account</a></p>`,
+            socialContent: `<h1>${flow.action === 'delete' ? 'Confirm account deletion' : newAccount ? 'Create your account' : 'Account verified'}</h1><p>Your ${escape(labels[flow.provider])} account was verified.</p>${flow.action === 'delete' ? '<p>This permanently removes your VergeCommon account and authored personal records. Shared de-identified governance records may remain. This does not delete your Google or Apple account.</p>' : ''}<form method="post" action="/auth/social/finish"><input type="hidden" name="state" value="${escape(state)}">${flow.action === 'link' ? '<label><input type="checkbox" name="consent" value="yes" required> I agree to link this provider identity to my VergeCommon account and records.</label>' : ''}${newAccount ? termsCheckbox() : ''}<button>${verb}</button></form><p><a href="/account">Cancel and return to account</a></p>`,
           });
         }
         if (
@@ -479,11 +488,19 @@ export async function createSocialAuth({
           sameAccount(flow, req.headers, principal);
           if (flow.action === 'link' && data.consent !== 'yes')
             throw new Error('Confirm that you want to link these accounts.');
-          db.prepare('DELETE FROM social_flows WHERE hash=?').run(flow.hash);
           const identity = JSON.parse(flow.result);
+          if (
+            flow.action === 'login' &&
+            !auth.hasSocialIdentity(identity) &&
+            !termsAccepted(data.acceptTerms)
+          )
+            throw new Error(TERMS_REQUIRED_MESSAGE);
+          db.prepare('DELETE FROM social_flows WHERE hash=?').run(flow.hash);
           res.setHeader('set-cookie', flowCookie('', 0));
           if (flow.action === 'login') {
             const result = await auth.socialLogin(identity);
+            if (result.recoveryCode)
+              auth.recordTerms(result.user.id, TERMS_VERSION);
             res.setHeader('set-cookie', [
               flowCookie('', 0),
               cookie(result.session),

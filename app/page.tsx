@@ -127,8 +127,7 @@ export default function Home({
             <p>
               A hedgerow, pollinator meadow, or woodlot can connect to the next
               habitat. Neighbors can care for them together. Start with one
-              place and one useful action, then build
-              from there.
+              place and one useful action, then build from there.
             </p>
           </div>
           <ol className="home-steps">
@@ -342,9 +341,8 @@ export default function Home({
               <p className="eyebrow">CARE FOR THE TOOLS, TOO</p>
               <h2 id="funding-title">Help the commons grow.</h2>
               <p>
-                VergeCommon is a Viridis LLC project. Field knowledge, code,
-                feedback and optional project contributions help sustain the
-                tools we share.
+                VergeCommon is a Viridis LLC project. Field knowledge, code and
+                feedback help sustain the tools we share.
               </p>
             </div>
             <Link className="button home-funding-link" href="/support-project/">
@@ -402,6 +400,11 @@ export default function Home({
             }
           >
             Privacy
+          </a>
+          <a
+            href={publicPreview ? 'https://vergecommon.com/terms/' : '/terms/'}
+          >
+            Terms
           </a>
           <a
             href={

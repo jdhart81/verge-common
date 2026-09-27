@@ -267,7 +267,7 @@ await test('OAuth flow binds browser proof, validates origin, consumes callbacks
     (
       await f.request('/auth/social/finish', {
         method: 'POST',
-        body: `state=${state}`,
+        body: `state=${state}&acceptTerms=yes`,
         cookies,
         requestOrigin: 'null',
       })
@@ -277,7 +277,7 @@ await test('OAuth flow binds browser proof, validates origin, consumes callbacks
   assert.equal(f.db.prepare('SELECT count(*) n FROM users').get().n, 0);
   const finish = await f.request('/auth/social/finish', {
     method: 'POST',
-    body: `state=${state}`,
+    body: `state=${state}&acceptTerms=yes`,
     cookies,
   });
   assert.equal(finish.status, 201);
@@ -287,7 +287,7 @@ await test('OAuth flow binds browser proof, validates origin, consumes callbacks
     (
       await f.request('/auth/social/finish', {
         method: 'POST',
-        body: `state=${state}`,
+        body: `state=${state}&acceptTerms=yes`,
         cookies,
       })
     ).status,
@@ -416,7 +416,7 @@ await test('link confirmation requires consent and the original live browser ses
     (
       await f.request('/auth/social/finish', {
         method: 'POST',
-        body: `state=${state}`,
+        body: `state=${state}&acceptTerms=yes`,
         cookies,
       })
     ).status,
@@ -480,7 +480,7 @@ await test('Apple cross-site POST callback requires browser proof, while other c
     (
       await f.request('/auth/social/finish', {
         method: 'POST',
-        body: `state=${state}`,
+        body: `state=${state}&acceptTerms=yes`,
         cookies,
         requestOrigin: 'https://appleid.apple.com',
       })
@@ -491,7 +491,7 @@ await test('Apple cross-site POST callback requires browser proof, while other c
     (
       await f.request('/auth/social/finish', {
         method: 'POST',
-        body: `state=${state}`,
+        body: `state=${state}&acceptTerms=yes`,
         cookies,
       })
     ).status,
@@ -536,7 +536,7 @@ await test('Supabase Apple callback uses browser-bound GET, rejects old callback
   const finish = await f.request('/auth/social/finish', {
     method: 'POST',
     cookies,
-    body: `state=${state}`,
+    body: `state=${state}&acceptTerms=yes`,
   });
   assert.equal(finish.status, 201);
   const row = f.db
@@ -709,7 +709,7 @@ await test('email link creates and returns to one account; proof, confirmation, 
     (
       await f.request('/auth/social/finish', {
         method: 'POST',
-        body: `state=${state}`,
+        body: `state=${state}&acceptTerms=yes`,
         cookies,
         requestOrigin: 'https://wrong.invalid',
       })
@@ -718,7 +718,7 @@ await test('email link creates and returns to one account; proof, confirmation, 
   );
   const completed = await f.request('/auth/social/finish', {
     method: 'POST',
-    body: `state=${state}`,
+    body: `state=${state}&acceptTerms=yes`,
     cookies,
   });
   assert.equal(completed.status, 201);
@@ -746,7 +746,7 @@ await test('email link creates and returns to one account; proof, confirmation, 
   );
   const returning = await f.request('/auth/social/finish', {
     method: 'POST',
-    body: `state=${retryState}`,
+    body: `state=${retryState}&acceptTerms=yes`,
     cookies: retryCookie,
   });
   assert.equal(returning.status, 303);
@@ -771,4 +771,44 @@ await test('email request failures remove pending proof, do not expose provider 
     () => configuredProviders({ VERGE_EMAIL_ENABLED: '1' }),
     /Supabase/,
   );
+});
+
+await test('BL-09: a new Google account is created only after the Terms of Use are accepted, and acceptance is recorded', async (t) => {
+  const f = await flowFixture(t);
+  const start = await f.request('/auth/social/start', {
+    method: 'POST',
+    body: 'action=login&provider=google',
+  });
+  const state = new URL(start.location).searchParams.get('state'),
+    cookies = start.headers['set-cookie'].split(';')[0];
+  assert.equal(
+    (
+      await f.request(`/auth/social/google/callback?state=${state}&code=code`, {
+        cookies,
+      })
+    ).status,
+    303,
+  );
+  const confirmation = await f.request(`/auth/social/finish?state=${state}`, {
+    cookies,
+  });
+  assert.match(
+    confirmation.data?.socialContent ?? confirmation.body ?? '',
+    /Terms of Use/,
+  );
+  const refused = await f.request('/auth/social/finish', {
+    method: 'POST',
+    body: `state=${state}`,
+    cookies,
+  });
+  assert.notEqual(refused.status, 201);
+  assert.equal(f.db.prepare('SELECT count(*) n FROM users').get().n, 0);
+  const accepted = await f.request('/auth/social/finish', {
+    method: 'POST',
+    body: `state=${state}&acceptTerms=yes`,
+    cookies,
+  });
+  assert.equal(accepted.status, 201);
+  const row = f.db.prepare('SELECT version FROM terms_acceptances').get();
+  assert.equal(row.version, '2026-09-28');
 });

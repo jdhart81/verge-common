@@ -19,7 +19,7 @@ class Client:
    except: return e.code,raw.decode()
  def register(self,n):
   self.name=prefix+n;self.password=uuid.uuid4().hex+'!'
-  code,body=self.call('/auth/register',{'username':self.name,'displayName':'Synthetic '+n,'password':self.password},form=True)
+  code,body=self.call('/auth/register',{'acceptTerms':'yes','username':self.name,'displayName':'Synthetic '+n,'password':self.password},form=True)
   assert code==201,(code,body);self.recovery=re.findall(r'<code>(.*?)</code>',body)[0]
  def token(self,scope):
   code,body=self.call('/auth/token',{'label':'Acceptance test','scope':scope},form=True)
@@ -203,7 +203,7 @@ print(json.dumps({'status':'passed','workspace':id,'checks':['distinct mission h
 
 # Native consumer auth: no browser cookie, manual token creation or redirect.
 native=Client();native_name=prefix+'native';native_password=uuid.uuid4().hex+'!'
-code,registration=native.call('/auth/native/register',{'username':native_name,'displayName':'Synthetic native','password':native_password});assert code==201,(code,registration)
+code,registration=native.call('/auth/native/register',{'acceptTerms':True,'username':native_name,'displayName':'Synthetic native','password':native_password});assert code==201,(code,registration)
 assert not list(native.jar)
 token=registration['token'];assert registration['expiresAt']>0
 headers={'Authorization':'Bearer '+token}

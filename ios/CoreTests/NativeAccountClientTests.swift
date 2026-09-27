@@ -28,7 +28,7 @@ final class NativeAccountClientTests: XCTestCase {
         XCTAssertEqual(request.value(forHTTPHeaderField: "Accept"), "application/json")
         XCTAssertNil(request.value(forHTTPHeaderField: "Authorization"))
         XCTAssertNil(request.value(forHTTPHeaderField: "Cookie"))
-        XCTAssertEqual(try payload(request), ["username": "native_tester", "displayName": "Native tester", "password": password])
+        XCTAssertEqual(try payload(request), ["username": "native_tester", "displayName": "Native tester", "password": password, "acceptTerms": "yes"])
     }
     func testRecoveryPreservesPasswordAndSendsNoDisplayName() throws {
         let request = try NativeAccountClient.request(.recover, username: "native_tester", displayName: "ignored", password: "  password-spaces-are-intentional  ", recoveryCode: " \(recovery)\n")

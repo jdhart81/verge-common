@@ -270,3 +270,37 @@ await test('M2: repeated failures from one network do not lock the account for o
   const other = await attempt('203.0.113.50');
   assert.equal(other.status, 401);
 });
+
+await test('BL-09: password and native sign-up require accepting the Terms of Use', async (t) => {
+  const g = await gateway(t);
+  const form = (fields) =>
+    raw(g.port, '/auth/register', {
+      method: 'POST',
+      headers: { origin, 'content-type': 'application/x-www-form-urlencoded' },
+      body: new URLSearchParams(fields).toString(),
+    });
+  const base = { username: 'carol', displayName: 'Carol', password };
+  const refused = await form(base);
+  assert.equal(refused.status, 400);
+  assert.match(refused.body, /Agree to the Terms of Use/);
+  assert.equal((await form({ ...base, acceptTerms: 'yes' })).status, 201);
+  const native = (data) =>
+    raw(g.port, '/auth/native/register', {
+      method: 'POST',
+      headers: { origin, 'content-type': 'application/json' },
+      body: JSON.stringify(data),
+    });
+  const nativeBase = { username: 'dana', displayName: 'Dana', password };
+  assert.equal((await native(nativeBase)).status, 400);
+  assert.equal(
+    (await native({ ...nativeBase, acceptTerms: true })).status,
+    201,
+  );
+});
+
+await test('BL-09: the sign-up form shows the Terms of Use checkbox', async (t) => {
+  const g = await gateway(t);
+  const page = await raw(g.port, '/account?mode=register');
+  assert.match(page.body, /name="acceptTerms"[^>]*required/);
+  assert.match(page.body, /href="\/terms\/"/);
+});

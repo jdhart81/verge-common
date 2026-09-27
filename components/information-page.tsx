@@ -50,6 +50,7 @@ export function InformationPage({
         <span>A Viridis LLC project. Open code. Cooperative conservation.</span>
         <nav aria-label="Help and project information">
           <Link href="/privacy/">Privacy</Link>
+          <Link href="/terms/">Terms</Link>
           <Link href="/support/">Get help</Link>
           <Link href="/support-project/">Support the project</Link>
           <a href={sourceBranch}>

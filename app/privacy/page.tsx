@@ -20,7 +20,7 @@ export default function PrivacyPage() {
       intro="Understand what your co-op shares, what stays private, and what happens when you leave. VergeCommon is operated by Viridis LLC."
     >
       <p>
-        Updated September 20, 2026. This page summarizes the hosted public beta.
+        Updated September 28, 2026. This page summarizes the hosted public beta.
         The{' '}
         <a href={documentBranch + '/PRIVACY.md'}>
           full privacy and visibility policy
@@ -74,10 +74,11 @@ export default function PrivacyPage() {
         </p>
         <p>
           The hosted service keeps co-op records in a private database and
-          uploaded evidence on its dedicated server. Operators manage that
-          server and its backups. The host may process request metadata such as
-          IP addresses. VergeCommon includes no advertising or application
-          analytics tracker.
+          uploaded evidence on its dedicated server, hosted by DigitalOcean in
+          the United States. Operators manage that server and its backups. The
+          host may process request metadata such as IP addresses, which are
+          also used briefly for rate limiting. VergeCommon includes no
+          advertising or application analytics tracker.
         </p>
       </section>
       <section>

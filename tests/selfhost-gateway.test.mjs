@@ -445,6 +445,7 @@ await test('gateway enforces canonical host, same-origin browser mutations, and 
 await test('account registration and login set protected cookies and reject external return destinations', async (t) => {
   const f = await fixture(t);
   const registered = await f.form('/auth/register', {
+    acceptTerms: 'yes',
     username: 'carol',
     displayName: '<script>name</script>',
     password,
@@ -511,6 +512,7 @@ await test('account mode links, registration, and recovery preserve the intended
   assertDestination(registerHtml);
   modeLink(registerHtml, 'login');
   const registered = await f.form('/auth/register', {
+    acceptTerms: 'yes',
     username: 'invited_neighbor',
     displayName: 'Invited neighbor',
     password,
@@ -682,6 +684,7 @@ await test('native account lifecycle issues scoped tokens, rotates recovery, rev
       body: JSON.stringify(data),
     });
   const registered = await native('register', {
+    acceptTerms: true,
     username: 'native',
     displayName: 'Native user',
     password,

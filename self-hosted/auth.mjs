@@ -50,7 +50,8 @@ export function createAuth(db, now = Date.now, lifecycle = {}) {
     CREATE TABLE IF NOT EXISTS api_tokens (id TEXT PRIMARY KEY, hash TEXT UNIQUE NOT NULL, user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE, label TEXT NOT NULL, scopes TEXT NOT NULL, expires_at INTEGER NOT NULL, created_at INTEGER NOT NULL);
     CREATE TABLE IF NOT EXISTS auth_audit (id TEXT PRIMARY KEY, user_id TEXT, event TEXT NOT NULL, created_at INTEGER NOT NULL);
     CREATE TABLE IF NOT EXISTS rate_limits (key TEXT PRIMARY KEY, count INTEGER NOT NULL, expires_at INTEGER NOT NULL);
-    CREATE INDEX IF NOT EXISTS rate_limits_expiry ON rate_limits(expires_at);`);
+    CREATE INDEX IF NOT EXISTS rate_limits_expiry ON rate_limits(expires_at);
+    CREATE TABLE IF NOT EXISTS terms_acceptances (user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE, version TEXT NOT NULL, accepted_at INTEGER NOT NULL, PRIMARY KEY(user_id, version));`);
   db.exec(`CREATE TABLE IF NOT EXISTS social_identities (provider TEXT NOT NULL, subject TEXT NOT NULL, user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE, encrypted_token TEXT NOT NULL, subject_hash TEXT NOT NULL, PRIMARY KEY(provider,subject), UNIQUE(user_id,provider));
     CREATE TABLE IF NOT EXISTS social_only_users (user_id TEXT PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE);
     CREATE TABLE IF NOT EXISTS social_revocations (id INTEGER PRIMARY KEY, provider TEXT NOT NULL, encrypted_token TEXT NOT NULL);
@@ -140,6 +141,21 @@ export function createAuth(db, now = Date.now, lifecycle = {}) {
         db.prepare('SELECT password_hash FROM users WHERE id=?').get(id)
           ?.password_hash === row.password_hash
       );
+    },
+    recordTerms(userId, version) {
+      db.prepare(
+        'INSERT OR IGNORE INTO terms_acceptances VALUES (?,?,?)',
+      ).run(userId, version, now());
+    },
+    termsAcceptances(userId) {
+      return db
+        .prepare(
+          'SELECT version, accepted_at FROM terms_acceptances WHERE user_id=? ORDER BY accepted_at',
+        )
+        .all(userId);
+    },
+    hasSocialIdentity(identity) {
+      return Boolean(identityRow(identity));
     },
     async socialLogin(identity) {
       checkDeletion(identity);

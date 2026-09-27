@@ -4,6 +4,11 @@ import { pathToFileURL } from 'node:url';
 import { resolve } from 'node:path';
 import { statfs } from 'node:fs/promises';
 import { clientKey, isSafeRelativePath } from './client-key.mjs';
+import {
+  TERMS_VERSION,
+  TERMS_REQUIRED_MESSAGE,
+  termsAccepted,
+} from './terms.mjs';
 import { createAuth } from './auth.mjs';
 import {
   getDatabase,
@@ -357,8 +362,12 @@ export function createGateway({
             return json(429, {
               error: 'Too many sign-in attempts. Wait 15 minutes.',
             });
+          if (action === 'register' && !termsAccepted(data.acceptTerms))
+            return json(400, { error: TERMS_REQUIRED_MESSAGE });
           try {
             const result = await auth[action](data);
+            if (action === 'register')
+              auth.recordTerms(result.user.id, TERMS_VERSION);
             return json(
               action === 'register' ? 201 : 200,
               auth.nativeSession(result),
@@ -483,7 +492,12 @@ export function createGateway({
           message = '';
         try {
           if (action === 'register') {
+            if (!termsAccepted(data.acceptTerms))
+              throw Object.assign(new Error(TERMS_REQUIRED_MESSAGE), {
+                status: 400,
+              });
             const result = await auth.register(data);
+            auth.recordTerms(result.user.id, TERMS_VERSION);
             res.setHeader('set-cookie', cookie(result.session));
             return page(201, {
               user: result.user,
