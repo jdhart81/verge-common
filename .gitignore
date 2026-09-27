@@ -58,3 +58,12 @@ xcuserdata/
 # Self-hosted private runtime state
 /.verge-data/
 /self-hosted/backups/
+
+# Additional secret-file patterns
+.env
+.env.*
+!.env.example
+*.key
+*.p12
+service-account*.json
+*.keystore
