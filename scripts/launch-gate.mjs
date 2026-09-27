@@ -122,7 +122,7 @@ export async function runChecks({
         'BL-01',
         'build commit',
         'FAIL',
-        `running ${commit}, expected ${expectCommit}`,
+        `running ${commit}, expected ${String(expectCommit)}`,
       );
     else record('BL-01', 'build commit', 'PASS', commit);
   } catch (error) {
@@ -189,7 +189,7 @@ export async function runChecks({
       'BL-08',
       'TLS certificate',
       days > SECRET_EXPIRY_WARNING_DAYS ? 'PASS' : 'FAIL',
-      `${days} days left (${tlsExpiry})`,
+      `${days} days left (${String(tlsExpiry)})`,
     );
   } else record('BL-08', 'TLS certificate', 'SKIP', 'not an HTTPS origin');
   const appleDays = Math.floor((Date.parse(appleSecretExpiry) - now) / DAY);
@@ -331,4 +331,10 @@ async function main(argv) {
 }
 
 if (import.meta.url === pathToFileURL(process.argv[1] ?? '').href)
-  main(process.argv.slice(2)).then((code) => process.exit(code));
+  void main(process.argv.slice(2)).then(
+    (code) => process.exit(code),
+    (error) => {
+      console.error(error);
+      process.exit(1);
+    },
+  );
