@@ -1,6 +1,6 @@
 # Apple submission draft
 
-Updated 19 September 2026 for the native evidence-queue candidate (68 Swift core tests and an unsigned simulator build passed), following the [beta readiness candidate](BETA_READINESS_2026-09-19.md) and the earlier `5aa1a5f` review packet. The final candidate commit and deployment receipt remain to be recorded by the release coordinator. This is not a completed App Store Connect declaration, upload or approval. Native release evidence and remaining gates belong in [APPLE_RELEASE.md](APPLE_RELEASE.md).
+Updated 19 September 2026 for the native evidence-queue candidate (68 Swift core tests and an unsigned simulator build passed), following the [beta readiness candidate](history/BETA_READINESS_2026-09-19.md) and the earlier `5aa1a5f` review packet. The final candidate commit and deployment receipt remain to be recorded by the release coordinator. This is not a completed App Store Connect declaration, upload or approval. Native release evidence and remaining gates belong in [APPLE_RELEASE.md](APPLE_RELEASE.md).
 
 The coordinator verified access to an **individual** App Store Connect account, with no VergeCommon app record at the September 19 review. The owner identifies the project operator as **Viridis LLC**. Confirm the intended team and public seller identity before registering the app. Free Apps is active; Paid Apps is unaccepted, and EU trader status is incomplete.
 

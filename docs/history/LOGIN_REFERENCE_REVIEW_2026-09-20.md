@@ -33,4 +33,4 @@ The reference's `docs/beta/SOCIAL_LOGIN_SETUP.md` still says Google and Apple ar
 4. Deploy the already-tested broker integration behind the existing preview gate, preserving a compatible rollback and backup.
 5. Complete real new/returning sign-in, cancellation, explicit linking, sign-out and controlled deletion acceptance for each provider. Public activation follows those results.
 
-See [Supabase setup and validation receipt](../self-hosted/SUPABASE_SIGN_IN.md). This comparison does not change deployment status or establish live provider acceptance.
+See [Supabase setup and validation receipt](../../self-hosted/SUPABASE_SIGN_IN.md). This comparison does not change deployment status or establish live provider acceptance.

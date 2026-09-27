@@ -19,7 +19,7 @@ The website and shared app service at **https://vergecommon.com** were updated a
 | Restrictions | Unprivileged user, read-only image, bounded temporary scratch, dropped capabilities, no-new-privileges, 1 GiB memory and 256-process limit |
 | Retained previous executable | Stopped `vergecommon-pre-service-df05631`; diagnostic retention, **not a compatible automatic rollback** |
 
-The deployment includes automatic foreground web refresh, Discussion actions, native reply API compatibility, project-bound receipts, stewardship/treasury reconciliation, expanded review reminders, upload migration `0002`, partner participation and capacity protections. See [service build](SERVICE_BUILD_2026-09-19.md) and [coverage audit](SERVICE_COVERAGE.md). Subsequent documentation-only commits do not change deployed executable bytes.
+The deployment includes automatic foreground web refresh, Discussion actions, native reply API compatibility, project-bound receipts, stewardship/treasury reconciliation, expanded review reminders, upload migration `0002`, partner participation and capacity protections. See [service build](SERVICE_BUILD_2026-09-19.md) and [coverage audit](../SERVICE_COVERAGE.md). Subsequent documentation-only commits do not change deployed executable bytes.
 
 ## Migration and acceptance
 
@@ -46,7 +46,7 @@ All private snapshots stayed on the dedicated server. No offhost transfer or sch
 | Isolated restore verification | Passed | Passed at 00:27:23 UTC |
 | Migrations | `0000`, `0001` | `0000`, `0001`, `0002` |
 
-The daily on-server backup timer remains active. Metadata and acceptance logs are retained at `/opt/vergecommon/deployments/20260920-service-750f7f3`. The separate encrypted offsite recovery/alerting work remains unqualified as described in [operations](OPERATIONS_BETA.md).
+The daily on-server backup timer remains active. Metadata and acceptance logs are retained at `/opt/vergecommon/deployments/20260920-service-750f7f3`. The separate encrypted offsite recovery/alerting work remains unqualified as described in [operations](../OPERATIONS_BETA.md).
 
 ## Failure and rollback boundary
 

@@ -72,7 +72,7 @@ Pending receipts reserve their allocation bucket but never count as reviewed pay
 
 The simulation creates one actual private project post and 15 actual comments through `post_update` and `post_comment`. They describe what each participant has done. The executable record of those messages is in `result.json` under `transcript`.
 
-This is the existing project discussion model. The other commands are invoked programmatically by the offline runner. **The simulation does not demonstrate creating a co-op, mapping, signing, voting, selling or paying by typing into chat.** The subsequent [conversation actions build](CONVERSATION_ACTIONS.md) opens the existing structured controls within Discussion; this offline rehearsal does not test that interface. Signatures, integrated buyer execution and payment execution remain external work.
+This is the existing project discussion model. The other commands are invoked programmatically by the offline runner. **The simulation does not demonstrate creating a co-op, mapping, signing, voting, selling or paying by typing into chat.** The subsequent [conversation actions build](../CONVERSATION_ACTIONS.md) opens the existing structured controls within Discussion; this offline rehearsal does not test that interface. Signatures, integrated buyer execution and payment execution remain external work.
 
 Privacy remains part of the scenario: Nadia's member view receives only her own parcel; Lena receives no private parcels. Stewards can inspect the combined pool. The conversation does not broadcast the neighbors' legal documents, boundaries or authority evidence. No project or discussion appears in the public projection, and an outsider cannot obtain a member view.
 

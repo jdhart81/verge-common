@@ -6,7 +6,7 @@
 
 Organize a local conservation project, document the work, and make decisions together. From hedgerows and woodlots to larger landscapes, communities should be able to inspect, adapt, and improve the tools they depend on.
 
-**Early cooperative pilot.** The shared website is live with browser accounts, private co-ops and scoped agent access. The repository also includes the self-hosted account/storage runtime and native participation source. This is an invitation to build and test with us. Real partner adoption and verified environmental impact have not yet been demonstrated. See [service coverage and remaining work](docs/SERVICE_COVERAGE.md) and [the current service candidate](docs/SERVICE_BUILD_2026-09-19.md) for source capabilities, verification and remaining release requirements.
+**Early cooperative pilot.** The shared website is live with browser accounts, private co-ops and scoped agent access. The repository also includes the self-hosted account/storage runtime and native participation source. This is an invitation to build and test with us. Real partner adoption and verified environmental impact have not yet been demonstrated. See [current status](STATUS.md) and [service coverage](docs/SERVICE_COVERAGE.md) for what is live and what remains.
 
 ## Find your first contribution
 
@@ -23,7 +23,7 @@ Organize a local conservation project, document the work, and make decisions tog
 
 [Website](https://vergecommon.com) · [Conservation network](https://vergecommon.com/network/) · [Member workspace](https://vergecommon.com/workspace/) · [Account and device access](https://vergecommon.com/account) · [Contribute](CONTRIBUTING.md)
 
-`vergecommon.com` is the canonical service address. The shared application passed live HTTPS acceptance on September 19, 2026, using three independent synthetic accounts. The launch foundation was merged into `main` in [PR #2](https://github.com/jdhart81/verge-common/pull/2). The [conversation actions candidate](docs/CONVERSATION_ACTIONS.md) adds private structured workflows inside Discussion; its presence in source does not mean it is deployed. See the [latest deployed build receipt](docs/LAUNCH_BUILD_2026-09-19.md) and [next candidate readiness](docs/BETA_READINESS_2026-09-19.md) for exact revisions and operational limits before inviting participants. Co-op and project publication is opt-in; member records and private land evidence retain their server-side access rules.
+`vergecommon.com` is the canonical service address. **For what is live, verified and still open right now, read [STATUS.md](STATUS.md).** The deployed service includes the launch foundation ([PR #2](https://github.com/jdhart81/verge-common/pull/2)) and the [conversation actions](docs/CONVERSATION_ACTIONS.md) and social sign-in work ([PR #3](https://github.com/jdhart81/verge-common/pull/3)). Dated deployment receipts and reviews live in [docs/history/](docs/history/). Co-op and project publication is opt-in; member records and private land evidence retain their server-side access rules.
 
 ## Start your own community
 
@@ -116,7 +116,7 @@ With a local self-hosted production build running against dedicated synthetic da
 VERGE_TEST_ORIGIN=http://127.0.0.1:3100 python3 tests/selfhost_acceptance.py
 ```
 
-This checks independent accounts, invitations and access boundaries, version conflicts/retries, evidence storage, token scopes/revocation, hosted MCP and account closure. The runner defaults to local services and requires explicit opt-in for private synthetic fixtures on the canonical production service. Check [feature acceptance](docs/FEATURE_ACCEPTANCE.md) and the [deployment receipt](docs/DEPLOYMENT_2026-09-19.md) for actual results.
+This checks independent accounts, invitations and access boundaries, version conflicts/retries, evidence storage, token scopes/revocation, hosted MCP and account closure. The runner defaults to local services and requires explicit opt-in for private synthetic fixtures on the canonical production service. Check [feature acceptance](docs/FEATURE_ACCEPTANCE.md) and the [deployment receipt](docs/history/DEPLOYMENT_2026-09-19.md) for actual results.
 
 With the original Cloudflare development server running, run its HTTP persistence/concurrency checks:
 

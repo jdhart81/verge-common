@@ -1,6 +1,6 @@
 # Operating Verge Common
 
-These instructions describe the [verified launch build](LAUNCH_BUILD_2026-09-19.md). Confirm its deployment receipt before relying on newly added controls in production.
+These instructions describe the [verified launch build](history/LAUNCH_BUILD_2026-09-19.md). Confirm its deployment receipt before relying on newly added controls in production.
 
 ## Start a real co-op workspace
 

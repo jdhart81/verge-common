@@ -12,7 +12,7 @@
 - Automatic foreground browser refresh, independently actionable monitoring/financial review queues, and native discussion replies with protected exact retries.
 - Audit history, scoped exports, membership removal, and archival.
 
-The [19 September launch candidate](docs/LAUNCH_BUILD_2026-09-19.md) additionally implements same-tab invitation continuity, safe upload discard/expiry/retry, current setup indicators, an independent operator report queue with private receipts, event editing/calendar revisions, pending-work notices, a private steward parcel overview, public directory search with stable pagination, and native calendar-date/reporting/search improvements. Candidate implementation is not a deployment or Apple distribution receipt. No real partner adoption or verified environmental impact is claimed.
+The [19 September launch candidate](docs/history/LAUNCH_BUILD_2026-09-19.md) additionally implements same-tab invitation continuity, safe upload discard/expiry/retry, current setup indicators, an independent operator report queue with private receipts, event editing/calendar revisions, pending-work notices, a private steward parcel overview, public directory search with stable pagination, and native calendar-date/reporting/search improvements. Candidate implementation is not a deployment or Apple distribution receipt. No real partner adoption or verified environmental impact is claimed.
 
 ## 1. Prove one complete local participation loop
 

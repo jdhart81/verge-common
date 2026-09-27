@@ -2,7 +2,7 @@
 
 > Deployment update: source `750f7f3` is live on the dedicated VergeCommon server. See the [20 September UTC deployment receipt](DEPLOYMENT_SERVICE_2026-09-20.md) for exact image, migration, acceptance and recovery evidence. Apple distribution and the remaining service gaps are unchanged.
 
-This candidate follows the [conversation-actions build](CONVERSATION_ACTIONS.md). It addresses gaps found in the [service coverage audit](SERVICE_COVERAGE.md). It is an implementation record; its source does not establish production deployment, Apple distribution or completed external conservation/financial activity.
+This candidate follows the [conversation-actions build](../CONVERSATION_ACTIONS.md). It addresses gaps found in the [service coverage audit](../SERVICE_COVERAGE.md). It is an implementation record; its source does not establish production deployment, Apple distribution or completed external conservation/financial activity.
 
 ## Changes
 
@@ -34,4 +34,4 @@ Source candidate: `build/conversation-actions`, extending `baa2ffd`, in [PR #3](
 - Actual credit qualification, verification, issuance/custody, buyer contracting, sales and payments still require qualified external parties and selected providers. The platform does not perform those acts.
 - Optional project contributions remain disabled until the verified Viridis LLC Stripe destination is configured. Production recovery/alerting, consenting participant acceptance, physical-device checks and Apple distribution retain their own release requirements.
 
-See [SERVICE_COVERAGE.md](SERVICE_COVERAGE.md) for the claim-by-claim boundaries and [OPERATIONS_BETA.md](OPERATIONS_BETA.md) for the separate recovery/operations status.
+See [SERVICE_COVERAGE.md](../SERVICE_COVERAGE.md) for the claim-by-claim boundaries and [OPERATIONS_BETA.md](../OPERATIONS_BETA.md) for the separate recovery/operations status.
