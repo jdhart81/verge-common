@@ -92,11 +92,13 @@ export function welcomePage({
         name = id === 'google' ? 'Google' : 'Apple';
       return provider
         ? `<form class="provider-form" method="post" action="/auth/social/start"><input type="hidden" name="provider" value="${id}"><input type="hidden" name="action" value="login">${returnField}<button class="provider">${icons[id]}Continue with ${name}</button></form>`
-        : `<button class="provider unavailable" type="button" disabled aria-label="${name} sign-in coming soon">${icons[id]}${name} sign-in <small>Coming soon</small></button>`;
+        : ''; // Unconfigured providers are hidden, never shown as placeholders.
     })
     .join('');
   const credentialForm = `<form class="credentials" method="post" action="/auth/${recovery ? 'recover' : register ? 'register' : 'login'}">${fields}${returnField}${register ? termsCheckbox() : ''}<p class="hint">${recovery ? 'We do not send password reset emails. Recovery replaces your code and signs out other sessions.' : register ? 'No email address is required. Use a password of 12–128 characters and save the recovery code shown after joining.' : 'Welcome back. Use your VergeCommon username, or choose another available sign-in option.'} <a href="/privacy/">Privacy policy</a></p><button class="primary">${recovery ? 'Recover account' : register ? 'Create account' : 'Log in'}</button></form>`;
-  const providerChoices = `<div class="providers" aria-label="Other sign-in options">${providers}</div><p class="link-note">Already have an account? Sign in with your existing method before linking another sign-in method.</p>`;
+  const providerChoices = !providers
+    ? ''
+    : `<div class="providers" aria-label="Other sign-in options">${providers}</div><p class="link-note">Already have an account? Sign in with your existing method before linking another sign-in method.</p>`;
   const authChoices = recovery
     ? credentialForm
     : emailEnabled
