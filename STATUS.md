@@ -1,6 +1,6 @@
 # VergeCommon — current status
 
-**Last updated: 27 September 2026.** This is the single, current summary of what is live, what is verified and what is still open. Update it with every deployment or change in operating state. Dated deployment receipts and reviews are preserved unchanged in [docs/history/](docs/history/).
+**Last updated: 27 September 2026 (soft-launch candidate).** This is the single, current summary of what is live, what is verified and what is still open. Update it with every deployment or change in operating state. Dated deployment receipts and reviews are preserved unchanged in [docs/history/](docs/history/).
 
 ## At a glance
 
@@ -8,9 +8,18 @@
 | --- | --- |
 | Website and shared app | **Live public technical beta** at https://vergecommon.com — accounts, private co-ops, invitations, discussion and conversation actions, events, parcels/boundaries, evidence, governance records, operator report queue, hosted MCP. Free to use. |
 | Hosting | One dedicated DigitalOcean droplet (`601953476`), Docker container behind Caddy, SQLite + private evidence files. Separate from Viridis Conservation. |
-| Source of truth | Production runs branch `build/conversation-actions` ([PR #3](https://github.com/jdhart81/verge-common/pull/3)). PR #2 and PR #4 (secret scanning) are merged into `main`. **PR #3 must be merged so `main` matches production.** |
-| Automated checks | Merge of `main` + PR #3 verified 27 Sep 2026: **259/259 Node tests, TypeScript and lint pass**; clean merge. |
+| Source of truth | Production runs branch `build/conversation-actions` (PR #3). The **soft-launch candidate is branch `launch/soft-launch`**, which contains PR #3, current `main` and the launch work below. Merge it to `main`, tag it, then deploy that tag. |
+| Automated checks | Soft-launch candidate, 27 Sep 2026: **275/275 Node tests, TypeScript and lint pass**; isolated production-build acceptance passed (4 accounts + native lifecycle); browser check of every public page and all 14 co-op tabs at 1280 px and 375 px with no console errors or overflow. |
+| Launch gate | `npm run launch-gate` checks the machine-checkable gates against production. Before this candidate is deployed, production fails 4 (terms page, terms at sign-up, build commit, HSTS); the candidate passes them locally. |
 | Real adoption | None demonstrated yet. No real co-op, environmental or financial outcome has been recorded. |
+
+## Soft-launch candidate (branch `launch/soft-launch`)
+
+- Security review fixes: see [docs/history/SECURITY_REVIEW_2026-09-27.md](docs/history/SECURITY_REVIEW_2026-09-27.md). Abuse limits for open sign-up, IPv6-aware rate limits, per-member and per-uploader caps, open-redirect fix, HSTS, no raw database errors.
+- Terms of Use at `/terms/`, accepted and recorded (version `2026-09-28`) at every password, app and first-time provider sign-up.
+- Health endpoint reports the build commit (`VERGE_BUILD_COMMIT` build arg).
+- No placeholders: unconfigured sign-in providers are hidden; the support page no longer says "not open yet"; co-op tabs have readable names.
+- Sign-up limits allow a group on one network (60 attempts per 15 minutes per network).
 
 ## Sign-in
 
@@ -53,7 +62,7 @@ Runbooks: [docs/OPERATIONS_BETA.md](docs/OPERATIONS_BETA.md), [docs/OPERATIONS.m
 
 ## Next steps, in order
 
-1. Merge PR #3 into `main`; tag the release. Publish the Google OAuth consent screen out of Testing (or return Google to preview) — this affects the live site today.
+1. Merge `launch/soft-launch` into `main` (it includes PR #3), tag `v0.8.0`, build the image with `--build-arg VERGE_BUILD_COMMIT=<sha>`, deploy with the usual backup → isolated restore → switch procedure, then run `npm run launch-gate -- --expect-commit <sha>`. Publish the Google OAuth consent screen out of Testing and set its support email to justin@viridisconservation.com.
 2. Back up the Apple signing key and token-vault key to independent custody; rotate the Apple client secret before 19 Dec 2026.
 3. Approve and re-enable encrypted off-server backups; run and record an isolated restore; configure an external alert destination.
 4. Complete Apple and returning-Google sign-in acceptance; publish the Google consent screen out of Testing.
