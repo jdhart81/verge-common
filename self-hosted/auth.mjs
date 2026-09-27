@@ -44,11 +44,13 @@ export async function passwordMatches(password, stored) {
   return timingSafeEqual(key, Buffer.from(hash, 'hex'));
 }
 export function createAuth(db, now = Date.now, lifecycle = {}) {
+  let lastRateLimitPurge = Number.NEGATIVE_INFINITY;
   db.exec(`CREATE TABLE IF NOT EXISTS users (id TEXT PRIMARY KEY, username TEXT UNIQUE NOT NULL, display_name TEXT NOT NULL, password_hash TEXT NOT NULL, recovery_hash TEXT NOT NULL, created_at INTEGER NOT NULL);
     CREATE TABLE IF NOT EXISTS sessions (hash TEXT PRIMARY KEY, user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE, expires_at INTEGER NOT NULL);
     CREATE TABLE IF NOT EXISTS api_tokens (id TEXT PRIMARY KEY, hash TEXT UNIQUE NOT NULL, user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE, label TEXT NOT NULL, scopes TEXT NOT NULL, expires_at INTEGER NOT NULL, created_at INTEGER NOT NULL);
     CREATE TABLE IF NOT EXISTS auth_audit (id TEXT PRIMARY KEY, user_id TEXT, event TEXT NOT NULL, created_at INTEGER NOT NULL);
-    CREATE TABLE IF NOT EXISTS rate_limits (key TEXT PRIMARY KEY, count INTEGER NOT NULL, expires_at INTEGER NOT NULL);`);
+    CREATE TABLE IF NOT EXISTS rate_limits (key TEXT PRIMARY KEY, count INTEGER NOT NULL, expires_at INTEGER NOT NULL);
+    CREATE INDEX IF NOT EXISTS rate_limits_expiry ON rate_limits(expires_at);`);
   db.exec(`CREATE TABLE IF NOT EXISTS social_identities (provider TEXT NOT NULL, subject TEXT NOT NULL, user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE, encrypted_token TEXT NOT NULL, subject_hash TEXT NOT NULL, PRIMARY KEY(provider,subject), UNIQUE(user_id,provider));
     CREATE TABLE IF NOT EXISTS social_only_users (user_id TEXT PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE);
     CREATE TABLE IF NOT EXISTS social_revocations (id INTEGER PRIMARY KEY, provider TEXT NOT NULL, encrypted_token TEXT NOT NULL);
@@ -264,7 +266,16 @@ export function createAuth(db, now = Date.now, lifecycle = {}) {
     rateLimit(key, limit, duration) {
       const hash = digest(key);
       const time = now();
-      db.prepare('DELETE FROM rate_limits WHERE expires_at < ?').run(time);
+      // Purge expired buckets at most once a minute (indexed), not per request.
+      if (time - lastRateLimitPurge >= 60000 || time < lastRateLimitPurge) {
+        lastRateLimitPurge = time;
+        db.prepare('DELETE FROM rate_limits WHERE expires_at < ?').run(time);
+      }
+      // An expired bucket that survived the throttled purge restarts at 1.
+      db.prepare('DELETE FROM rate_limits WHERE key = ? AND expires_at < ?').run(
+        hash,
+        time,
+      );
       const row = db
         .prepare(
           'INSERT INTO rate_limits VALUES (?,1,?) ON CONFLICT(key) DO UPDATE SET count=count+1 RETURNING count',

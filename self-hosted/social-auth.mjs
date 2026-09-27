@@ -1,4 +1,5 @@
 import * as oidc from 'openid-client';
+import { isSafeRelativePath } from './client-key.mjs';
 import { importPKCS8, SignJWT } from 'jose';
 import { randomBytes, createCipheriv, createDecipheriv } from 'node:crypto';
 import { readFile } from 'node:fs/promises';
@@ -20,6 +21,7 @@ const safeReturn = (value) => {
   try {
     const u = new URL(value || '/workspace/', 'https://local.invalid');
     return u.origin === 'https://local.invalid' &&
+      isSafeRelativePath(u.pathname) &&
       !/^\/(auth|account|signin|signout)/.test(u.pathname)
       ? u.pathname + u.search + u.hash
       : '/workspace/';

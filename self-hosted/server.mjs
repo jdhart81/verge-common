@@ -2,6 +2,8 @@ import http from 'node:http';
 import { Readable } from 'node:stream';
 import { pathToFileURL } from 'node:url';
 import { resolve } from 'node:path';
+import { statfs } from 'node:fs/promises';
+import { clientKey, isSafeRelativePath } from './client-key.mjs';
 import { createAuth } from './auth.mjs';
 import {
   getDatabase,
@@ -27,6 +29,7 @@ const safeReturn = (value) => {
   try {
     const u = new URL(value || '/workspace/', 'https://return.local');
     return u.origin === 'https://return.local' &&
+      isSafeRelativePath(u.pathname) &&
       !/^\/(auth|account|signin|signout|callback)/.test(u.pathname)
       ? u.pathname + u.search + u.hash
       : '/workspace/';
@@ -34,6 +37,16 @@ const safeReturn = (value) => {
     return '/workspace/';
   }
 };
+// Internal database/driver errors are never shown to people; messages we raise
+// deliberately (plain domain errors or ones with an HTTP status) are.
+export function userMessage(error) {
+  const text = `${error?.code ?? ''} ${error?.name ?? ''} ${error?.message ?? ''}`;
+  if (!error?.status && /sqlite|database is|constraint failed|SQLITE_/i.test(text))
+    return 'The service could not complete this request.';
+  return String(error?.message ?? 'The service could not complete this request.');
+}
+export const UPLOAD_CONCURRENCY = 8;
+export const UPLOAD_DISK_FLOOR_BYTES = 2 * 1024 * 1024 * 1024;
 async function readBody(req, maximum) {
   if (Number(req.headers['content-length'] ?? 0) > maximum)
     throw Object.assign(new Error('Request too large.'), { status: 413 });
@@ -56,7 +69,10 @@ export function createGateway({
   socialPreview = false,
   maintenanceHealthy = () => true,
   host = '127.0.0.1',
+  freeDiskBytes = async () => Number.POSITIVE_INFINITY,
+  buildCommit = process.env.VERGE_BUILD_COMMIT || 'unknown',
 }) {
+  let activeUploads = 0;
   const base = new URL(origin);
   if (
     base.origin !== origin ||
@@ -169,10 +185,11 @@ export function createGateway({
         return json(400, { error: 'Invalid request URL.' });
       // The published gateway is behind Caddy on a private Docker network. Caddy
       // overwrites X-Real-IP. Direct deployments use the socket address.
-      const client =
+      const client = clientKey(
         process.env.VERGE_TRUST_CADDY === '1'
           ? String(req.headers['x-real-ip'] || req.socket.remoteAddress)
-          : req.socket.remoteAddress;
+          : req.socket.remoteAddress,
+      );
       if (!auth.rateLimit(`request:${client}`, 600, 60000))
         return json(429, { error: 'Too many requests. Try again shortly.' });
       const principal = auth.authenticate(req.headers);
@@ -209,6 +226,7 @@ export function createGateway({
           status: maintenanceHealthy() ? 'ok' : 'attention',
           service: 'vergecommon',
           version: '0.8.0',
+          commit: buildCommit,
         });
       if (url.pathname === '/.well-known/mcp.json')
         return json(200, mcpDiscovery(origin));
@@ -331,7 +349,7 @@ export function createGateway({
             return json(400, { error: 'Enter a username and password.' });
           if (
             !auth.rateLimit(
-              `auth:user:${data.username.trim().toLowerCase()}`,
+              `auth:user:${data.username.trim().toLowerCase()}:${client}`,
               12,
               15 * 60000,
             )
@@ -347,7 +365,7 @@ export function createGateway({
             );
           } catch (error) {
             return json(error.status || (action === 'register' ? 400 : 401), {
-              error: error.message,
+              error: userMessage(error),
             });
           }
         }
@@ -365,7 +383,7 @@ export function createGateway({
           await auth.closeAccount(principal.id, data.password);
           return json(200, { ok: true, deleted: true });
         } catch (error) {
-          return json(error.status || 400, { error: error.message });
+          return json(error.status || 400, { error: userMessage(error) });
         }
       }
       if (
@@ -451,7 +469,7 @@ export function createGateway({
         if (
           data.username &&
           !auth.rateLimit(
-            `auth:user:${data.username.trim().toLowerCase()}`,
+            `auth:user:${data.username.trim().toLowerCase()}:${client}`,
             12,
             15 * 60000,
           )
@@ -532,18 +550,49 @@ export function createGateway({
           return page(e.status || 400, {
             user: principal,
             tokens: principal ? auth.tokens(principal.id) : [],
-            message: e.message,
+            message: userMessage(e),
             mode: ['register', 'recover'].includes(action) ? action : 'login',
             returnTo: safeReturn(data.returnTo),
           });
         }
       }
-      const body = isWrite
-        ? await readBody(
-            req,
-            url.pathname.startsWith('/api/files') ? 5 * 1024 * 1024 : 100000,
-          )
-        : undefined;
+      const isApi = url.pathname.startsWith('/api/');
+      const isUpload = isWrite && url.pathname.startsWith('/api/files');
+      // Refuse anonymous API writes before buffering any request body.
+      if (isWrite && isApi && !principal)
+        return json(401, { error: 'Sign in first.' });
+      if (isWrite && isApi && !isUpload) {
+        if (
+          !auth.rateLimit(`cmd:m:${principal.id}`, 40, 60000) ||
+          !auth.rateLimit(`cmd:h:${principal.id}`, 400, 3600000)
+        )
+          return json(429, {
+            error: 'You are making changes very quickly. Wait a few minutes.',
+          });
+      }
+      if (isUpload && req.method === 'POST') {
+        if (!auth.rateLimit(`upload:${principal.id}`, 30, 10 * 60000))
+          return json(429, {
+            error: 'Upload limit reached. Try again in a few minutes.',
+          });
+        if (activeUploads >= UPLOAD_CONCURRENCY)
+          return json(503, {
+            error: 'Uploads are busy. Try again in a moment.',
+          });
+        if ((await freeDiskBytes()) < UPLOAD_DISK_FLOOR_BYTES)
+          return json(507, {
+            error: 'Uploads are temporarily unavailable. Contact support.',
+          });
+      }
+      if (isUpload && req.method === 'POST') activeUploads += 1;
+      let body;
+      try {
+        body = isWrite
+          ? await readBody(req, isUpload ? 5 * 1024 * 1024 : 100000)
+          : undefined;
+      } finally {
+        if (isUpload && req.method === 'POST') activeUploads -= 1;
+      }
       const upstream = await fetch(
         `http://127.0.0.1:${upstreamPort}${url.pathname}${url.search}`,
         {
@@ -677,6 +726,14 @@ export async function start() {
     social,
     socialPreview: process.env.VERGE_SOCIAL_PREVIEW === '1',
     maintenanceHealthy: () => !maintenanceFailed,
+    freeDiskBytes: async () => {
+      try {
+        const stats = await statfs(dataDir);
+        return Number(stats.bavail) * Number(stats.bsize);
+      } catch {
+        return Number.POSITIVE_INFINITY;
+      }
+    },
   });
   await new Promise((resolve) =>
     server.listen(
