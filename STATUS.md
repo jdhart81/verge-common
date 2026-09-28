@@ -1,6 +1,6 @@
 # VergeCommon — current status
 
-**Last updated: 27 September 2026 (soft-launch candidate).** This is the single, current summary of what is live, what is verified and what is still open. Update it with every deployment or change in operating state. Dated deployment receipts and reviews are preserved unchanged in [docs/history/](docs/history/).
+**Last updated: 27 September 2026 (v0.8.0 deployed).** This is the single, current summary of what is live, what is verified and what is still open. Update it with every deployment or change in operating state. Dated deployment receipts and reviews are preserved unchanged in [docs/history/](docs/history/).
 
 ## At a glance
 
@@ -8,12 +8,12 @@
 | --- | --- |
 | Website and shared app | **Live public technical beta** at https://vergecommon.com — accounts, private co-ops, invitations, discussion and conversation actions, events, parcels/boundaries, evidence, governance records, operator report queue, hosted MCP. Free to use. |
 | Hosting | One dedicated DigitalOcean droplet (`601953476`), Docker container behind Caddy, SQLite + private evidence files. Separate from Viridis Conservation. |
-| Source of truth | Production runs branch `build/conversation-actions` (PR #3). The **soft-launch candidate is branch `launch/soft-launch`**, which contains PR #3, current `main` and the launch work below. Merge it to `main`, tag it, then deploy that tag. |
+| Source of truth | Production runs **v0.8.0**, merge commit `fc9f412` on `main` ([PR #5](https://github.com/jdhart81/verge-common/pull/5)). [Deployment and recovery receipt](docs/history/DEPLOYMENT_SOFTLAUNCH_2026-09-27.md). |
 | Automated checks | Soft-launch candidate, 27 Sep 2026: **275/275 Node tests, TypeScript and lint pass**; isolated production-build acceptance passed (4 accounts + native lifecycle); browser check of every public page and all 14 co-op tabs at 1280 px and 375 px with no console errors or overflow. |
-| Launch gate | `npm run launch-gate` checks the machine-checkable gates against production. Before this candidate is deployed, production fails 4 (terms page, terms at sign-up, build commit, HSTS); the candidate passes them locally. |
+| Launch gate | `npm run launch-gate -- --expect-commit fc9f412` against production: **24 pass, 0 fail, 9 manual, 0 skipped**. Manual operational and owner gates remain open. |
 | Real adoption | None demonstrated yet. No real co-op, environmental or financial outcome has been recorded. |
 
-## Soft-launch candidate (branch `launch/soft-launch`)
+## Deployed soft-launch release (v0.8.0)
 
 - Security review fixes: see [docs/history/SECURITY_REVIEW_2026-09-27.md](docs/history/SECURITY_REVIEW_2026-09-27.md). Abuse limits for open sign-up, IPv6-aware rate limits, per-member and per-uploader caps, open-redirect fix, HSTS, no raw database errors.
 - Terms of Use at `/terms/`, accepted and recorded (version `2026-09-28`) at every password, app and first-time provider sign-up.
@@ -62,7 +62,7 @@ Runbooks: [docs/OPERATIONS_BETA.md](docs/OPERATIONS_BETA.md), [docs/OPERATIONS.m
 
 ## Next steps, in order
 
-1. Merge `launch/soft-launch` into `main` (it includes PR #3), tag `v0.8.0`, build the image with `--build-arg VERGE_BUILD_COMMIT=<sha>`, deploy with the usual backup → isolated restore → switch procedure, then run `npm run launch-gate -- --expect-commit <sha>`. Publish the Google OAuth consent screen out of Testing and set its support email to justin@viridisconservation.com.
+1. v0.8.0 is merged, tagged and deployed with backup/restore and 0 automated launch-gate failures. Publish the Google OAuth consent screen out of Testing and set its support email to justin@viridisconservation.com. Complete the nine manual launch gates before broader invitations.
 2. Back up the Apple signing key and token-vault key to independent custody; rotate the Apple client secret before 19 Dec 2026.
 3. Approve and re-enable encrypted off-server backups; run and record an isolated restore; configure an external alert destination.
 4. Complete Apple and returning-Google sign-in acceptance; publish the Google consent screen out of Testing.
