@@ -51,6 +51,8 @@ export function userMessage(error) {
   return String(error?.message ?? 'The service could not complete this request.');
 }
 export const UPLOAD_CONCURRENCY = 8;
+export const STATIC_ASSET_PATH =
+  /^\/(?:_next\/static\/|icons\/|brand\/|fonts\/|favicon\.(?:svg|ico)$|manifest\.webmanifest$|sw\.js$)/;
 export const UPLOAD_DISK_FLOOR_BYTES = 2 * 1024 * 1024 * 1024;
 async function readBody(req, maximum) {
   if (Number(req.headers['content-length'] ?? 0) > maximum)
@@ -195,7 +197,12 @@ export function createGateway({
           ? String(req.headers['x-real-ip'] || req.socket.remoteAddress)
           : req.socket.remoteAddress,
       );
-      if (!auth.rateLimit(`request:${client}`, 600, 60000))
+      // Build assets are immutable and cheap; counting them would let one
+      // shared network (a sign-up night on one Wi-Fi) exhaust the page limit.
+      const staticAsset =
+        ['GET', 'HEAD'].includes(req.method) &&
+        STATIC_ASSET_PATH.test(url.pathname);
+      if (!staticAsset && !auth.rateLimit(`request:${client}`, 1200, 60000))
         return json(429, { error: 'Too many requests. Try again shortly.' });
       const principal = auth.authenticate(req.headers);
       if (req.headers.authorization && !principal)

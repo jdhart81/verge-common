@@ -175,3 +175,13 @@ After release `5aa1a5f` was deployed, a read-only server inspection confirmed co
 Automatic approval review rejected the manual production backup transfer before execution because trusted user authorization had not explicitly specified the private database/evidence/deletion-ledger payload, local destination and recurring copy. No equivalent copy was attempted through another route. The owner has been asked to authorize the encrypted production copy to the existing `/Users/justinhart/Desktop/Cowork /Vergecommon/private-backups/encrypted` directory, including hourly updates.
 
 The LaunchAgent was reversibly unloaded while that authorization is pending; a subsequent status query confirmed it was no longer loaded. Its plist, configuration, recovery key and archive directory remain intact. The last operational receipt is still the pre-deployment missing-ledger failure at `2026-09-19T18:46:05.308993+00:00`. There is **no qualified production-backed encrypted offhost recovery receipt yet**. After approval, reload the existing agent, run the installed manual pull, verify the isolated replay and record the resulting fresh receipt before describing recurring offhost protection as active.
+
+## Production monitor (GitHub Actions)
+
+`.github/workflows/uptime.yml` runs on GitHub's schedule, independent of the Mac:
+
+- every 15 minutes, `/healthz` must return `status: ok` (three attempts, 20 s apart);
+- nightly at 07:17 UTC, `scripts/launch-gate.mjs` must pass against the latest `v*` release tag.
+
+A failure opens one issue labelled `alert-health` or `alert-launch-gate` (later failures comment on it), and GitHub emails repository watchers. Recovery closes the issue automatically. Keep "Watching → All activity" (or at least Issues) enabled on the repository for the owner account so alerts arrive by email and on the GitHub mobile app. Run it on demand from Actions → Production monitor → Run workflow. GitHub may delay scheduled runs by several minutes under load and disables schedules after 60 days without repository activity; re-enable from the Actions tab if that happens.
+
