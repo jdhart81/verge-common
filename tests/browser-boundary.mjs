@@ -101,7 +101,7 @@ try {
   });
   const [a, b] = result.state.parcels;
   await page.goto(base + '/workspace/?coop=' + id);
-  await page.getByRole('tab', { name: 'monitoring', exact: true }).click();
+  await page.getByRole('tab', { name: 'Map & monitor', exact: true }).click();
   await page.getByLabel('Private parcel').selectOption(a.id);
   const save = page.getByRole('button', {
     name: 'Save boundary for review',
@@ -308,7 +308,7 @@ try {
     'historical reuse requires new consent and switching parcels clears editor state',
   );
   await page.reload();
-  await page.getByRole('tab', { name: 'monitoring', exact: true }).click();
+  await page.getByRole('tab', { name: 'Map & monitor', exact: true }).click();
   await page.getByLabel('Private parcel').selectOption(a.id);
   await page
     .getByText('Consent reference: Synthetic browser boundary consent', {
@@ -319,7 +319,7 @@ try {
   await command('archive', {});
   created = false;
   await page.reload();
-  await page.getByRole('tab', { name: 'monitoring', exact: true }).click();
+  await page.getByRole('tab', { name: 'Map & monitor', exact: true }).click();
   await page.getByLabel('Private parcel').selectOption(a.id);
   assert.ok(
     await page

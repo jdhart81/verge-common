@@ -19,7 +19,7 @@ class Client:
    except: return e.code,raw.decode()
  def register(self,n):
   self.name=prefix+n;self.password=uuid.uuid4().hex+'!'
-  code,body=self.call('/auth/register',{'username':self.name,'displayName':'Synthetic '+n,'password':self.password},form=True)
+  code,body=self.call('/auth/register',{'acceptTerms':'yes','username':self.name,'displayName':'Synthetic '+n,'password':self.password},form=True)
   assert code==201,(code,body);self.recovery=re.findall(r'<code>(.*?)</code>',body)[0]
  def token(self,scope):
   code,body=self.call('/auth/token',{'label':'Acceptance test','scope':scope},form=True)
@@ -49,7 +49,8 @@ _,invite=inv['link'].split('#');wid,secret=invite.split('.')
 code,_=b.call('/api/invitations',{'id':wid,'token':secret,'action':'accept','name':'Synthetic B','requestId':str(uuid.uuid4())});assert code==200,code
 current=state(a);member=next(m for m in current['state']['members'] if m['name']=='Synthetic B')
 code,_=command(a,'member_status',{'id':member['id'],'status':'active'});assert code==200,code
-code,current=command(a,'create_project',{'name':'Habitat project','region':'Synthetic area','summary':'Acceptance test','kind':'ecohedge'});assert code==200,(code,current)
+code,current=command(a,'create_project',{'name':'Pollinator meadow habitat','region':'Synthetic area','summary':'Grassland conservation acceptance test','kind':'grassland'});assert code==200,(code,current)
+assert state(a)['state']['projects'][0]['kind']=='grassland'
 project=current['state']['projects'][0]['id'];version=current['version'];rid=str(uuid.uuid4())
 payload={'projectId':project,'text':'Private acceptance update','visibility':'members'}
 code,current=command(b,'post_update',payload,version,rid);assert code==200,(code,current)
@@ -202,7 +203,7 @@ print(json.dumps({'status':'passed','workspace':id,'checks':['distinct mission h
 
 # Native consumer auth: no browser cookie, manual token creation or redirect.
 native=Client();native_name=prefix+'native';native_password=uuid.uuid4().hex+'!'
-code,registration=native.call('/auth/native/register',{'username':native_name,'displayName':'Synthetic native','password':native_password});assert code==201,(code,registration)
+code,registration=native.call('/auth/native/register',{'acceptTerms':True,'username':native_name,'displayName':'Synthetic native','password':native_password});assert code==201,(code,registration)
 assert not list(native.jar)
 token=registration['token'];assert registration['expiresAt']>0
 headers={'Authorization':'Bearer '+token}

@@ -48,6 +48,9 @@ struct NativeAccountClient {
             let display = displayName.trimmingCharacters(in: .whitespacesAndNewlines)
             guard !display.isEmpty, display.utf16.count <= 80 else { throw NativeAccountError.rejected("Enter a display name of 1 to 80 characters.") }
             payload["displayName"] = display
+            // The register button reads "Agree and create account" beside a
+            // link to the Terms of Use; pressing it is the explicit acceptance.
+            payload["acceptTerms"] = "yes"
         }
         if action == .recover {
             let code = recoveryCode.trimmingCharacters(in: .whitespacesAndNewlines)

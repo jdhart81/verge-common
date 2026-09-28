@@ -51,7 +51,7 @@ The health check traverses the gateway and public database API. `/healthz` alone
 | Initial offhost copy | Saved outside the Git repository in the owner's private project backup directory; checksum matched |
 | Restore check on offhost copy | Passed at 16:23:12 UTC; production unchanged |
 
-Both restore checks found one archived synthetic workspace, one evidence file and no remaining synthetic login accounts. Backup data and credentials are not included in this public repository. The local copy has restrictive filesystem permissions; this receipt does **not** claim that archive-level encryption or recurring offsite transfer is configured. Follow the [operator guide](../self-hosted/README.md) to establish an approved encrypted offsite destination and recovery-key custody.
+Both restore checks found one archived synthetic workspace, one evidence file and no remaining synthetic login accounts. Backup data and credentials are not included in this public repository. The local copy has restrictive filesystem permissions; this receipt does **not** claim that archive-level encryption or recurring offsite transfer is configured. Follow the [operator guide](../../self-hosted/README.md) to establish an approved encrypted offsite destination and recovery-key custody.
 
 After the final container replacement and second live acceptance run, backup `2026-09-19T16-30-56-145Z-vX9FNw` passed restore verification at 16:31:32 UTC. It contained two archived synthetic workspaces and two verified evidence files, with zero remaining test accounts, confirming retained data across the release switch. Database SHA-256: `01204dad4ca1060de668ae73c3e9c8d5d8dafdbc81dcb79b7c6f43d16fc415f4` (110,592 bytes). Its archive was also copied offhost with matching SHA-256 `53cc9e7ede84dd403b0bd70dfb84053ae920bf8395568f02e4b5c1380fd07993`. Production data was not modified by either restore check.
 
@@ -63,4 +63,4 @@ After the final container replacement and second live acceptance run, backup `20
 - A consenting nonprofit, suitable carbon methodology/program, external land-rights review, verification, registry/custody and payment arrangements for any real carbon/payout workflow.
 - Final source review and explicit merge approval; public announcement approval remains separate. No announcement was sent by this deployment.
 
-Start with [account access](https://vergecommon.com/account), [community discovery](https://vergecommon.com/network/) or the [MCP connection guide](../mcp/README.md). Agent discovery is at `https://vergecommon.com/.well-known/mcp.json`, with scoped bearer access at `https://vergecommon.com/mcp`.
+Start with [account access](https://vergecommon.com/account), [community discovery](https://vergecommon.com/network/) or the [MCP connection guide](../../mcp/README.md). Agent discovery is at `https://vergecommon.com/.well-known/mcp.json`, with scoped bearer access at `https://vergecommon.com/mcp`.

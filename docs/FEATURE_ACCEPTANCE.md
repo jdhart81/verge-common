@@ -1,12 +1,12 @@
 # Launch acceptance — September 19, 2026
 
-This is a historical feature inventory, not the latest candidate verdict. See [current beta readiness](BETA_READINESS_2026-09-19.md) and [last deployed build](LAUNCH_BUILD_2026-09-19.md). See [the current beta release receipt](BETA_RELEASE_2026-09-19.md) for newer native account/deletion controls, support, moderation and encrypted operations evidence.
+This is a historical feature inventory, not the latest candidate verdict. See [current beta readiness](history/BETA_READINESS_2026-09-19.md) and [last deployed build](history/LAUNCH_BUILD_2026-09-19.md). See [the current beta release receipt](history/BETA_RELEASE_2026-09-19.md) for newer native account/deletion controls, support, moderation and encrypted operations evidence.
 
 ## Target
 
 A conservation social network where neighbors organize a co-op, document distinct land contributions, work with a consenting conservation nonprofit, prepare a compatible carbon pathway for external review, and maintain transparent records of externally issued holdings, proceeds, and member allocations. No claim of being the first such project is established.
 
-The shared web application is live at [vergecommon.com](https://vergecommon.com). This document records the implementation and automated acceptance evidence for the early cooperative pilot. The pushed candidate is `2b73c2d` on `build/coop-launch-readiness`; [PR #2](https://github.com/jdhart81/verge-common/pull/2) remains under review. Keep the final source revision, deployed image, public checks and recovery results with the [deployment receipt](DEPLOYMENT_2026-09-19.md). Deployment does not establish real community adoption or qualification for carbon credits or payouts.
+The shared web application is live at [vergecommon.com](https://vergecommon.com). This document records the implementation and automated acceptance evidence for the early cooperative pilot. The pushed candidate is `2b73c2d` on `build/coop-launch-readiness`; [PR #2](https://github.com/jdhart81/verge-common/pull/2) remains under review. Keep the final source revision, deployed image, public checks and recovery results with the [deployment receipt](history/DEPLOYMENT_2026-09-19.md). Deployment does not establish real community adoption or qualification for carbon credits or payouts.
 
 ## Current implementation
 

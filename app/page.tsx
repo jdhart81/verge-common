@@ -1,8 +1,8 @@
+import { BrandLogo } from '@/components/brand-logo';
 import Link from 'next/link';
 import {
   ArrowUpRight,
   ArrowRight,
-  Sprout,
   Code2,
   MapPin,
   Users,
@@ -14,8 +14,8 @@ import { ConservationLandscape } from '@/components/conservation-landscape';
 import './home.css';
 
 const repo = 'https://github.com/jdhart81/verge-common';
-const sourceRepo = repo + '/tree/build/coop-launch-readiness';
-const docs = repo + '/blob/build/coop-launch-readiness';
+const sourceRepo = repo;
+const docs = repo + '/blob/main';
 
 export default function Home({
   publicPreview = false,
@@ -30,13 +30,7 @@ export default function Home({
       </a>
       <header className="nav home-nav">
         <Link className="brand" href="/" aria-label="VergeCommon home">
-          <Sprout aria-hidden="true" />{' '}
-          <span>
-            verge common
-            <span className="brand-dot" aria-hidden="true">
-              ●
-            </span>
-          </span>
+          <BrandLogo />
         </Link>
         <nav aria-label="Main navigation">
           <a className="home-how-link" href="#how-it-works">
@@ -131,9 +125,9 @@ export default function Home({
               </h2>
             </div>
             <p>
-              A hedgerow can connect to a woodlot. A group of neighbors can care
-              for both. Start with one place and one useful action, then build
-              from there.
+              A hedgerow, pollinator meadow, or woodlot can connect to the next
+              habitat. Neighbors can care for them together. Start with one
+              place and one useful action, then build from there.
             </p>
           </div>
           <ol className="home-steps">
@@ -347,9 +341,8 @@ export default function Home({
               <p className="eyebrow">CARE FOR THE TOOLS, TOO</p>
               <h2 id="funding-title">Help the commons grow.</h2>
               <p>
-                VergeCommon is a Viridis LLC project. Field knowledge, code,
-                feedback and optional project contributions help sustain the
-                tools we share.
+                VergeCommon is a Viridis LLC project. Field knowledge, code and
+                feedback help sustain the tools we share.
               </p>
             </div>
             <Link className="button home-funding-link" href="/support-project/">
@@ -396,8 +389,7 @@ export default function Home({
       </main>
       <footer className="wrap footer home-footer">
         <Link className="brand" href="/">
-          <Sprout aria-hidden="true" />
-          <span>verge common</span>
+          <BrandLogo />
         </Link>
         <span>Open code. Cooperative conservation.</span>
         <div>
@@ -408,6 +400,11 @@ export default function Home({
             }
           >
             Privacy
+          </a>
+          <a
+            href={publicPreview ? 'https://vergecommon.com/terms/' : '/terms/'}
+          >
+            Terms
           </a>
           <a
             href={

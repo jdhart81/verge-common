@@ -74,9 +74,9 @@ export default function SupportPage() {
         <p>
           Co-op stewards handle their community’s reports. For a concern
           involving the hosting service or an unresolved safety issue, use the
-          <Link href="/report/">private operator report form</Link> and keep
-          its receipt to check progress, or use the contact below. This service is not an emergency
-          response channel.
+          <Link href="/report/">private operator report form</Link> and keep its
+          receipt to check progress, or use the contact below. This service is
+          not an emergency response channel.
         </p>
       </section>
       <section id="contact">
@@ -134,7 +134,10 @@ export default function SupportPage() {
           first transfer responsibility to another active steward in{' '}
           <strong>Members</strong>. That transfers app administration only. The
           native app also offers account deletion and a separate control for
-          clearing its on-device journal.
+          clearing its on-device journal, prepared evidence and saved replies.
+          Those local copies remain after sign-out or account deletion until you
+          remove them separately. An interrupted reply can be resumed from the
+          saved-replies queue after verifying the same account.
         </p>
         <p>
           <Link href="/privacy/">Read about privacy and record retention</Link>{' '}

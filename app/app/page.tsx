@@ -1,9 +1,10 @@
 import Link from 'next/link';
+import { BrandLogo } from '@/components/brand-logo';
 export default function AppHome() {
   return (
     <main className="app-start">
-      <Link href="/" className="app-wordmark">
-        Verge Common
+      <Link href="/" className="app-wordmark brand">
+        <BrandLogo />
       </Link>
       <h1>
         Your community.

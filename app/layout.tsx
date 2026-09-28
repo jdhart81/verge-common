@@ -3,7 +3,7 @@ import './globals.css';
 import { AppShell } from '@/components/app-shell';
 export const metadata: Metadata = {
   appleWebApp: { capable: true, title: 'Verge Common', statusBarStyle: 'default' },
-  icons: { apple: '/icons/apple-touch-icon.png' },
+  icons: { icon: '/icons/favicon-32.png?v=shared-canopy-1', apple: '/icons/apple-touch-icon.png?v=shared-canopy-1' },
   metadataBase: new URL('https://vergecommon.com'),
   title: 'VergeCommon — What if conservation were open source?',
   description:

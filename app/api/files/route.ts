@@ -16,6 +16,7 @@ import {
 } from '@/server/evidence-uploads.mjs';
 import { requireMember, isSteward } from '@/lib/network.mjs';
 export const dynamic = 'force-dynamic';
+const UPLOADER_BYTE_QUOTA = 500 * 1024 * 1024;
 export async function POST(request: Request) {
   try {
     guardOrigin(request);
@@ -44,6 +45,19 @@ export async function POST(request: Request) {
       throw new DomainError('Use PDF, PNG, JPEG, WebP, or plain text.');
     const db = getD1();
     await cleanupExpiredUploads(db, env.EVIDENCE, { workspaceId: id });
+    // Per-person storage quota across every co-op, so one account cannot
+    // fill the server's disk with permanently attached evidence.
+    const used = await db
+      .prepare(
+        'SELECT COALESCE(SUM(size), 0) AS total FROM assets WHERE uploader_id = ?',
+      )
+      .bind(user.id)
+      .first<{ total: number }>();
+    if (Number(used?.total ?? 0) + file.size > UPLOADER_BYTE_QUOTA)
+      throw new DomainError(
+        'You have reached your 500 MB evidence storage limit. Remove unused files or contact support.',
+        413,
+      );
     const bytes = await file.arrayBuffer();
     const sha256 = Array.from(
       new Uint8Array(await crypto.subtle.digest('SHA-256', bytes)),

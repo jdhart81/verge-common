@@ -118,7 +118,7 @@ struct MyCoops: View {
                     Section("Your account") {
                         Text(account.displayName.map { "Signed in as \($0)." } ?? "You’re signed in on this device.")
                         Button("Sign out") { Task { await account.signOut() } }.disabled(account.loading)
-                        Text("Sign-out revokes this device’s access and clears its saved sign-in. Your local field journal and prepared evidence stay on this device.").font(.caption).foregroundStyle(.secondary)
+                        Text("Sign-out revokes this device’s access and clears its saved sign-in. Your local field journal, prepared evidence, saved replies and receipts stay on this device.").font(.caption).foregroundStyle(.secondary)
                         DisclosureGroup("Device access") {
                             Button("Remove saved sign-in", role: .destructive) { account.disconnect() }
                             Text("Use this if you are offline. It does not revoke copies of the sign-in credential; revoke those from your website account.").font(.caption).foregroundStyle(.secondary)
@@ -128,7 +128,7 @@ struct MyCoops: View {
                 } else {
                     if account.accountDeleted {
                         Section("Account deleted") {
-                            Text("Your online account has been deleted. Your local field journal is still on this device. Delete its drafts separately in Journal tools if you want to remove them too. Prepared evidence is also retained privately, but the deleted account can no longer resume it. Use Evidence queue to erase all local copies if you want to remove them.")
+                            Text("Your online account has been deleted. Your local field journal is still on this device. Delete its drafts separately in Journal tools if you want to remove them too. Prepared evidence and saved replies are also retained privately, but the deleted account can no longer resume them. Use Evidence queue and Saved replies and receipts to erase their local copies.")
                         }
                     }
                     NativeSignInForm()
@@ -138,6 +138,10 @@ struct MyCoops: View {
                 Section("Prepared evidence") {
                     NavigationLink("Evidence queue") { EvidenceQueueView() }
                     Text("Files stay on this device until you choose Send. No background uploads.").font(.caption).foregroundStyle(.secondary)
+                }
+                Section("Member conversations") {
+                    NavigationLink("Saved replies and receipts") { ReplyQueueView() }
+                    Text("Replies send only when you choose Send. Unconfirmed replies keep their original retry identity across app restarts.").font(.caption).foregroundStyle(.secondary)
                 }
                 if account.connected {
                     Section("Your co-ops") {
@@ -214,6 +218,15 @@ struct PrivateWorkspace: View {
                             Text(update.text)
                             Text(update.author).font(.caption).foregroundStyle(.secondary)
                             Text(Date(timeIntervalSince1970: update.createdAt / 1000), style: .date).font(.caption).foregroundStyle(.secondary)
+                            NavigationLink {
+                                MemberDiscussion(workspaceID: id, updateID: update.id, saved: { self.workspace = $0 }, accessLost: {
+                                    self.workspace = nil; safetyAction = nil
+                                    message = "Your current co-op access could not be confirmed. Refresh before continuing."
+                                })
+                            } label: {
+                                let count = workspace.state.visibleComments(for: update.id).count
+                                Text(count == 1 ? "Open discussion · 1 reply" : "Open discussion · \(count) replies")
+                            }
                             if workspace.state.visibility != "archived" {
                                 Button("Report update") { safetyAction = MemberSafetyAction(targetId: update.id, name: update.author, isReport: true) }
                                     .buttonStyle(.borderless)
@@ -293,7 +306,8 @@ struct MemberSafetyAction: Identifiable {
     let name: String
     let isReport: Bool
     var blocked = true
-    var title: String { isReport ? "Report update" : blocked ? "Block member" : "Unblock member" }
+    var reportKind = "update"
+    var title: String { isReport ? "Report \(reportKind == "comment" ? "reply" : "update")" : blocked ? "Block member" : "Unblock member" }
 }
 
 struct MemberSafetyForm: View {
@@ -312,11 +326,11 @@ struct MemberSafetyForm: View {
         NavigationStack {
             Form {
                 if complete {
-                    Text(action.isReport ? "Your report was saved for the co-op stewards. It is visible to you and the stewards. Reporting does not automatically remove the update." : action.blocked ? "This member is blocked in this co-op. Your social feed has been updated." : "Your block has been removed. The other member’s own block, if any, still applies.")
+                    Text(action.isReport ? "Your report was saved for the co-op stewards. It is visible to you and the stewards. Reporting does not automatically remove the content." : action.blocked ? "This member is blocked in this co-op. Your social feed has been updated." : "Your block has been removed. The other member’s own block, if any, still applies.")
                     Button("Done") { dismiss() }
                 } else {
                     Section {
-                        Text(action.isReport ? "Report the update by \(action.name)." : "\(action.blocked ? "Block" : "Unblock") \(action.name) in \(workspace.state.name)?")
+                        Text(action.isReport ? "Report the \(action.reportKind == "comment" ? "reply" : "update") by \(action.name)." : "\(action.blocked ? "Block" : "Unblock") \(action.name) in \(workspace.state.name)?")
                         if action.isReport {
                             TextField("Describe the concern", text: $reason, axis: .vertical).lineLimit(4...10).disabled(pending != nil)
                             Text("Up to 2,000 characters. Do not include passwords, access tokens, private addresses or unnecessary personal details.").font(.caption).foregroundStyle(.secondary)
@@ -347,7 +361,9 @@ struct MemberSafetyForm: View {
         do {
             if pending == nil {
                 if action.isReport {
-                    pending = try WorkspaceCommand.reportUpdate(action.targetId, reason: reason, workspace: workspace)
+                    pending = action.reportKind == "comment"
+                        ? try WorkspaceCommand.reportComment(action.targetId, reason: reason, workspace: workspace)
+                        : try WorkspaceCommand.reportUpdate(action.targetId, reason: reason, workspace: workspace)
                 } else {
                     pending = try WorkspaceCommand.memberBlock(action.targetId, blocked: action.blocked, workspace: workspace)
                 }

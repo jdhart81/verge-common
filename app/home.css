@@ -9,9 +9,6 @@
 .home-nav .brand > span {
   white-space: nowrap;
 }
-.home-nav .brand-dot {
-  margin-left: 8px;
-}
 .home-nav nav a {
   min-height: 44px;
   display: inline-flex;

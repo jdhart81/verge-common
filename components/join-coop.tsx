@@ -1,4 +1,5 @@
 'use client';
+import { BrandLogo } from '@/components/brand-logo';
 import { ControlLabel } from '@/components/ui/label';
 import { useEffect, useState, useSyncExternalStore, useRef } from 'react';
 import Link from 'next/link';
@@ -67,7 +68,7 @@ export function JoinCoop({ signedIn }: { signedIn: boolean }) {
   return (
     <main className="wrap network">
       <Link className="brand" href="/network/">
-        verge common
+        <BrandLogo />
       </Link>
       <section className="panel mt-8">
         <p className="eyebrow">A PLACE FOR YOU</p>

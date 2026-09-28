@@ -41,9 +41,10 @@ struct DraftDocument: FileDocument {
     @StateObject private var store = JournalStore()
     @StateObject private var account = DeviceAccount()
     @StateObject private var evidence = EvidenceQueueStore()
+    @StateObject private var replies = ReplyQueueStore()
     @StateObject private var safety = PublicSafetyStore()
     @StateObject private var receipts = SafetyReceiptStore()
-    var body: some Scene { WindowGroup { JournalHome().environmentObject(store).environmentObject(account).environmentObject(safety).environmentObject(receipts).environmentObject(evidence).tint(Color(red: 0.09, green: 0.32, blue: 0.23)) } }
+    var body: some Scene { WindowGroup { JournalHome().environmentObject(store).environmentObject(account).environmentObject(safety).environmentObject(receipts).environmentObject(evidence).environmentObject(replies).tint(Color(red: 0.09, green: 0.32, blue: 0.23)).onChange(of: account.sessionID) { _, _ in replies.lock() } } }
 }
 struct JournalHome: View {
     @EnvironmentObject var store: JournalStore
@@ -230,6 +231,21 @@ struct DraftEditor: View {
     }
     func retry() async { if failedNextPage { await loadMore() } else { await refresh() } }
 }
+struct BrandLogo: View {
+    var body: some View {
+        Image("BrandLogo")
+            .resizable()
+            .scaledToFit()
+            .frame(width: 240, height: 96)
+            .frame(height: 60)
+            .clipped()
+            .padding(.horizontal, 8)
+            .background(Color(red: 247.0 / 255, green: 249.0 / 255, blue: 246.0 / 255))
+            .clipShape(RoundedRectangle(cornerRadius: 8))
+            .accessibilityLabel("VergeCommon")
+    }
+}
+
 struct CommunityDiscovery: View {
     @EnvironmentObject var safety: PublicSafetyStore
     @StateObject private var model = CommunityModel()
@@ -238,6 +254,7 @@ struct CommunityDiscovery: View {
         NavigationStack {
             List {
                 Section {
+                    BrandLogo()
                     Text("Find people caring for a place. Only information a co-op has made public appears here.").foregroundStyle(.secondary)
                     Link("Open my co-ops in the browser", destination: CommunityService.page("workspace/"))
                 }

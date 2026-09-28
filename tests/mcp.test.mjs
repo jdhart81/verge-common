@@ -22,6 +22,13 @@ await test('MCP initializes, discovers tools, validates schemas, and computes dr
     });
     assert.equal(result.structuredContent.authority.payout, 'NOT_PAID');
     assert.equal(result.structuredContent.model.memberPoolCents, 112500);
+    const meadow = exampleCooperative();
+    meadow.projects[0].kind = 'grassland';
+    const meadowResult = await client.callTool({
+      name: 'prepare_pooling_draft', arguments: { scenario: meadow },
+    });
+    assert.equal(meadowResult.isError, undefined);
+    assert.equal(meadowResult.structuredContent.authority.payout, 'NOT_PAID');
     const invalid = await client.callTool({
       name: 'list_public_coops',
       arguments: { limit: 31 },

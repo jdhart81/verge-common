@@ -1,4 +1,6 @@
-# Public droplet website
+# Static public-site build and historical deployment
+
+This is the original static-only deployment receipt, retained as history. It does not describe the current shared application. See [self-hosted operation](../self-hosted/README.md), [beta operations](../docs/OPERATIONS_BETA.md), and [service coverage](../docs/SERVICE_COVERAGE.md) for current source capabilities and remaining release work.
 
 `npm ci && npm run build:public` on Node 22.13+ produces `dist-public/`:
 a prerendered homepage and hydrated device-local planner at `/demo/`.

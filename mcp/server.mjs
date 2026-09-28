@@ -103,7 +103,7 @@ const scenario = z
             id: text,
             name: text,
             memberId: text,
-            kind: z.enum(['ecohedge', 'landscape']),
+            kind: z.enum(['ecohedge', 'landscape', 'grassland']),
             contributionKg: integer,
             poolKey: text,
           })
@@ -254,7 +254,7 @@ const commandSchema = z.discriminatedUnion('op', [
           name: z.string().trim().min(1).max(120),
           summary: z.string().trim().min(1).max(2000),
           region: z.string().trim().min(1).max(120),
-          kind: z.enum(['ecohedge', 'landscape', 'restoration']),
+          kind: z.enum(['ecohedge', 'landscape', 'restoration', 'grassland']),
         })
         .strict(),
     })

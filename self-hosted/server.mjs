@@ -2,6 +2,13 @@ import http from 'node:http';
 import { Readable } from 'node:stream';
 import { pathToFileURL } from 'node:url';
 import { resolve } from 'node:path';
+import { statfs } from 'node:fs/promises';
+import { clientKey, isSafeRelativePath } from './client-key.mjs';
+import {
+  TERMS_VERSION,
+  TERMS_REQUIRED_MESSAGE,
+  termsAccepted,
+} from './terms.mjs';
 import { createAuth } from './auth.mjs';
 import {
   getDatabase,
@@ -21,11 +28,13 @@ import {
   drainErasureFiles,
 } from './erasure.mjs';
 import { accountPage } from './account.mjs';
+import { createSocialAuth } from './social-auth.mjs';
 import { createHttpHandler, mcpDiscovery } from '../mcp/http.mjs';
 const safeReturn = (value) => {
   try {
     const u = new URL(value || '/workspace/', 'https://return.local');
     return u.origin === 'https://return.local' &&
+      isSafeRelativePath(u.pathname) &&
       !/^\/(auth|account|signin|signout|callback)/.test(u.pathname)
       ? u.pathname + u.search + u.hash
       : '/workspace/';
@@ -33,6 +42,16 @@ const safeReturn = (value) => {
     return '/workspace/';
   }
 };
+// Internal database/driver errors are never shown to people; messages we raise
+// deliberately (plain domain errors or ones with an HTTP status) are.
+export function userMessage(error) {
+  const text = `${error?.code ?? ''} ${error?.name ?? ''} ${error?.message ?? ''}`;
+  if (!error?.status && /sqlite|database is|constraint failed|SQLITE_/i.test(text))
+    return 'The service could not complete this request.';
+  return String(error?.message ?? 'The service could not complete this request.');
+}
+export const UPLOAD_CONCURRENCY = 8;
+export const UPLOAD_DISK_FLOOR_BYTES = 2 * 1024 * 1024 * 1024;
 async function readBody(req, maximum) {
   if (Number(req.headers['content-length'] ?? 0) > maximum)
     throw Object.assign(new Error('Request too large.'), { status: 413 });
@@ -51,9 +70,14 @@ export function createGateway({
   upstreamPort,
   auth,
   safety,
+  social = null,
+  socialPreview = false,
   maintenanceHealthy = () => true,
   host = '127.0.0.1',
+  freeDiskBytes = async () => Number.POSITIVE_INFINITY,
+  buildCommit = process.env.VERGE_BUILD_COMMIT || 'unknown',
 }) {
+  let activeUploads = 0;
   const base = new URL(origin);
   if (
     base.origin !== origin ||
@@ -136,10 +160,23 @@ export function createGateway({
       res.writeHead(status, {
         'content-type': 'text/html; charset=utf-8',
         'cache-control': 'no-store',
-        'content-security-policy':
-          "default-src 'none'; style-src 'unsafe-inline'; form-action 'self'; base-uri 'none'; frame-ancestors 'none'",
+        'content-security-policy': `default-src 'none'; img-src ${base.origin}/brand/shared-canopy-logo-v1.png ${base.origin}/icons/; style-src 'unsafe-inline'; form-action 'self'${social ? ` ${(social.formActionOrigins ?? ['https://accounts.google.com', 'https://appleid.apple.com']).join(' ')}` : ''}; base-uri 'none'; frame-ancestors 'none'`,
       });
-      res.end(accountPage(options));
+      res.end(
+        accountPage({
+          ...options,
+          providerPreview:
+            socialPreview &&
+            new URL(req.url, origin).searchParams.get('socialPreview') === '1',
+          socialProviders:
+            options.user ||
+            !socialPreview ||
+            new URL(req.url, origin).searchParams.get('socialPreview') === '1'
+              ? (social?.available(options.user?.id) ?? [])
+              : [],
+          hasPassword: options.user ? auth.hasPassword(options.user.id) : true,
+        }),
+      );
     };
     const redirect = (path) => {
       res.writeHead(303, { location: path, 'cache-control': 'no-store' });
@@ -153,15 +190,32 @@ export function createGateway({
         return json(400, { error: 'Invalid request URL.' });
       // The published gateway is behind Caddy on a private Docker network. Caddy
       // overwrites X-Real-IP. Direct deployments use the socket address.
-      const client =
+      const client = clientKey(
         process.env.VERGE_TRUST_CADDY === '1'
           ? String(req.headers['x-real-ip'] || req.socket.remoteAddress)
-          : req.socket.remoteAddress;
+          : req.socket.remoteAddress,
+      );
       if (!auth.rateLimit(`request:${client}`, 600, 60000))
         return json(429, { error: 'Too many requests. Try again shortly.' });
       const principal = auth.authenticate(req.headers);
       if (req.headers.authorization && !principal)
         return json(401, { error: 'Token expired, revoked or invalid.' });
+      if (url.pathname.startsWith('/auth/social/')) {
+        if (!social)
+          return json(404, { error: 'Social sign-in is not configured.' });
+        return await social.handle({
+          req,
+          res,
+          url,
+          principal,
+          readBody,
+          page,
+          json,
+          redirect,
+          cookie,
+          client,
+        });
+      }
       const isWrite = !['GET', 'HEAD', 'OPTIONS'].includes(req.method);
       if (isWrite && req.headers.origin && req.headers.origin !== origin)
         return json(403, { error: 'Cross-origin requests are not allowed.' });
@@ -177,6 +231,7 @@ export function createGateway({
           status: maintenanceHealthy() ? 'ok' : 'attention',
           service: 'vergecommon',
           version: '0.8.0',
+          commit: buildCommit,
         });
       if (url.pathname === '/.well-known/mcp.json')
         return json(200, mcpDiscovery(origin));
@@ -276,7 +331,7 @@ export function createGateway({
         if (!data || typeof data !== 'object' || Array.isArray(data))
           return json(400, { error: 'Send a valid JSON object.' });
         if (
-          !auth.rateLimit(`auth:${client}`, 20, 15 * 60000) ||
+          !auth.rateLimit(`auth:${client}`, 60, 15 * 60000) ||
           !auth.rateLimit('auth:global', 200, 60000)
         )
           return json(429, {
@@ -299,7 +354,7 @@ export function createGateway({
             return json(400, { error: 'Enter a username and password.' });
           if (
             !auth.rateLimit(
-              `auth:user:${data.username.trim().toLowerCase()}`,
+              `auth:user:${data.username.trim().toLowerCase()}:${client}`,
               12,
               15 * 60000,
             )
@@ -307,15 +362,19 @@ export function createGateway({
             return json(429, {
               error: 'Too many sign-in attempts. Wait 15 minutes.',
             });
+          if (action === 'register' && !termsAccepted(data.acceptTerms))
+            return json(400, { error: TERMS_REQUIRED_MESSAGE });
           try {
             const result = await auth[action](data);
+            if (action === 'register')
+              auth.recordTerms(result.user.id, TERMS_VERSION);
             return json(
               action === 'register' ? 201 : 200,
               auth.nativeSession(result),
             );
           } catch (error) {
             return json(error.status || (action === 'register' ? 400 : 401), {
-              error: error.message,
+              error: userMessage(error),
             });
           }
         }
@@ -333,7 +392,7 @@ export function createGateway({
           await auth.closeAccount(principal.id, data.password);
           return json(200, { ok: true, deleted: true });
         } catch (error) {
-          return json(error.status || 400, { error: error.message });
+          return json(error.status || 400, { error: userMessage(error) });
         }
       }
       if (
@@ -410,7 +469,7 @@ export function createGateway({
           new URLSearchParams((await readBody(req, 12000)).toString()),
         );
         if (
-          !auth.rateLimit(`auth:${client}`, 20, 15 * 60000) ||
+          !auth.rateLimit(`auth:${client}`, 60, 15 * 60000) ||
           !auth.rateLimit(`auth:global`, 200, 60000)
         )
           return json(429, {
@@ -419,7 +478,7 @@ export function createGateway({
         if (
           data.username &&
           !auth.rateLimit(
-            `auth:user:${data.username.trim().toLowerCase()}`,
+            `auth:user:${data.username.trim().toLowerCase()}:${client}`,
             12,
             15 * 60000,
           )
@@ -433,7 +492,12 @@ export function createGateway({
           message = '';
         try {
           if (action === 'register') {
+            if (!termsAccepted(data.acceptTerms))
+              throw Object.assign(new Error(TERMS_REQUIRED_MESSAGE), {
+                status: 400,
+              });
             const result = await auth.register(data);
+            auth.recordTerms(result.user.id, TERMS_VERSION);
             res.setHeader('set-cookie', cookie(result.session));
             return page(201, {
               user: result.user,
@@ -500,18 +564,49 @@ export function createGateway({
           return page(e.status || 400, {
             user: principal,
             tokens: principal ? auth.tokens(principal.id) : [],
-            message: e.message,
+            message: userMessage(e),
             mode: ['register', 'recover'].includes(action) ? action : 'login',
             returnTo: safeReturn(data.returnTo),
           });
         }
       }
-      const body = isWrite
-        ? await readBody(
-            req,
-            url.pathname.startsWith('/api/files') ? 5 * 1024 * 1024 : 100000,
-          )
-        : undefined;
+      const isApi = url.pathname.startsWith('/api/');
+      const isUpload = isWrite && url.pathname.startsWith('/api/files');
+      // Refuse anonymous API writes before buffering any request body.
+      if (isWrite && isApi && !principal)
+        return json(401, { error: 'Sign in first.' });
+      if (isWrite && isApi && !isUpload) {
+        if (
+          !auth.rateLimit(`cmd:m:${principal.id}`, 40, 60000) ||
+          !auth.rateLimit(`cmd:h:${principal.id}`, 400, 3600000)
+        )
+          return json(429, {
+            error: 'You are making changes very quickly. Wait a few minutes.',
+          });
+      }
+      if (isUpload && req.method === 'POST') {
+        if (!auth.rateLimit(`upload:${principal.id}`, 30, 10 * 60000))
+          return json(429, {
+            error: 'Upload limit reached. Try again in a few minutes.',
+          });
+        if (activeUploads >= UPLOAD_CONCURRENCY)
+          return json(503, {
+            error: 'Uploads are busy. Try again in a moment.',
+          });
+        if ((await freeDiskBytes()) < UPLOAD_DISK_FLOOR_BYTES)
+          return json(507, {
+            error: 'Uploads are temporarily unavailable. Contact support.',
+          });
+      }
+      if (isUpload && req.method === 'POST') activeUploads += 1;
+      let body;
+      try {
+        body = isWrite
+          ? await readBody(req, isUpload ? 5 * 1024 * 1024 : 100000)
+          : undefined;
+      } finally {
+        if (isUpload && req.method === 'POST') activeUploads -= 1;
+      }
       const upstream = await fetch(
         `http://127.0.0.1:${upstreamPort}${url.pathname}${url.search}`,
         {
@@ -566,6 +661,7 @@ export async function start() {
   const db = getDatabase();
   const ledgerDirectory = resolve(dataDir, 'deletion-ledger');
   const store = objectStore();
+  let social = null;
   const auth = createAuth(db, Date.now, {
     eraseAccountData: (id, now) =>
       eraseAccountData(db, id, now, { ledgerDirectory }),
@@ -574,24 +670,36 @@ export async function start() {
       try {
         commitErasureIntent(ledgerDirectory, id);
         await drainErasureFiles(db, store);
+        if (
+          !social &&
+          db.prepare('SELECT id FROM social_revocations LIMIT 1').get()
+        )
+          throw new Error('Provider configuration required for revocation');
+        await social?.drainRevocations();
         const checkpoint = db.prepare('PRAGMA wal_checkpoint(TRUNCATE)').get();
         if (checkpoint.busy) throw new Error('Deletion checkpoint is busy');
       } catch {
         throw Object.assign(
           new Error(
-            'Your account access has been removed. Private-file cleanup needs operator attention and will retry on restart. Contact justin@viridisconservation.com.',
+            'Your account access has been removed. Private-file or provider authorization cleanup needs operator attention and will retry on restart. Contact justin@viridisconservation.com.',
           ),
           { status: 503 },
         );
       }
     },
   });
+  social = await createSocialAuth({ db, auth, origin });
   const safety = createSafety(db);
   // Recovery must reconcile committed deletions before any request can reach
   // the app, including after restoring an older database beside a newer ledger.
   recoverErasureIntents(db, ledgerDirectory);
   replayErasureLedger(db, { ledgerDirectory });
   await drainErasureFiles(db, store);
+  if (!social && db.prepare('SELECT id FROM social_revocations LIMIT 1').get())
+    throw new Error(
+      'Configure social providers to finish pending authorization revocations before reopening.',
+    );
+  await social?.drainRevocations();
   await cleanupExpiredUploads(d1Adapter(db), store);
   await reconcileEvidence(db);
   db.exec('PRAGMA wal_checkpoint(TRUNCATE)');
@@ -602,6 +710,7 @@ export async function start() {
       if (maintenanceBusy) return;
       maintenanceBusy = true;
       void cleanupExpiredUploads(d1Adapter(db), store)
+        .then(() => social?.drainRevocations())
         .then(() => {
           maintenanceFailed = false;
         })
@@ -628,7 +737,17 @@ export async function start() {
     upstreamPort: internal.port,
     auth,
     safety,
+    social,
+    socialPreview: process.env.VERGE_SOCIAL_PREVIEW === '1',
     maintenanceHealthy: () => !maintenanceFailed,
+    freeDiskBytes: async () => {
+      try {
+        const stats = await statfs(dataDir);
+        return Number(stats.bavail) * Number(stats.bsize);
+      } catch {
+        return Number.POSITIVE_INFINITY;
+      }
+    },
   });
   await new Promise((resolve) =>
     server.listen(

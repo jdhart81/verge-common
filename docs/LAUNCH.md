@@ -1,6 +1,6 @@
 # VergeCommon launch kit
 
-Current beta changes and exact deployment evidence are maintained in [the beta release receipt](BETA_RELEASE_2026-09-19.md); earlier hashes and counts below are historical milestones.
+Current beta changes and exact deployment evidence are maintained in [the beta release receipt](history/BETA_RELEASE_2026-09-19.md); earlier hashes and counts below are historical milestones.
 
 ## Positioning
 
@@ -43,8 +43,8 @@ Suggested topics: `conservation`, `open-source`, `community`, `cooperatives`, `s
 - [x] Contribution guidance, bounded starting tasks, conduct policy, and contribution issue form.
 - [x] Document local setup and the production authentication boundary.
 - [x] Push the full implementation candidate and living-landscape update (`d44051b`) on `build/coop-launch-readiness`; [PR #2](https://github.com/jdhart81/verge-common/pull/2) remains under review.
-- [x] Complete local validation and [GitHub web, deployment-container, imagery and iOS checks](https://github.com/jdhart81/verge-common/actions/runs/35464323267). See [feature acceptance](FEATURE_ACCEPTANCE.md) and the [current beta receipt](BETA_RELEASE_2026-09-19.md) for scope.
-- [x] Deploy the shared application and pass live HTTPS co-op acceptance plus the native account lifecycle. All four synthetic accounts were deleted. See the [current beta receipt](BETA_RELEASE_2026-09-19.md).
+- [x] Complete local validation and [GitHub web, deployment-container, imagery and iOS checks](https://github.com/jdhart81/verge-common/actions/runs/35464323267). See [feature acceptance](FEATURE_ACCEPTANCE.md) and the [current beta receipt](history/BETA_RELEASE_2026-09-19.md) for scope.
+- [x] Deploy the shared application and pass live HTTPS co-op acceptance plus the native account lifecycle. All four synthetic accounts were deleted. See the [current beta receipt](history/BETA_RELEASE_2026-09-19.md).
 - [ ] Complete final source review and obtain approval before merging the launch branch into `main`.
 - [ ] Check contributor links, issue forms and license rendering on the final merged revision.
 - [x] Enable and verify GitHub private vulnerability reporting; link its destination in SECURITY.md.
@@ -55,7 +55,7 @@ The draft is not posted. GitHub is public and private vulnerability reporting is
 
 ## Remaining pilot gates
 
-The live acceptance runner verified independent accounts, membership approval, private files, request retries/conflicts, native registration/recovery/deletion, scoped tokens and actual MCP reads/writes. The operator guide includes moderation, incident response, associated-data deletion and abuse controls. Daily server backups are active, and the current snapshots passed isolated database/file restore checks. Earlier offhost copies are historical; the new encrypted hourly transfer is paused pending explicit production-data transfer approval. The [current beta receipt](BETA_RELEASE_2026-09-19.md) and [operations guide](OPERATIONS_BETA.md) record the distinction and deletion-ledger recovery requirement.
+The live acceptance runner verified independent accounts, membership approval, private files, request retries/conflicts, native registration/recovery/deletion, scoped tokens and actual MCP reads/writes. The operator guide includes moderation, incident response, associated-data deletion and abuse controls. Daily server backups are active, and the current snapshots passed isolated database/file restore checks. Earlier offhost copies are historical; the new encrypted hourly transfer is paused pending explicit production-data transfer approval. The [current beta receipt](history/BETA_RELEASE_2026-09-19.md) and [operations guide](OPERATIONS_BETA.md) record the distinction and deletion-ledger recovery requirement.
 
 These requirements remain separate from deployment:
 

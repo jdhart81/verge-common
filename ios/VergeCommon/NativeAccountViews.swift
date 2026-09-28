@@ -18,6 +18,7 @@ struct NativeSignInForm: View {
     @State private var pastedToken = ""
     var body: some View {
         Section("Join your conservation community") {
+            BrandLogo()
             Text("Sign in to see your co-ops and share field observations. You can use Discover and your local field journal without an account.")
             Picker("Account action", selection: $mode) {
                 ForEach(AccountFormMode.allCases) { Text($0.rawValue).tag($0) }
@@ -29,6 +30,9 @@ struct NativeSignInForm: View {
                 Text("Choose 3–40 letters, numbers, underscores or hyphens. Start with a letter or number.").font(.caption).foregroundStyle(.secondary)
                 TextField("Display name", text: $displayName).textContentType(.nickname).disabled(account.loading)
                 Text("Your co-op members see your display name. Use a name you are comfortable sharing.").font(.caption).foregroundStyle(.secondary)
+                Text("Creating an account means you agree to the Terms of Use and have read the Privacy policy.").font(.caption)
+                Link("Read the Terms of Use", destination: CommunityService.page("terms"))
+                Link("Read the Privacy policy", destination: CommunityService.page("privacy"))
             }
             if mode == .recover {
                 SecureField("Saved recovery code", text: $recoveryCode).textInputAutocapitalization(.never).autocorrectionDisabled().disabled(account.loading)
@@ -40,7 +44,7 @@ struct NativeSignInForm: View {
             if mode != .login {
                 Text("Use 12–128 characters. Save your password and the recovery code shown next in a password manager. There is no email password reset.").font(.caption).foregroundStyle(.secondary)
             }
-            Button(mode.rawValue) {
+            Button(mode == .register ? "Agree and create account" : mode.rawValue) {
                 let action = mode.action, secret = password, code = recoveryCode
                 password = ""; recoveryCode = ""
                 Task { await account.authenticate(action, username: username, displayName: displayName, password: secret, recoveryCode: code) }

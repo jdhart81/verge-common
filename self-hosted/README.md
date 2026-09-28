@@ -66,7 +66,7 @@ The native client uses the deployed API and a device token. Building its source 
 
 ## Accounts and agent access
 
-Accounts use a **username**, not email verification or a social-login provider. Usernames contain 3–40 letters/numbers/underscores/hyphens, start with a letter or number, and normalize to lowercase. Passwords contain 12–128 characters and are stored as salted scrypt hashes.
+Default accounts use a **username** and password, without email verification. Optional direct Google and Apple sign-in uses the same local account, session and co-op permissions; see [social sign-in setup](SOCIAL_SIGN_IN.md). Usernames contain 3–40 letters/numbers/underscores/hyphens, start with a letter or number, and normalize to lowercase. Passwords contain 12–128 characters and are stored as salted scrypt hashes.
 
 A random recovery code is shown once at registration, and once again after successful recovery. Store it in a password manager. Recovery requires the username and code, replaces the code, and revokes existing sessions/device tokens. There is no email reset service. Operators should never ask users to paste passwords, recovery codes, or bearer tokens into support tickets or logs. Users without either a working login or recovery code need an operator-reviewed identity/recovery process; there is no unattended bypass.
 

@@ -1,0 +1,12 @@
+Use case: logo-brand.
+Create a polished original logo for "VergeCommon", an open-source conservation social network where neighbors bring adjoining land together into a shared conservation co-op. This is a clean, usable identity asset, not a poster or mockup.
+
+Design direction: "Shared Canopy." A confident, compact tree emblem whose canopy is formed from three or four adjoining rounded land parcels. Broad, softly geometric shapes with clear negative-space seams make the connected parcels read as a single living canopy. A subtle branching trunk makes a quiet V in the central negative space. It must feel like land, community, and regeneration at once. Keep the symbol extremely simple, memorable, flat, and easy to read at app-icon size. Give it balanced human warmth, not a generic stock ecology icon. The mark should stand on its own.
+
+Composition: one horizontal logo lockup only, emblem to the left, carefully kerned wordmark to the right, aligned optically. Generous transparent clear space all around. The symbol is about 1.5 times the wordmark capital height; the full lockup occupies roughly 75 percent of the canvas width. Wide landscape canvas. No repeated logos or alternative layouts.
+
+Text, exact and only: "VergeCommon" (V-e-r-g-e-C-o-m-m-o-n), one word with capital V and C. Beautiful mature humanist sans-serif wordmark, medium-to-semibold weight, refined proportions, friendly rounded details without looking childish. Deep forest-green lettering #17513b, no period and no tagline.
+
+Palette: deep forest green #17513b, a restrained leaf green #6d9d44 for one or two canopy parcels. Transparent negative spaces. Fully transparent background with real alpha; do not draw checkerboards.
+Medium: impeccably crisp flat graphic, vector-like precision, solid fills, excellent silhouette, no thin decorative lines.
+Avoid: gradients, shadows, 3D, textures, photos, mockups, outlines around the complete logo, enclosing badge, complex roots, tiny leaves, birds, hands, people icons, recycling arrows, currency/carbon-credit symbolism, extra labels, slogans, watermarks.

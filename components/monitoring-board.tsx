@@ -143,7 +143,7 @@ export function MonitoringBoard({
   } catch {}
   return (
     <section>
-      <h2>Monitor your conserved land</h2>
+      <h2>Map and monitor your land</h2>
       <p>
         Review a boundary, find satellite scenes, and record what you observe on
         the ground.

@@ -6,7 +6,7 @@
 
 Organize a local conservation project, document the work, and make decisions together. From hedgerows and woodlots to larger landscapes, communities should be able to inspect, adapt, and improve the tools they depend on.
 
-**Early cooperative pilot.** The shared website is live with browser accounts, private co-ops and scoped agent access. The repository also includes the self-hosted account/storage runtime and native participation source. This is an invitation to build and test with us. Real partner adoption and verified environmental impact have not yet been demonstrated. See [current beta readiness](docs/BETA_READINESS_2026-09-19.md) for the next candidate, verification and remaining release requirements.
+**Early cooperative pilot.** The shared website is live with browser accounts, private co-ops and scoped agent access. The repository also includes the self-hosted account/storage runtime and native participation source. This is an invitation to build and test with us. Real partner adoption and verified environmental impact have not yet been demonstrated. See [current status](STATUS.md) and [service coverage](docs/SERVICE_COVERAGE.md) for what is live and what remains.
 
 ## Find your first contribution
 
@@ -23,7 +23,7 @@ Organize a local conservation project, document the work, and make decisions tog
 
 [Website](https://vergecommon.com) · [Conservation network](https://vergecommon.com/network/) · [Member workspace](https://vergecommon.com/workspace/) · [Account and device access](https://vergecommon.com/account) · [Contribute](CONTRIBUTING.md)
 
-`vergecommon.com` is the canonical service address. The shared application passed live HTTPS acceptance on September 19, 2026, using three independent synthetic accounts. The pilot source is on `build/coop-launch-readiness` while [PR #2](https://github.com/jdhart81/verge-common/pull/2) remains under review. See the [latest deployed build receipt](docs/LAUNCH_BUILD_2026-09-19.md) and [next candidate readiness](docs/BETA_READINESS_2026-09-19.md) for exact revisions and operational limits before inviting participants. Co-op and project publication is opt-in; member records and private land evidence retain their server-side access rules.
+`vergecommon.com` is the canonical service address. **For what is live, verified and still open right now, read [STATUS.md](STATUS.md).** The deployed service includes the launch foundation ([PR #2](https://github.com/jdhart81/verge-common/pull/2)) and the [conversation actions](docs/CONVERSATION_ACTIONS.md) and social sign-in work ([PR #3](https://github.com/jdhart81/verge-common/pull/3)). Dated deployment receipts and reviews live in [docs/history/](docs/history/). Co-op and project publication is opt-in; member records and private land evidence retain their server-side access rules.
 
 ## Start your own community
 
@@ -39,6 +39,9 @@ Create a personal agent token from `/account`, store it in the client's secret s
 
 ## What is implemented
 
+- Visible, online browser workspaces refresh every 30 seconds without discarding mounted drafts; permission-aware review reminders include monitoring and financial records.
+- Stewardship and treasury receipts complement member payment receipts, with independent review, exact allocation reconciliation and project-bound evidence. These records do not send money.
+- Guided co-op actions inside Discussion for private mapping, consent, evidence, partner participation, agreements, governance and external receipts, with role-aware choices and retained drafts. [Conversation actions](docs/CONVERSATION_ACTIONS.md).
 - A single-server Node runtime with durable SQLite and private evidence files, an authenticated gateway, username/password accounts, recovery codes, account export/closure, and revocable device/agent tokens.
 - Boundary-derived area estimates, overlap screening, reviewed parcel-specific consent, scoped agreement coverage, stale-record detection, and withdrawal/revocation history. [Pooling safeguards](docs/POOLING_SAFEGUARDS.md).
 - iPhone/iPad source for authenticated member workspaces, member posts, explicit field-draft submission and deliberate photo/PDF/text evidence submission. A protected, account-bound queue retains exact retry requests through interrupted connections. Public discovery and the protected offline journal remain available; signing, device acceptance and Apple distribution are separate release steps.
@@ -113,7 +116,7 @@ With a local self-hosted production build running against dedicated synthetic da
 VERGE_TEST_ORIGIN=http://127.0.0.1:3100 python3 tests/selfhost_acceptance.py
 ```
 
-This checks independent accounts, invitations and access boundaries, version conflicts/retries, evidence storage, token scopes/revocation, hosted MCP and account closure. The runner defaults to local services and requires explicit opt-in for private synthetic fixtures on the canonical production service. Check [feature acceptance](docs/FEATURE_ACCEPTANCE.md) and the [deployment receipt](docs/DEPLOYMENT_2026-09-19.md) for actual results.
+This checks independent accounts, invitations and access boundaries, version conflicts/retries, evidence storage, token scopes/revocation, hosted MCP and account closure. The runner defaults to local services and requires explicit opt-in for private synthetic fixtures on the canonical production service. Check [feature acceptance](docs/FEATURE_ACCEPTANCE.md) and the [deployment receipt](docs/history/DEPLOYMENT_2026-09-19.md) for actual results.
 
 With the original Cloudflare development server running, run its HTTP persistence/concurrency checks:
 
@@ -152,4 +155,4 @@ Original code and original workflow templates: GNU AGPL v3.0 only. See [LICENSE]
 
 ## Shared service and native app
 
-The website and native client use this repository's co-op service. See [architecture and legacy reconciliation](docs/ARCHITECTURE.md) and [iPhone/iPad build status](ios/README.md). Native public discovery, personal-device authentication, member posts and explicit field observation submission are implemented against `https://vergecommon.com`. Advanced governance, invitations, mapping and financial workflows use the website. Physical-device acceptance, signing and TestFlight/App Store distribution remain release requirements; source implementation is not a distributed mobile release.
+The website and native client use this repository's co-op service. See [architecture and legacy reconciliation](docs/ARCHITECTURE.md) and [iPhone/iPad build status](ios/README.md). Native public discovery, personal-device authentication, member posts, private discussion replies with protected explicit retries, and explicit field observation submission are implemented against `https://vergecommon.com`. Advanced governance, invitations, mapping and financial workflows use the website. Physical-device acceptance, signing and TestFlight/App Store distribution remain release requirements; source implementation is not a distributed mobile release.

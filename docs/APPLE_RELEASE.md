@@ -2,14 +2,14 @@
 
 **Status: native development candidate; not uploaded, submitted, or approved.** The website's public beta and an Apple distribution release are separate milestones. Viridis LLC is the project operator identified by the owner. Authenticated App Store Connect access is verified, but the available enrolled seller is an individual account; no Viridis LLC team is available in its account menu. The owner must choose the intended seller before a VergeCommon app record is created.
 
-This source review now includes the [beta readiness candidate](BETA_READINESS_2026-09-19.md). Historical CI and account observations are retained below; they do not identify a newly uploaded release.
+This source review now includes the [beta readiness candidate](history/BETA_READINESS_2026-09-19.md). Historical CI and account observations are retained below; they do not identify a newly uploaded release.
 
 ## Current candidate and evidence
 
 | Item | Observed state |
 | --- | --- |
 | Xcode project / scheme | `ios/VergeCommon.xcodeproj` / `VergeCommon` |
-| Proposed bundle identifier | `org.vergecommon.app`; registration and availability unverified |
+| Bundle identifier | `org.vergecommon.app`; registered September 20 under owner-approved team `ST9K746229` for Sign in with Apple web authentication |
 | Version / build | `0.8.0` / `1` |
 | Platforms | iPhone and iPad; iOS 17 or later |
 | Backend | `https://vergecommon.com` |
@@ -19,11 +19,11 @@ This source review now includes the [beta readiness candidate](BETA_READINESS_20
 | Local toolchain | Xcode 27.0, build 27A266a; selected at `/Applications/Xcode.app/Contents/Developer` |
 | Local candidate checks | 68 Swift tests and unsigned iOS Simulator build passed; the earlier Xcode-license exit 69 no longer blocks these local checks |
 | Local signing | `security find-identity -v -p codesigning` reports zero valid identities; project has no development team |
-| App Store Connect access | Authenticated Apps and Business pages verified; no VergeCommon app record or registered `org.vergecommon.app` identifier is available |
+| App Store Connect access | Authenticated Apps and Business pages verified; no VergeCommon App Store app record was created; the bundle identifier is now registered for web authentication |
 | Seller and agreements | Individual seller; Free Apps Agreement active, Paid Apps Agreement not accepted; EU trader-status declaration remains outstanding |
 | Distribution proof | No signed archive, App Store Connect app record, upload receipt, approved TestFlight build or App Store listing verified in this review |
 
-[Historical macOS CI for 5aa1a5f](https://github.com/jdhart81/verge-common/actions/runs/35462710257) passed 44 Swift tests and the unsigned iPhone/iPad simulator build. The intermediate launch candidate passed 55 local Swift tests, adding calendar-date/time-zone behavior and legacy retries, directory search/cursor continuity, and operator reporting with protected receipts, exact retries and status lookup. The current evidence-queue candidate passes 68 local Swift tests and an unsigned simulator build using the current Xcode toolchain. Its 13 additional tests cover exact upload/command retries across restart, ownership, failed-write preservation, image GPS/author metadata removal, image and queue limits, cancellation, matching server receipts and explicit local erasure after account deletion. Independent review added bounded selected-photo reads, a repository that refuses further access after a write failure until reloaded, and preservation of an uncertain submission after a denied retry. Final local receipt logs are `/tmp/verge-native-capacity-review.log` and `/tmp/verge-ios-capacity-review.log`; these are local verification artifacts, not distribution receipts. The earlier local license error is historical. Signing, physical-device acceptance and an Apple upload receipt remain absent. Final consolidated validation and the recorded release commit belong in the [candidate checklist](BETA_READINESS_2026-09-19.md).
+[Historical macOS CI for 5aa1a5f](https://github.com/jdhart81/verge-common/actions/runs/35462710257) passed 44 Swift tests and the unsigned iPhone/iPad simulator build. The intermediate launch candidate passed 55 local Swift tests, adding calendar-date/time-zone behavior and legacy retries, directory search/cursor continuity, and operator reporting with protected receipts, exact retries and status lookup. The current evidence-queue candidate passes 68 local Swift tests and an unsigned simulator build using the current Xcode toolchain. Its 13 additional tests cover exact upload/command retries across restart, ownership, failed-write preservation, image GPS/author metadata removal, image and queue limits, cancellation, matching server receipts and explicit local erasure after account deletion. Independent review added bounded selected-photo reads, a repository that refuses further access after a write failure until reloaded, and preservation of an uncertain submission after a denied retry. Final local receipt logs are `/tmp/verge-native-capacity-review.log` and `/tmp/verge-ios-capacity-review.log`; these are local verification artifacts, not distribution receipts. The earlier local license error is historical. Signing, physical-device acceptance and an Apple upload receipt remain absent. Final consolidated validation and the recorded release commit belong in the [candidate checklist](history/BETA_READINESS_2026-09-19.md).
 
 ## Implemented account and safety changes
 
@@ -95,3 +95,5 @@ Verify these descriptions against the signed release build before submission. Sc
 5. Use tester feedback to qualify a finished App Store release. Apply an approved price and release configuration only for that finished release; retain a record of Apple's review decision.
 
 An unsigned CI build, a working website, or an installed Xcode version is not an Apple release receipt.
+
+September 20 authentication follow-up: the owner approved using the current Apple Developer team for login registration. The App ID, web Services ID and dedicated Sign in with Apple key are registered; see [provider setup status](../self-hosted/SOCIAL_SIGN_IN.md). This does not select or publish an App Store seller, sign the native app, or distribute a build.

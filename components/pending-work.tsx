@@ -55,8 +55,9 @@ export function PendingWork({
         ))}
       </ul>
       <p className="small mt-3">
-        This list updates when your workspace refreshes. No email or push
-        notifications are sent.
+        This list follows the latest workspace refresh. The open page checks for
+        changes while visible and online; no email or push notifications are
+        sent.
       </p>
     </section>
   );
