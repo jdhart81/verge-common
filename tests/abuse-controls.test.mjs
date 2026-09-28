@@ -304,3 +304,15 @@ await test('BL-09: the sign-up form shows the Terms of Use checkbox', async (t) 
   assert.match(page.body, /name="acceptTerms"[^>]*required/);
   assert.match(page.body, /href="\/terms\/"/);
 });
+
+await test('static build assets never consume the per-network page limit', async (t) => {
+  const g = await gateway(t);
+  for (let i = 0; i < 1300; i += 1)
+    assert.equal(
+      (await raw(g.port, `/_next/static/chunk-${i}.js`)).status,
+      200,
+    );
+  let last;
+  for (let i = 0; i < 1201; i += 1) last = await raw(g.port, '/network/');
+  assert.equal(last.status, 429);
+});
