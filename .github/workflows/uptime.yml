@@ -67,7 +67,7 @@ jobs:
             if [ -n "$existing" ]; then gh issue comment "$existing" --body "Still failing at $now. $3"
             else gh issue create --label "$1" --title "$2" --body "Failed at $now. $3
 
-          Runbook: STATUS.md and docs/OPERATIONS_BETA.md. Roll back by restarting the retained previous container; never restore an old backup over live data."; fi
+          Runbook: STATUS.md and self-hosted/README.md. Run the v0.9.0 rollback compatibility guard before restarting a pre-v0.9.0 writer. If new participation records exist, retain current data and ship a compatibility/forward repair. Never restore an old backup over live data."; fi
           }
           resolve() { # label
             for n in $(gh issue list --label "$1" --state open --json number --jq '.[].number'); do

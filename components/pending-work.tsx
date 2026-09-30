@@ -56,8 +56,8 @@ export function PendingWork({
       </ul>
       <p className="small mt-3">
         This list follows the latest workspace refresh. The open page checks for
-        changes while visible and online; no email or push notifications are
-        sent.
+        changes while visible and online. Opt-in browser reminders are available
+        in Care & participation.
       </p>
     </section>
   );

@@ -1,4 +1,16 @@
-# Deployed service update — September 20, 2026 UTC
+# Release notes
+
+## v0.9.0 — participation and continuing care (29 September 2026)
+
+- Individual public project, event and progress pages with social metadata, native share/copy fallback and QR codes. Shared-link source codes are explained at joining and retained privately; no tracking cookies or external analytics.
+- Activity context survives sign-in and membership approval; approved members open the relevant event. Private invitation recipients can preview an already-public co-op without exposing its bearer secret.
+- Organizers record actual attendance and completed work after the event. Another steward reviews the record, then publication requires a separate public preview/confirmation and can be withdrawn.
+- Private care and disturbance commitments include responsible members, dates, recurrence, evidence-backed independent completion and histories. Account erasure removes affected records and invalidates unsupported closure.
+- Opt-in encrypted browser reminders for approvals, replies, subscribed event changes and assigned due care, with batched/weekly modes, unsubscribe and a test button. Provider acceptance is not proof of device display. No reminder email is sent.
+- Steward participation reports exclude founder, test and unclassified memberships; measure recorded/confirmed contribution, later-week repeats and contributing participants from shared links. Visitors, off-platform shares and causal virality remain unmeasured.
+- Compatible patched development/network dependencies; clean npm security audit reports zero known vulnerabilities. Package/health version is now 0.9.0.
+- Recovery guard prevents older executables from writing new participation data without the current privacy/erasure rules. See the operator guide before rollback.
+
 
 ## Pollinator grassland conservation — deployed September 20, 2026 UTC
 

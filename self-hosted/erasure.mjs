@@ -181,6 +181,8 @@ export function eraseWorkspaceState(
     s.ownerId = anonymousId;
     s.visibility = 'archived';
   }
+  for (const m of s.members)
+    if (memberIds.has(m.referralId)) delete m.referralId;
   s.projects = rows(s, 'projects').map((p) =>
     authored(p, userId)
       ? {
@@ -228,6 +230,45 @@ export function eraseWorkspaceState(
     for (const event of s.events)
       if (!event.cancelledBy) delete event.cancelReason;
   }
+  for (const e of s.events) {
+    if (!e.result) continue;
+    if (e.result.createdBy === userId || e.result.reviewedBy === userId)
+      delete e.result;
+    else
+      e.result.attendeeIds = (e.result.attendeeIds ?? []).filter(
+        (id) => !memberIds.has(id),
+      );
+  }
+  s.careActions = rows(s, 'careActions')
+    .filter(
+      (a) =>
+        a.createdBy !== userId &&
+        !affectedLand(a) &&
+        !memberIds.has(a.memberId),
+    )
+    .map((a) => {
+      if (
+        a.submission?.createdBy === userId ||
+        deletedEvidenceIds.has(a.submission?.evidenceId)
+      ) {
+        delete a.submission;
+        a.status = 'open';
+      }
+      const historyCount = (a.history ?? []).length;
+      a.history = (a.history ?? []).filter(
+        (h) =>
+          h.createdBy !== userId &&
+          h.reviewedBy !== userId &&
+          !deletedEvidenceIds.has(h.evidenceId),
+      );
+      if (a.history.length !== historyCount) {
+        a.status = 'withdrawn';
+        a.withdrawalReason =
+          'Supporting evidence or review was removed during account erasure. A steward must create a successor care commitment.';
+        a.withdrawnAt = now;
+      }
+      return a;
+    });
   s.reports = rows(s, 'reports').filter(
     (r) =>
       !authored(r, userId) &&

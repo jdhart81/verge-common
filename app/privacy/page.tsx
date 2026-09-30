@@ -20,13 +20,40 @@ export default function PrivacyPage() {
       intro="Understand what your co-op shares, what stays private, and what happens when you leave. VergeCommon is operated by Viridis LLC."
     >
       <p>
-        Updated September 28, 2026. This page summarizes the hosted public beta.
+        Updated September 29, 2026. This page summarizes the hosted public beta.
         The{' '}
         <a href={documentBranch + '/PRIVACY.md'}>
           full privacy and visibility policy
         </a>{' '}
         also describes the alternate hosting and field-processing tools.
       </p>
+      <section>
+        <h2>Sharing and optional browser reminders</h2>
+        <p>
+          Public activity cards show only chosen public text and coarse
+          locations. Meeting instructions, member names, parcel boundaries and
+          evidence files stay private. Completed-work cards require independent
+          community review and an explicit publish step; they do not certify
+          ecological outcomes.
+        </p>
+        <p>
+          Member share links can include a source code. The join form explains
+          that requesting membership records the source privately for
+          participation reporting. It grants no access and uses no tracking
+          cookie or outside analytics service. Founder, test and unclassified
+          accounts are excluded from participant counts.
+        </p>
+        <p>
+          Optional browser reminders store your subscription and delivery status
+          privately. Apple, Google or Mozilla processes encrypted delivery.
+          Notifications contain generic text, with no private co-op details.
+          Choose batched updates or a weekly digest, disable each browser in
+          Care &amp; participation, and check the test on your device. Reminders
+          remain connected after sign-out; disable them on shared devices.
+          Account deletion removes subscriptions. We do not send reminder
+          emails.
+        </p>
+      </section>
       <section>
         <h2>Your account and access</h2>
         <p>
@@ -76,9 +103,9 @@ export default function PrivacyPage() {
           The hosted service keeps co-op records in a private database and
           uploaded evidence on its dedicated server, hosted by DigitalOcean in
           the United States. Operators manage that server and its backups. The
-          host may process request metadata such as IP addresses, which are
-          also used briefly for rate limiting. VergeCommon includes no
-          advertising or application analytics tracker.
+          host may process request metadata such as IP addresses, which are also
+          used briefly for rate limiting. VergeCommon includes no advertising or
+          application analytics tracker.
         </p>
       </section>
       <section>

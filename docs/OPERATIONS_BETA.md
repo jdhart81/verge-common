@@ -1,6 +1,6 @@
 # Beta recovery and monitoring
 
-The dedicated VergeCommon server remains a single-server deployment. The repository includes encrypted backup/recovery tooling, aggregate health checks and optional redacted webhook delivery. **Recurring encrypted backup transfer remains paused; no webhook destination is configured or active.** This update changes source code and isolated tests, not the installed Mac scheduler, recovery key, production data or external accounts.
+The dedicated VergeCommon server remains a single-server deployment. The repository includes encrypted backup/recovery tooling, aggregate health checks and optional redacted webhook delivery. **29 September live audit: recurring encrypted backup transfer is active hourly on the owner Mac and successful archive/isolated-restore/deletion-replay receipts were observed. No webhook destination is configured; notification delivery is local receipts only.** Independent key custody and an external failure/recovery alert rehearsal remain open. The sections below describe the installed tooling and its original isolated verification.
 
 ## Verified starting point
 
@@ -116,7 +116,7 @@ The payload contains only `schema`, the fixed service name `vergecommon`, `event
 
 The first healthy observation establishes a quiet baseline. Changed failure conditions produce one event; unchanged successfully delivered conditions stay quiet. A healthy observation after a delivered or attempted failure produces one recovery event, since a timed-out request may already have reached the receiver. Failed delivery retains a private pending event identity for retry on the next run. The receiver should honor the `Idempotency-Key` header because a timeout after acceptance can otherwise duplicate a delivery. A new incident after recovery receives a new identity.
 
-Both full recovery checks and `--check-only` support these optional notifications. `--status` and `--retention-plan` never send them. The isolated tests use mocked transports only; a real destination, responder ownership and a confirmed failure/recovery delivery rehearsal are still required before calling alerting active. The current Mac scheduler remains paused. To monitor while the Mac is unavailable, later place read-only checking on an approved always-on independent host without copying the recovery key or enabling a new backup transfer implicitly.
+Both full recovery checks and `--check-only` support these optional notifications. `--status` and `--retention-plan` never send them. The isolated tests use mocked transports only; a real destination, responder ownership and a confirmed failure/recovery delivery rehearsal are still required before calling alerting active. The 29 September audit found the Mac scheduler active; external alert delivery remains unqualified. To monitor while the Mac is unavailable, later place read-only checking on an approved always-on independent host without copying the recovery key or enabling a new backup transfer implicitly.
 
 ## Install, inspect and stop
 

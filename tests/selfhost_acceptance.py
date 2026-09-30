@@ -218,3 +218,58 @@ headers={'Authorization':'Bearer '+recovered['token']}
 code,result=native.call('/auth/native/delete',{'password':replacement,'confirmation':'DELETE'},headers=headers);assert code==200 and result.get('deleted') is True,(code,result)
 assert native.call('/api/workspaces',headers=headers)[0]==401
 print(json.dumps({'status':'passed','checks':['native registration without cookies','native login and session expiry metadata','native server-side logout','native recovery rotates access','native account deletion']}))
+
+# Participation release acceptance: isolated accounts, no real push recipients.
+ma,mb,mc=Client(),Client(),Client()
+for client,n in [(ma,'ma'),(mb,'mb'),(mc,'mc')]: client.register(n)
+mid=str(uuid.uuid4()); code,_=ma.call('/api/workspaces',{'op':'create','requestId':mid,'payload':{'name':'Synthetic mission loop','region':'General test area','summary':'Synthetic public purpose','displayName':'Mission founder'}});assert code==201
+
+def mission_state(client):
+ code,s=client.call('/api/workspaces?id='+mid);assert code==200,(code,s);return s
+
+def mission_command(client,op,payload):
+ return client.call('/api/workspaces',{'id':mid,'version':mission_state(client)['version'],'op':op,'payload':payload,'requestId':str(uuid.uuid4())})
+
+assert mission_command(ma,'update_coop',{'name':'Synthetic mission loop','region':'General test area','summary':'Synthetic public purpose','visibility':'public'})[0]==200
+for client,name in [(mb,'Mission reviewer'),(mc,'Mission participant')]:
+ code,_=client.call('/api/workspaces',{'id':mid,'op':'request_membership','payload':{'name':name},'requestId':str(uuid.uuid4())});assert code==200,(code,_)
+ member_id=next(m['id'] for m in mission_state(ma)['state']['members'] if m['name']==name)
+ assert mission_command(ma,'member_status',{'id':member_id,'status':'active'})[0]==200
+ if client is mb: assert mission_command(ma,'member_role',{'id':member_id,'role':'steward'})[0]==200
+ else: participant_id=member_id;assert mission_command(ma,'classify_participant',{'id':member_id,'cohort':'participant'})[0]==200
+code,s=mission_command(ma,'create_project',{'name':'Shared habitat action','summary':'Help care for habitat','region':'Coarse public area','kind':'grassland'});assert code==200,(code,s)
+mp=s['state']['projects'][0]['id'];assert mission_command(ma,'project_status',{'id':mp,'status':'active','visibility':'public'})[0]==200
+import time
+start=int(time.time()*1000)+500;end=start+1000
+code,s=mission_command(ma,'create_event',{'projectId':mp,'title':'Synthetic habitat workday','summary':'Public activity purpose','meetingDetails':'PRIVATE EXACT MEETING LOCATION','startsAt':start,'endsAt':end,'timeZone':'UTC','capacity':10,'visibility':'public'});assert code==200,(code,s)
+me=s['state']['events'][0]['id'];ap=f'/activity/{mid}/event/{me}/'
+code,page=Client().call(ap);assert code==200,(code,page)
+assert 'property="og:title"' in page and 'Synthetic habitat workday' in page
+assert 'PRIVATE EXACT MEETING LOCATION' not in page
+assert mission_command(mc,'event_rsvp',{'id':me,'response':'going'})[0]==200
+assert Client().call('/api/push')[0]==401
+code,push_config=mc.call('/api/push');assert code==200 and len(push_config['publicKey'])==87
+assert mc.call('/api/push',{'subscription':{'endpoint':'https://127.0.0.1/private'},'mode':'updates'})[0]==400
+code,s=mission_command(mc,'submit_evidence',{'projectId':mp,'title':'Synthetic field evidence','method':'Inspection','period':'Test only','notes':'PRIVATE FIELD EVIDENCE','reference':'https://example.org/synthetic'});assert code==200,(code,s)
+ev=s['state']['evidence'][0]['id'];assert mission_command(mb,'review_evidence',{'id':ev,'decision':'approve','note':'Synthetic independent evidence check'})[0]==200
+code,s=mission_command(ma,'create_care_action',{'projectId':mp,'title':'Inspect habitat','instructions':'Check after a disturbance','memberId':participant_id,'due':'2026-09-29','repeatDays':7,'kind':'disturbance'});assert code==200,(code,s)
+care=s['state']['careActions'][0]['id'];assert mission_command(mc,'submit_care_action',{'id':care,'summary':'Completed the inspection','evidenceId':ev})[0]==200
+assert mission_command(mb,'review_care_action',{'id':care,'decision':'approve','note':'Independently checked evidence'})[0]==200
+assert mission_state(ma)['state']['careActions'][0]['history'][0]['decision']=='approve'
+time.sleep(max(0,(end-int(time.time()*1000))/1000)+.1)
+assert mission_command(ma,'complete_event',{'id':me,'summary':'Completed habitat work','attendeeIds':[participant_id]})[0]==200
+assert mission_command(ma,'review_event_result',{'id':me,'decision':'approve','note':'Self review denied'})[0]==403
+assert mission_command(mb,'review_event_result',{'id':me,'decision':'approve','note':'Synthetic independent activity review'})[0]==200
+assert mission_command(ma,'publish_event_result',{'id':me,'confirm':True})[0]==200
+code,public=Client().call('/api/network?id='+mid);assert code==200
+assert public['coop']['events'][0]['result']['attendeeCount']==1
+assert 'PRIVATE' not in json.dumps(public) and participant_id not in json.dumps(public)
+assert mission_state(ma)['state']['participation']['contributed']==1
+assert mission_state(ma)['state']['participation']['confirmedAttendance']==1
+assert mission_command(ma,'revoke_event_result',{'id':me})[0]==200
+assert 'result' not in Client().call('/api/network?id='+mid)[1]['coop']['events'][0]
+assert mission_command(ma,'project_status',{'id':mp,'status':'active','visibility':'members'})[0]==200
+assert Client().call(ap)[0]==404
+assert mission_command(ma,'archive',{})[0]==200
+for client in [ma,mb,mc]: assert client.call('/auth/close',{'password':client.password,'confirmation':'DELETE'},form=True)[0]==200
+print(json.dumps({'status':'passed','checks':['activity SSR and social metadata','public privacy projection','three-account community review','completed-work publication and withdrawal','evidence-backed recurring care','participant report','push opt-in authorization and SSRF denial','public withdrawal 404','mission fixture erasure']}))

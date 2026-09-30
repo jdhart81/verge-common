@@ -1,6 +1,6 @@
 # VergeCommon — current status
 
-**Last updated: 28 September 2026 (v0.8.1 deployed).** This is the single, current summary of what is live, what is verified and what is still open. Update it with every deployment or change in operating state. Dated deployment receipts and reviews are preserved unchanged in [docs/history/](docs/history/).
+**Last updated: 29 September 2026 (v0.8.1 live; v0.9.0 release candidate).** This is the single, current summary of what is live, what is verified and what is still open. Update it with every deployment or change in operating state. Dated deployment receipts and reviews are preserved unchanged in [docs/history/](docs/history/).
 
 ## At a glance
 
@@ -29,8 +29,8 @@
 | Method | State |
 | --- | --- |
 | Username/password + recovery codes | Live |
-| Google (via dedicated Supabase broker) | Button public; owner first-login acceptance passed. **Google Cloud audience was last read back as External / Testing with no test users** — in that mode Google blocks everyone except the project's own/test accounts, so the public button likely fails for neighbours. Publish the consent screen to Production (or hide the button) before inviting anyone. Returning-login acceptance open. |
-| Apple (via Supabase broker) | Button public; real sign-in acceptance **open**. |
+| Google (via dedicated Supabase broker) | Real returning-account sign-in and authenticated workspace reload observed on 29 Sep. Google Cloud audience read back as **External / In production**; owner also reports successful testing. A neighbour cohort remains untested. |
+| Apple (via Supabase broker) | Owner reports successful real sign-in on 29 Sep. Independent new-user acceptance and revocation-on-deletion remain separate checks. |
 | Email link | Implemented, **disabled** — needs a production SMTP sender. |
 | Native iOS | Password accounts only; native Google/Apple UI not built. |
 
@@ -49,7 +49,7 @@ Details: [self-hosted/SUPABASE_SIGN_IN.md](self-hosted/SUPABASE_SIGN_IN.md), [se
 ## Operations
 
 - Daily on-server backup timer: **active**. Isolated restore has passed at each recorded deployment.
-- Encrypted off-server backup transfer: **paused** (Mac LaunchAgent `com.vergecommon.operations` unloaded pending approval). No qualified production off-host recovery receipt yet.
+- Encrypted off-server backup transfer: **active hourly** on the owner Mac (`com.vergecommon.operations` loaded). Live receipts read on 29 Sep show successful encrypted archives, matching server snapshot hashes and isolated restore/deletion-ledger replay. Latest read receipt: 30 Sep 00:37 UTC (29 Sep 20:37 EDT), healthy. Notifications remain local receipts only; independent key custody and alert delivery are unqualified.
 - Failure alerting: GitHub Actions Production monitor is configured for 15-minute health and nightly full launch-gate checks. Full manual run verified in the [deployment receipt](docs/history/DEPLOYMENT_V081_2026-09-28.md). Owner Watching → All activity and actual failure-email delivery remain unverified; no alert rehearsal was performed. The separate Mac webhook remains unconfigured.
 - Historical plaintext archives exist on the owner's Mac (`private-backups/`); their retention/disposal is an open owner decision.
 - Storage model: a bounded JSON aggregate per co-op (5,000 events / 750 KB). Suitable for pilots; needs capacity alerts and a scalable store before large co-ops.
@@ -63,14 +63,17 @@ Runbooks: [docs/OPERATIONS_BETA.md](docs/OPERATIONS_BETA.md), [docs/OPERATIONS.m
 - Carbon credit issuance, sales, registry custody or payment execution. The software records external events; it does not move money or issue credits.
 - Hosted, unattended imagery monitoring jobs.
 
+## v0.9.0 candidate (not yet the live receipt)
+
+Shareable activity/progress pages with previews and QR codes; sign-in/join return to activity; actual attendance and independent work review/publication/withdrawal; private recurring care and disturbance history; opt-in browser push; classified participation, later-week contribution and shared-link attribution reporting. Local clean install, 287 Node tests, typecheck/lint and production build passed. Remote CI, exact-image acceptance, backup/restore and deployment follow before the candidate becomes live. Browser-provider acceptance is separate from observed device display.
+
 ## Next steps, in order
 
-1. v0.8.1 is merged, tagged and deployed with backup/restore and 0 automated launch-gate failures. Publish the Google OAuth consent screen out of Testing and set its support email to justin@viridisconservation.com. Complete the nine manual launch gates before broader invitations.
-2. Back up the Apple signing key and token-vault key to independent custody; rotate the Apple client secret before 19 Dec 2026.
-3. Approve and re-enable encrypted off-server backups; run and record an isolated restore; configure an external alert destination.
-4. Complete Apple and returning-Google sign-in acceptance; publish the Google consent screen out of Testing.
-5. Feature freeze and run the [pilot checklist](docs/PILOT.md) with one real group (two stewards, a few neighbours, two activities).
-6. Let pilot findings decide the next build (combined co-op map, notifications, native field capture, scalable storage).
+1. Complete the v0.9.0 verified release sequence and save its immutable deployment receipt.
+2. Establish independent key custody, qualify failure-alert delivery and name a second operator.
+3. Run one real group with two stewards, 5–10 neighbours, one shared activity and a later-week repeat. Record actual work and classify test accounts correctly.
+4. Test reminders on each participant device, especially installed iPhone/iPad web apps. Provider revocation on account deletion, physical-device/accessibility acceptance and native distribution remain separate work.
+5. Use participant/referred contribution and conservation-care records to decide later nearby discovery, unattended imagery monitoring and scalable-storage work. No adoption or ecological impact is inferred from CI or traffic.
 
 ## Where to read more
 

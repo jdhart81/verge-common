@@ -22,9 +22,15 @@ export async function GET(request: Request) {
       if (membership(state, user.id))
         return json({ ...memberView(state, user.id), version: row.version });
       const m = state.members.find(
-        (x: { userId: string }) => x.userId === user.id,
+        (x: { userId: string; activity?: string; status: string }) =>
+          x.userId === user.id,
       );
-      if (m) return json({ membershipStatus: m.status, name: state.name });
+      if (m)
+        return json({
+          membershipStatus: m.status,
+          name: state.name,
+          activity: m.activity ?? '',
+        });
       return json({ error: 'Membership is required.' }, 403);
     }
     const rows = await getD1()
