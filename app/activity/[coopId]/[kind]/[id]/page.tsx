@@ -27,8 +27,8 @@ export async function generateMetadata({ params }: Props) {
       images: [
         {
           url: '/brand/shared-canopy-logo-v1.png',
-          width: 1024,
-          height: 1024,
+          width: 992,
+          height: 397,
           alt: 'VergeCommon Shared Canopy',
         },
       ],
