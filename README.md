@@ -1,5 +1,7 @@
 # VergeCommon
 
+[![Check](https://github.com/jdhart81/verge-common/actions/workflows/check.yml/badge.svg)](https://github.com/jdhart81/verge-common/actions/workflows/check.yml) [![OpenSSF Scorecard](https://api.scorecard.dev/projects/github.com/jdhart81/verge-common/badge)](https://scorecard.dev/viewer/?uri=github.com/jdhart81/verge-common)
+
 ## What if conservation could be an open-source project?
 
 **Enter VergeCommon: open tools for people caring for the places they share.**
