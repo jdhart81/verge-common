@@ -1,6 +1,6 @@
 # VergeCommon — current status
 
-**Last updated: 27 September 2026 (v0.8.0 deployed).** This is the single, current summary of what is live, what is verified and what is still open. Update it with every deployment or change in operating state. Dated deployment receipts and reviews are preserved unchanged in [docs/history/](docs/history/).
+**Last updated: 28 September 2026 (v0.8.1 deployed).** This is the single, current summary of what is live, what is verified and what is still open. Update it with every deployment or change in operating state. Dated deployment receipts and reviews are preserved unchanged in [docs/history/](docs/history/).
 
 ## At a glance
 
@@ -8,12 +8,15 @@
 | --- | --- |
 | Website and shared app | **Live public technical beta** at https://vergecommon.com — accounts, private co-ops, invitations, discussion and conversation actions, events, parcels/boundaries, evidence, governance records, operator report queue, hosted MCP. Free to use. |
 | Hosting | One dedicated DigitalOcean droplet (`601953476`), Docker container behind Caddy, SQLite + private evidence files. Separate from Viridis Conservation. |
-| Source of truth | Production runs **v0.8.0**, merge commit `fc9f412` on `main` ([PR #5](https://github.com/jdhart81/verge-common/pull/5)). [Deployment and recovery receipt](docs/history/DEPLOYMENT_SOFTLAUNCH_2026-09-27.md). |
-| Automated checks | Soft-launch candidate, 27 Sep 2026: **275/275 Node tests, TypeScript and lint pass**; isolated production-build acceptance passed (4 accounts + native lifecycle); browser check of every public page and all 14 co-op tabs at 1280 px and 375 px with no console errors or overflow. |
-| Launch gate | `npm run launch-gate -- --expect-commit fc9f412` against production: **24 pass, 0 fail, 9 manual, 0 skipped**. Manual operational and owner gates remain open. |
+| Source of truth | Production runs **v0.8.1**, merge commit `0921132` on `main` ([PR #7](https://github.com/jdhart81/verge-common/pull/7)). [Deployment and recovery receipt](docs/history/DEPLOYMENT_V081_2026-09-28.md). |
+| Automated checks | v0.8.1, 28 Sep 2026: **276/276 Node tests, TypeScript and lint pass**; all four merge-commit CI jobs and secret scan passed; exact-image isolated acceptance and pre/post-deploy restore checks passed. |
+| Launch gate | `npm run launch-gate -- --expect-commit 0921132` against production: **24 pass, 0 fail, 9 manual, 0 skipped**. Manual operational and owner gates remain open. |
 | Real adoption | None demonstrated yet. No real co-op, environmental or financial outcome has been recorded. |
 
-## Deployed soft-launch release (v0.8.0)
+## Deployed release (v0.8.1)
+
+- Adds the independent production monitor, tab/sign-in contrast fixes, and shared-network limits of 1,200 page requests/minute; static build assets are excluded from that page limit.
+- `/healthz` commit is `0921132`; its static version field still reads `0.8.0` in the released source.
 
 - Security review fixes: see [docs/history/SECURITY_REVIEW_2026-09-27.md](docs/history/SECURITY_REVIEW_2026-09-27.md). Abuse limits for open sign-up, IPv6-aware rate limits, per-member and per-uploader caps, open-redirect fix, HSTS, no raw database errors.
 - Terms of Use at `/terms/`, accepted and recorded (version `2026-09-28`) at every password, app and first-time provider sign-up.
@@ -47,7 +50,7 @@ Details: [self-hosted/SUPABASE_SIGN_IN.md](self-hosted/SUPABASE_SIGN_IN.md), [se
 
 - Daily on-server backup timer: **active**. Isolated restore has passed at each recorded deployment.
 - Encrypted off-server backup transfer: **paused** (Mac LaunchAgent `com.vergecommon.operations` unloaded pending approval). No qualified production off-host recovery receipt yet.
-- Failure alerting: **not active.** Webhook delivery is implemented but no destination is configured; local receipts only work while the Mac is awake.
+- Failure alerting: GitHub Actions Production monitor is configured for 15-minute health and nightly full launch-gate checks. Full manual run verified in the [deployment receipt](docs/history/DEPLOYMENT_V081_2026-09-28.md). Owner Watching → All activity and actual failure-email delivery remain unverified; no alert rehearsal was performed. The separate Mac webhook remains unconfigured.
 - Historical plaintext archives exist on the owner's Mac (`private-backups/`); their retention/disposal is an open owner decision.
 - Storage model: a bounded JSON aggregate per co-op (5,000 events / 750 KB). Suitable for pilots; needs capacity alerts and a scalable store before large co-ops.
 
@@ -62,7 +65,7 @@ Runbooks: [docs/OPERATIONS_BETA.md](docs/OPERATIONS_BETA.md), [docs/OPERATIONS.m
 
 ## Next steps, in order
 
-1. v0.8.0 is merged, tagged and deployed with backup/restore and 0 automated launch-gate failures. Publish the Google OAuth consent screen out of Testing and set its support email to justin@viridisconservation.com. Complete the nine manual launch gates before broader invitations.
+1. v0.8.1 is merged, tagged and deployed with backup/restore and 0 automated launch-gate failures. Publish the Google OAuth consent screen out of Testing and set its support email to justin@viridisconservation.com. Complete the nine manual launch gates before broader invitations.
 2. Back up the Apple signing key and token-vault key to independent custody; rotate the Apple client secret before 19 Dec 2026.
 3. Approve and re-enable encrypted off-server backups; run and record an isolated restore; configure an external alert destination.
 4. Complete Apple and returning-Google sign-in acceptance; publish the Google consent screen out of Testing.
