@@ -29,6 +29,7 @@ import {
 } from './erasure.mjs';
 import { accountPage } from './account.mjs';
 import { createSocialAuth } from './social-auth.mjs';
+import { createPush } from './push.mjs';
 import { createHttpHandler, mcpDiscovery } from '../mcp/http.mjs';
 const safeReturn = (value) => {
   try {
@@ -46,9 +47,14 @@ const safeReturn = (value) => {
 // deliberately (plain domain errors or ones with an HTTP status) are.
 export function userMessage(error) {
   const text = `${error?.code ?? ''} ${error?.name ?? ''} ${error?.message ?? ''}`;
-  if (!error?.status && /sqlite|database is|constraint failed|SQLITE_/i.test(text))
+  if (
+    !error?.status &&
+    /sqlite|database is|constraint failed|SQLITE_/i.test(text)
+  )
     return 'The service could not complete this request.';
-  return String(error?.message ?? 'The service could not complete this request.');
+  return String(
+    error?.message ?? 'The service could not complete this request.',
+  );
 }
 export const UPLOAD_CONCURRENCY = 8;
 export const STATIC_ASSET_PATH =
@@ -73,6 +79,7 @@ export function createGateway({
   auth,
   safety,
   social = null,
+  push = null,
   socialPreview = false,
   maintenanceHealthy = () => true,
   host = '127.0.0.1',
@@ -237,7 +244,7 @@ export function createGateway({
         return json(maintenanceHealthy() ? 200 : 503, {
           status: maintenanceHealthy() ? 'ok' : 'attention',
           service: 'vergecommon',
-          version: '0.8.0',
+          version: '0.9.0',
           commit: buildCommit,
         });
       if (url.pathname === '/.well-known/mcp.json')
@@ -591,6 +598,13 @@ export function createGateway({
             error: 'You are making changes very quickly. Wait a few minutes.',
           });
       }
+      if (['/api/push', '/api/push/test'].includes(url.pathname)) {
+        if (!push)
+          return json(503, {
+            error: 'Browser reminders are unavailable on this host.',
+          });
+        return await push.handle({ req, url, principal, readBody, json });
+      }
       if (isUpload && req.method === 'POST') {
         if (!auth.rateLimit(`upload:${principal.id}`, 30, 10 * 60000))
           return json(429, {
@@ -697,6 +711,7 @@ export async function start() {
   });
   social = await createSocialAuth({ db, auth, origin });
   const safety = createSafety(db);
+  const push = createPush(db, { origin });
   // Recovery must reconcile committed deletions before any request can reach
   // the app, including after restoring an older database beside a newer ledger.
   recoverErasureIntents(db, ledgerDirectory);
@@ -732,6 +747,18 @@ export async function start() {
     60 * 60 * 1000,
   );
   upkeep.unref();
+  let pushBusy = false;
+  const pushTimer = setInterval(() => {
+    if (pushBusy) return;
+    pushBusy = true;
+    void push
+      .tick()
+      .catch(() => console.error('Browser reminders need operator attention'))
+      .finally(() => {
+        pushBusy = false;
+      });
+  }, 60000);
+  pushTimer.unref();
   const { startProdServer } = await import('vinext/server/prod-server');
   const internal = await startProdServer({
     port: 0,
@@ -745,6 +772,7 @@ export async function start() {
     auth,
     safety,
     social,
+    push,
     socialPreview: process.env.VERGE_SOCIAL_PREVIEW === '1',
     maintenanceHealthy: () => !maintenanceFailed,
     freeDiskBytes: async () => {
@@ -766,6 +794,7 @@ export async function start() {
   console.log(`VergeCommon ready at ${origin}`);
   const close = () => {
     clearInterval(upkeep);
+    clearInterval(pushTimer);
     server.close();
     internal.server.close();
   };

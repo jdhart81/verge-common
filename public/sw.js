@@ -1,6 +1,11 @@
 /* No application data, pages, credentials or API responses are cached. */
 self.addEventListener('install', () => self.skipWaiting());
 self.addEventListener('activate', event => event.waitUntil(self.clients.claim()));
+self.addEventListener('push', event => {
+  let data = {}; try { data = event.data?.json() ?? {}; } catch {}
+  event.waitUntil(self.registration.showNotification('VergeCommon', { body: typeof data.body === 'string' ? data.body : 'Open VergeCommon to check your co-ops.', icon: '/icons/apple-touch-icon.png', tag: 'vergecommon-coop-updates', data: { url: '/workspace/' } }));
+});
+self.addEventListener('notificationclick', event => { event.notification.close(); event.waitUntil(self.clients.openWindow('/workspace/')); });
 self.addEventListener('fetch', event => {
   const url = new URL(event.request.url);
   if (event.request.method !== 'GET' || event.request.mode !== 'navigate' || url.origin !== self.location.origin) return;

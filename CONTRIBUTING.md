@@ -27,7 +27,7 @@ See [community conduct](CODE_OF_CONDUCT.md). A first contribution can be a clear
 ## Development
 
 1. Fork the repository and create a branch.
-2. Use Node 22.13+ and run `npm ci`, `npm run db:migrate:local`, then `npm run dev`.
+2. Use Node 24.19.0. For the hosted application, follow the README’s isolated self-hosted workflow. For the separate Cloudflare development fixture, run `npm ci`, `npm run db:migrate:local`, then `npm run dev`; keep it local.
 3. Make a focused change. Add tests when behavior or privacy boundaries change.
 4. Run `npm test`, `npm run typecheck`, and `npm run build`.
 5. Open a pull request explaining the problem, resulting behavior, and validation.

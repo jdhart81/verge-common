@@ -25,6 +25,13 @@ import { conversationActions } from '@/lib/conversation-actions.mjs';
 import { ConversationJourney } from '@/components/conversation-journey';
 import { CooperativeParcelMap } from '@/components/cooperative-parcel-map';
 import { onboardingProgress } from '@/lib/onboarding.mjs';
+import { BrowserReminders } from '@/components/browser-reminders';
+import {
+  MissionTools,
+  type CareAction,
+  type Participation,
+} from '@/components/mission-tools';
+import { PublicActivityLink } from '@/components/activity-result';
 import { PendingWork } from '@/components/pending-work';
 import {
   PartnerParticipation,
@@ -108,6 +115,7 @@ type Member = {
   role: string;
   status: string;
   isYou?: boolean;
+  participationCohort?: string;
 };
 type PoolConsent = ReviewRecord & {
   holder: string;
@@ -160,6 +168,9 @@ type Workspace = Omit<CommunityState, 'projects' | 'members' | 'tasks'> &
     name: string;
     region: string;
     summary: string;
+    careActions?: CareAction[];
+    participation?: Participation;
+    notices?: { id: string; text: string; at: number }[];
     financialRecordsRedactedAt?: number;
     country: string;
     currency: string;
@@ -305,6 +316,7 @@ type WorkspaceResponse = {
   isOwner?: boolean;
   version: number;
   membershipStatus?: string;
+  activity?: string;
   name?: string;
 };
 type FormValues = Record<string, string | number | string[]>;
@@ -327,7 +339,9 @@ type Field = {
 };
 const date = (n: number) => new Date(n).toLocaleDateString();
 const label = (s: string) =>
-  s === 'grassland' ? 'Grassland & meadow (pollinators)' : s.replaceAll('_', ' ');
+  s === 'grassland'
+    ? 'Grassland & meadow (pollinators)'
+    : s.replaceAll('_', ' ');
 const TAB_LABELS: Record<string, string> = {
   community: 'Community',
   start: 'Get started',
@@ -337,6 +351,7 @@ const TAB_LABELS: Record<string, string> = {
   projects: 'Projects',
   parcels: 'Parcels',
   members: 'Members',
+  care: 'Care & participation',
   agreements: 'Agreements',
   evidence: 'Evidence',
   governance: 'Governance',
@@ -731,7 +746,7 @@ export function NetworkApp({
     try {
       await navigator.clipboard.writeText(url);
       setNotice(
-        'Public project link copied. Only explicitly public information is visible.',
+        'Public co-op link copied. Only explicitly public information is visible.',
       );
     } catch {
       setNotice(`Share this public link: ${url}`);
@@ -1171,7 +1186,8 @@ export function NetworkApp({
               <section>
                 {state.projects.length === 0 && (
                   <Empty>
-                    Add your first hedgerow, pollinator meadow, or conservation project.
+                    Add your first hedgerow, pollinator meadow, or conservation
+                    project.
                   </Empty>
                 )}
                 {state.projects.map((p) => (
@@ -1180,6 +1196,17 @@ export function NetworkApp({
                       {label(p.kind)} · {p.region}
                     </p>
                     <h2>{p.name}</h2>
+                    {state.visibility === 'public' &&
+                      p.visibility === 'public' &&
+                      p.status !== 'cancelled' && (
+                        <PublicActivityLink
+                          coopId={selected}
+                          referral={data.memberId}
+                          kind="project"
+                          id={p.id}
+                          title={p.name}
+                        />
+                      )}
                     <p>{p.summary}</p>
                     <div className="network-meta">
                       <Status value={p.status} />
@@ -1322,10 +1349,11 @@ export function NetworkApp({
                     disabled={busy}
                   />
                   <p className="small mt-4">
-                    Choose Grassland & meadow for pollinator habitat conservation.
-                    Describe the habitat goals and planned care in your purpose
-                    and next steps. Keep exact parcel locations private. A steward
-                    can publish the general project description.
+                    Choose Grassland & meadow for pollinator habitat
+                    conservation. Describe the habitat goals and planned care in
+                    your purpose and next steps. Keep exact parcel locations
+                    private. A steward can publish the general project
+                    description.
                   </p>
                 </div>
                 {state.projects.length > 0 && (
@@ -2500,7 +2528,10 @@ export function NetworkApp({
                 </div>
                 <div className="network-columns">
                   <section>
-                    <PublicEvents events={data.coop.events ?? []} />
+                    <PublicEvents
+                      events={data.coop.events ?? []}
+                      coopId={selected}
+                    />
                     <h2>Conservation projects</h2>
                     {data.coop.projects.length === 0 ? (
                       <Empty>No projects have been made public yet.</Empty>
@@ -2509,6 +2540,12 @@ export function NetworkApp({
                         <article className="network-card" key={p.id}>
                           <p className="eyebrow">{label(p.kind)}</p>
                           <h3>{p.name}</h3>
+                          <PublicActivityLink
+                            coopId={selected}
+                            kind="project"
+                            id={p.id}
+                            title={p.name}
+                          />
                           <p>{p.summary}</p>
                           <div className="network-meta">
                             <span>{p.region}</span>
@@ -2523,6 +2560,12 @@ export function NetworkApp({
                         <article className="network-card" key={u.id}>
                           <time>{date(u.createdAt)}</time>
                           <p>{u.text}</p>
+                          <PublicActivityLink
+                            coopId={selected}
+                            kind="update"
+                            id={u.id}
+                            title="Co-op progress"
+                          />
                         </article>
                       ))
                     ) : (
@@ -2705,7 +2748,8 @@ export function NetworkApp({
             </p>
             <p className="small">
               Checks for changes every 30 seconds while this page is visible and
-              online. No email or push notifications are sent.
+              online. Opt-in browser reminders are available in Care &
+              participation.
               {lastRefreshedAt > 0 &&
                 ` Last checked ${new Date(lastRefreshedAt).toLocaleTimeString()}.`}
             </p>
@@ -2736,6 +2780,7 @@ export function NetworkApp({
               <TabsList className="coop-tabs">
                 {[
                   'community',
+                  'care',
                   'start',
                   'organizations',
                   'monitoring',
@@ -2755,8 +2800,22 @@ export function NetworkApp({
                   </TabsTrigger>
                 ))}
               </TabsList>
+              <TabsContent value="care">
+                <MissionTools
+                  state={state}
+                  steward={steward}
+                  disabled={
+                    busy ||
+                    !!data.capacity?.growthPaused ||
+                    state.visibility === 'archived'
+                  }
+                  mutate={mutate}
+                />
+              </TabsContent>
               <TabsContent value="community">
                 <CommunityBoard
+                  coopId={selected}
+                  memberId={data.memberId}
                   state={state}
                   steward={steward}
                   busy={busy}
@@ -3012,6 +3071,10 @@ export function NetworkApp({
               Your membership status is {label(data.membershipStatus)}. A
               steward manages access.
             </p>
+            {data.activity && (
+              <Link href={data.activity}>Return to the activity →</Link>
+            )}
+            {data.membershipStatus === 'pending' && <BrowserReminders />}
             <Button onClick={() => load(selected, '', true)}>
               Refresh status
             </Button>

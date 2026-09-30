@@ -55,7 +55,7 @@ The draft is not posted. GitHub is public and private vulnerability reporting is
 
 ## Remaining pilot gates
 
-The live acceptance runner verified independent accounts, membership approval, private files, request retries/conflicts, native registration/recovery/deletion, scoped tokens and actual MCP reads/writes. The operator guide includes moderation, incident response, associated-data deletion and abuse controls. Daily server backups are active, and the current snapshots passed isolated database/file restore checks. Earlier offhost copies are historical; the new encrypted hourly transfer is paused pending explicit production-data transfer approval. The [current beta receipt](history/BETA_RELEASE_2026-09-19.md) and [operations guide](OPERATIONS_BETA.md) record the distinction and deletion-ledger recovery requirement.
+The live acceptance runner verified independent accounts, membership approval, private files, request retries/conflicts, native registration/recovery/deletion, scoped tokens and actual MCP reads/writes. The operator guide includes moderation, incident response, associated-data deletion and abuse controls. Daily server backups are active, and the current snapshots passed isolated database/file restore checks. The 29 September live audit found the encrypted hourly offhost scheduler active, with matching server hashes and successful isolated restore/deletion-ledger replay receipts. Independent key custody and external failure-alert delivery remain unqualified. The [current beta receipt](history/BETA_RELEASE_2026-09-19.md) and [operations guide](OPERATIONS_BETA.md) record the distinction and deletion-ledger recovery requirement.
 
 These requirements remain separate from deployment:
 

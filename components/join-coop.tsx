@@ -3,6 +3,7 @@ import { BrandLogo } from '@/components/brand-logo';
 import { ControlLabel } from '@/components/ui/label';
 import { useEffect, useState, useSyncExternalStore, useRef } from 'react';
 import Link from 'next/link';
+import { BrowserReminders } from '@/components/browser-reminders';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
@@ -43,6 +44,29 @@ export function JoinCoop({ signedIn }: { signedIn: boolean }) {
     [done, setDone] = useState(false),
     [remembered, setRemembered] = useState(false),
     [needsSignIn, setNeedsSignIn] = useState(false);
+  const [preview, setPreview] = useState<{
+    name: string;
+    summary: string;
+    id: string;
+  } | null>(null);
+  const [joinedId, setJoinedId] = useState('');
+  useEffect(() => {
+    if (!invite) return;
+    let active = true;
+    fetch(`/api/network?id=${invite.split('.')[0]}`)
+      .then(async (r) => {
+        if (r.ok) {
+          const v = (await r.json()) as {
+            coop: { name: string; summary: string };
+          };
+          if (active) setPreview({ ...v.coop, id: invite.split('.')[0] });
+        }
+      })
+      .catch(() => {});
+    return () => {
+      active = false;
+    };
+  }, [invite]);
   const requestId = useRef({ invitation: '', value: '' });
   useEffect(() => {
     const remember = () => {
@@ -72,7 +96,12 @@ export function JoinCoop({ signedIn }: { signedIn: boolean }) {
       </Link>
       <section className="panel mt-8">
         <p className="eyebrow">A PLACE FOR YOU</p>
-        <h1>Join a conservation co-op</h1>
+        <h1>
+          {preview?.id === invite.split('.')[0]
+            ? `Join ${preview.name}`
+            : 'Join a conservation co-op'}
+        </h1>
+        {preview?.id === invite.split('.')[0] && <p>{preview.summary}</p>}
         <p>
           This single-use invitation lets you request membership in a private or
           public group. A steward reviews your request before you can see
@@ -100,9 +129,13 @@ export function JoinCoop({ signedIn }: { signedIn: boolean }) {
             <output>
               Your request is saved. A steward can now approve it.
             </output>
-            <Link className="button primary" href="/workspace/">
-              My co-ops
+            <Link
+              className="button primary"
+              href={`/workspace/?coop=${joinedId}`}
+            >
+              Open this co-op
             </Link>
+            <BrowserReminders />
           </>
         ) : (
           <form
@@ -147,6 +180,7 @@ export function JoinCoop({ signedIn }: { signedIn: boolean }) {
                 clearInvitation(invitationStorage());
                 history.replaceState(null, '', '/join/');
                 window.dispatchEvent(new Event(invitationChanged));
+                setJoinedId(id);
                 setDone(true);
               } catch (e) {
                 setMessage((e as Error).message);

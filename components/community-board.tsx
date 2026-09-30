@@ -9,6 +9,11 @@ import {
   NativeSelectOption,
 } from '@/components/ui/native-select';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
+import {
+  ActivityResultForm,
+  PublicActivityLink,
+  type ActivityResult,
+} from '@/components/activity-result';
 import { eventCalendar } from '@/lib/calendar.mjs';
 type CommunityProject = { id: string; name: string; status: string };
 export type CommunityEvent = {
@@ -33,6 +38,7 @@ export type CommunityEvent = {
   goingCount?: number;
   yourResponse?: string;
   isOrganizer?: boolean;
+  result?: ActivityResult;
   attendees?: { name: string; response: string }[];
 };
 type CommunityUpdate = {
@@ -64,7 +70,7 @@ type CommunityReport = {
 };
 export type CommunityState = {
   visibility: string;
-  members: { status: string }[];
+  members: { id: string; name?: string; status: string }[];
   tasks: { status: string }[];
   projects: CommunityProject[];
   updates: CommunityUpdate[];
@@ -79,6 +85,18 @@ function subscribeClock(onChange: () => void) {
 }
 const clockSnapshot = () => Math.floor(Date.now() / 60_000) * 60_000;
 const serverClock = () => 0;
+const subscribeActivity = (change: () => void) => {
+  window.addEventListener('popstate', change);
+  return () => window.removeEventListener('popstate', change);
+};
+const selectedActivity = () => {
+  const path = new URLSearchParams(location.search).get('activity') ?? '';
+  return (
+    /^\/activity\/[0-9a-f-]{36}\/event\/([0-9a-f-]{36})\/$/.exec(path)?.[1] ??
+    ''
+  );
+};
+const noActivity = () => '';
 function subscribeTimeZone(onChange: () => void) {
   window.addEventListener('focus', onChange);
   return () => window.removeEventListener('focus', onChange);
@@ -193,7 +211,13 @@ function Report({
     </details>
   );
 }
-export function PublicEvents({ events }: { events: CommunityEvent[] }) {
+export function PublicEvents({
+  events,
+  coopId,
+}: {
+  events: CommunityEvent[];
+  coopId: string;
+}) {
   const now = useSyncExternalStore(subscribeClock, clockSnapshot, serverClock);
   if (!events?.length) return null;
   return (
@@ -204,13 +228,23 @@ export function PublicEvents({ events }: { events: CommunityEvent[] }) {
         .map((e) => (
           <article className="network-card" key={e.id}>
             <p className="eyebrow">
-              {e.status === 'cancelled'
-                ? 'Cancelled'
-                : e.endsAt < now
-                  ? 'Past event'
-                  : 'Coming up'}
+              {e.status === 'completed'
+                ? 'Completed activity'
+                : e.status === 'cancelled'
+                  ? 'Cancelled'
+                  : e.endsAt < now
+                    ? 'Past event'
+                    : 'Coming up'}
             </p>
             <h3>{e.title}</h3>
+            {e.status !== 'cancelled' && (
+              <PublicActivityLink
+                coopId={coopId}
+                kind="event"
+                id={e.id}
+                title={e.title}
+              />
+            )}
             <p>
               {new Date(e.startsAt).toLocaleString(undefined, {
                 timeZone: e.timeZone,
@@ -227,6 +261,8 @@ export function PublicEvents({ events }: { events: CommunityEvent[] }) {
   );
 }
 export function CommunityBoard({
+  memberId,
+  coopId,
   state,
   steward,
   busy,
@@ -234,6 +270,8 @@ export function CommunityBoard({
   conversationActions,
   mutate,
 }: {
+  memberId?: string;
+  coopId: string;
   state: CommunityState;
   steward: boolean;
   busy: boolean;
@@ -241,6 +279,11 @@ export function CommunityBoard({
   conversationActions?: React.ReactNode;
   mutate: Save;
 }) {
+  const focusEvent = useSyncExternalStore(
+    subscribeActivity,
+    selectedActivity,
+    noActivity,
+  );
   const zone = useSyncExternalStore(
     subscribeTimeZone,
     timeZoneSnapshot,
@@ -254,7 +297,9 @@ export function CommunityBoard({
     comments: CommunityComment[] = state.comments ?? [],
     reports: CommunityReport[] = state.reports ?? [];
   const visibleEvents = events
-    .filter((e) => !e.blocked && (showPast || e.endsAt >= now))
+    .filter(
+      (e) => !e.blocked && (showPast || e.id === focusEvent || e.endsAt >= now),
+    )
     .sort((a, b) => a.startsAt - b.startsAt);
   async function act(op: string, payload: Record<string, unknown>) {
     try {
@@ -306,7 +351,11 @@ export function CommunityBoard({
         </span>
       </div>
       {notice && <output className="notice mt-4">{notice}</output>}
-      <Tabs defaultValue="discussion" className="mt-6">
+      <Tabs
+        key={focusEvent}
+        defaultValue={focusEvent ? 'events' : 'discussion'}
+        className="mt-6"
+      >
         <TabsList>
           <TabsTrigger value="discussion">Discussion</TabsTrigger>
           <TabsTrigger value="events">Events</TabsTrigger>
@@ -333,7 +382,14 @@ export function CommunityBoard({
                 </p>
               )}
               {visibleEvents.map((e) => (
-                <article className="network-card" key={e.id}>
+                <article
+                  className="network-card"
+                  id={`event-${e.id}`}
+                  key={e.id}
+                >
+                  {e.id === focusEvent && (
+                    <p className="notice">The activity you came to join</p>
+                  )}
                   <p className="eyebrow">
                     {e.hidden ? 'Hidden by moderation' : e.status} ·{' '}
                     {e.visibility === 'public'
@@ -356,6 +412,26 @@ export function CommunityBoard({
                     <strong>Member meeting instructions</strong>
                     <p className="whitespace-pre-wrap">{e.meetingDetails}</p>
                   </div>
+                  {state.visibility === 'public' &&
+                    e.visibility === 'public' &&
+                    !e.hidden &&
+                    e.status !== 'cancelled' && (
+                      <PublicActivityLink
+                        coopId={coopId}
+                        referral={memberId}
+                        kind="event"
+                        id={e.id}
+                        title={e.title}
+                      />
+                    )}
+                  <ActivityResultForm
+                    now={now}
+                    event={e}
+                    members={state.members}
+                    steward={steward}
+                    disabled={disabled}
+                    mutate={mutate}
+                  />
                   {e.cancelReason && <p>Cancellation: {e.cancelReason}</p>}
                   {!!e.updatedAt && (
                     <p className="notice">
@@ -526,9 +602,9 @@ export function CommunityBoard({
                             </p>
                           )}
                           <p className="small">
-                            Existing responses stay recorded. This does not send
-                            notifications: tell participants about time or
-                            location changes and ask them to check their plans.
+                            Existing responses stay recorded. Participants who
+                            opted in can receive a browser reminder. Delivery is
+                            not guaranteed; confirm important changes with them.
                             Re-download the calendar entry after saving.
                           </p>
                         </Form>

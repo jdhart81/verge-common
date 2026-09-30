@@ -156,3 +156,9 @@ Original code and original workflow templates: GNU AGPL v3.0 only. See [LICENSE]
 ## Shared service and native app
 
 The website and native client use this repository's co-op service. See [architecture and legacy reconciliation](docs/ARCHITECTURE.md) and [iPhone/iPad build status](ios/README.md). Native public discovery, personal-device authentication, member posts, private discussion replies with protected explicit retries, and explicit field observation submission are implemented against `https://vergecommon.com`. Advanced governance, invitations, mapping and financial workflows use the website. Physical-device acceptance, signing and TestFlight/App Store distribution remain release requirements; source implementation is not a distributed mobile release.
+
+### Participation loop in v0.9.0
+
+Share one public project, activity or progress page, with a social preview and QR code. A recipient previews the purpose before signing in, requests steward approval and returns to the same activity. Record actual attendance and completed work, obtain another steward’s review, then preview/publish or withdraw the public result. Precise meeting instructions, boundaries, member names and files stay private.
+
+Open **Care & participation** inside a co-op to assign dated/recurring care and disturbance responses, submit supporting evidence, review completion, enable optional browser reminders and view the steward’s participant report. Mark test accounts appropriately before using that report; anonymous visitors and causal virality are not measured. See [service coverage](docs/SERVICE_COVERAGE.md), [privacy](PRIVACY.md) and the [operator recovery notes](self-hosted/README.md).
