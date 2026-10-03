@@ -1,0 +1,8 @@
+# SYNTHETIC: literal signing-secret fixture defined only in these two tests;
+# injected test configuration, not a secret read from operator env/config.
+# Both test files replace global fetch with a throwing network guard.
+# Classified from source at 10852748; no matched values retained here.
+# tests/updates-built.mjs:13: built-page fixture; isolated test environment.
+10852748a04a89623b2ec994ac5ce7f131cf5ad5:tests/updates-built.mjs:generic-api-key:13
+# tests/updates-signup.test.mjs:22: in-memory signup fixture; mocked delivery.
+10852748a04a89623b2ec994ac5ce7f131cf5ad5:tests/updates-signup.test.mjs:generic-api-key:22
