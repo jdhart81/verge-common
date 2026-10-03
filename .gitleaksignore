@@ -6,3 +6,7 @@
 10852748a04a89623b2ec994ac5ce7f131cf5ad5:tests/updates-built.mjs:generic-api-key:13
 # tests/updates-signup.test.mjs:22: in-memory signup fixture; mocked delivery.
 10852748a04a89623b2ec994ac5ce7f131cf5ad5:tests/updates-signup.test.mjs:generic-api-key:22
+# Classified 3 Oct 2026: docs/pilot-evidence.example.json credentialRef is an
+# authored synthetic opaque version identifier, not a credential/key value.
+# Exact historical fixture only; no rule/path wildcard or PR #32/#33 suppression.
+29ad9ae91a721a92780b52a5dceb21ffe023e0d3:docs/pilot-evidence.example.json:generic-api-key:20
