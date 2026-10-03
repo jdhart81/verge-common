@@ -1,3 +1,4 @@
+import { createUpdates } from './updates.mjs';
 import http from 'node:http';
 import { Readable } from 'node:stream';
 import { pathToFileURL } from 'node:url';
@@ -81,11 +82,21 @@ export function createGateway({
   social = null,
   push = null,
   socialPreview = false,
+  updatesEnv = process.env,
+  updatesClient,
+  updatesWait,
   maintenanceHealthy = () => true,
   host = '127.0.0.1',
   freeDiskBytes = async () => Number.POSITIVE_INFINITY,
   buildCommit = process.env.VERGE_BUILD_COMMIT || 'unknown',
 }) {
+  const updates = createUpdates({
+    env: updatesEnv,
+    origin,
+    auth,
+    client: updatesClient,
+    wait: updatesWait,
+  });
   let activeUploads = 0;
   const base = new URL(origin);
   if (
@@ -204,6 +215,42 @@ export function createGateway({
           ? String(req.headers['x-real-ip'] || req.socket.remoteAddress)
           : req.socket.remoteAddress,
       );
+      if (
+        [
+          '/updates',
+          '/updates/',
+          '/updates/confirm',
+          '/api/updates/subscribe',
+        ].includes(url.pathname)
+      ) {
+        res.setHeader('Referrer-Policy', 'no-referrer');
+        if (!updates.enabled) return json(404, { error: 'Not found.' });
+        if (
+          url.pathname !== '/api/updates/subscribe' &&
+          !auth.rateLimit(`request:${client}`, 1200, 60000)
+        )
+          return json(429, { error: 'Too many requests. Try again shortly.' });
+        let body;
+        if (!['GET', 'HEAD'].includes(req.method)) {
+          try {
+            body = await readBody(req, 4096);
+          } catch {
+            body = Buffer.from('{}');
+          }
+        }
+        const request = new Request(url, {
+          method: req.method,
+          headers: {
+            origin: String(req.headers.origin || ''),
+            'content-type': String(req.headers['content-type'] || ''),
+          },
+          ...(body ? { body } : {}),
+        });
+        const result = await updates.handle(request, client);
+        res.writeHead(result.status, Object.fromEntries(result.headers));
+        res.end(Buffer.from(await result.arrayBuffer()));
+        return;
+      }
       // Build assets are immutable and cheap; counting them would let one
       // shared network (a sign-up night on one Wi-Fi) exhaust the page limit.
       const staticAsset =

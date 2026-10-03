@@ -161,3 +161,20 @@ The checker is a rehearsal tool; the final production data switch is an explicit
 Browser push runs in the existing Node gateway, without a paid mail sender. Members explicitly enable it on each browser; messages contain only a generic prompt to reopen their workspace. VAPID keys are generated once on first use and stored in the private SQLite database alongside subscriptions. Back up the whole database and replay the current deletion ledger before reopening a restore. Keep provider settings and subscription keys private. The test button distinguishes browser-provider acceptance from actual display; qualify display on each participant device. Browser push availability varies, including Home Screen installation on iPhone/iPad. No reminder email is sent.
 
 v0.9.0 adds event results and care histories to workspace JSON, and additive push tables. Existing records remain readable without a destructive migration. **A pre-v0.9.0 executable does not know the new privacy/erasure rules.** Before any rollback to it, run `node self-hosted/rollback-check.mjs /absolute/live/data/directory` using v0.9.0 source. It refuses if care, attendance/result or referral records exist. Never restore an older snapshot over live data. After these features are used, retain current data and build a compatibility/forward repair carrying the v0.9.0 projection and erasure rules. Keep the immediate predecessor stopped; only one app writer may use live data.
+
+## Optional email updates (unreleased)
+
+See [docs/EMAIL.md](../docs/EMAIL.md). Leave these unset to hide the signup route and links:
+
+```dotenv
+VERGE_UPDATES_ENABLED=
+RESEND_API_KEY=
+VERGE_UPDATES_SIGNING_SECRET=
+VERGE_UPDATES_SEGMENT_ID=
+VERGE_UPDATES_FROM=
+VERGE_UPDATES_REPLY_TO=
+VERGE_UPDATES_POSTAL_ADDRESS=
+VERGE_UPDATES_TRACKING_API_KEY=
+```
+
+The signing secret must be at least 32 bytes. Updates are implemented by the self-hosted gateway; other hosting modes do not enable this feature. Never record updates form bodies or confirmation URLs in proxy/access/APM logs. The runtime key needs full access to manage contacts and verify disabled tracking; the optional tracking key is used only by the campaign CLI. Unset `VERGE_UPDATES_ENABLED` and restart to roll back.

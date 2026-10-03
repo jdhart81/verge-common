@@ -1,5 +1,10 @@
 # Release notes
 
+## Unreleased — optional email updates
+
+Disabled by default, with a separate double opt-in form, signed 48-hour confirmation links, Resend-only subscriber records, abuse limits and no tracking. Adds an offline-tested campaign draft/preview/lint/test/send CLI and a read-only DNS checker. See [email operator runbook](EMAIL.md) for configuration and deliberate send gates. No deployment, real email, DNS change or provider setup is part of this change.
+
+
 ## v0.9.0 — participation and continuing care (29 September 2026)
 
 - Individual public project, event and progress pages with social metadata, native share/copy fallback and QR codes. Shared-link source codes are explained at joining and retained privately; no tracking cookies or external analytics.
