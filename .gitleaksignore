@@ -1,0 +1,4 @@
+# Two public, deterministic signing-secret test fixtures in the original email PR commit.
+# No live credential. Exact historical fingerprints only; no rule/path allowlist or history rewrite.
+10852748a04a89623b2ec994ac5ce7f131cf5ad5:tests/updates-built.mjs:generic-api-key:13
+10852748a04a89623b2ec994ac5ce7f131cf5ad5:tests/updates-signup.test.mjs:generic-api-key:22

@@ -10,7 +10,7 @@ globalThis.fetch = () => {
 const fixture = {
   VERGE_UPDATES_ENABLED: '1',
   RESEND_API_KEY: 'fixture-api-secret',
-  VERGE_UPDATES_SIGNING_SECRET: 'fixture-signing-secret-at-least-32-bytes',
+  VERGE_UPDATES_SIGNING_SECRET: 'test-only-'.repeat(4),
   VERGE_UPDATES_SEGMENT_ID: 'segment-fixture',
   VERGE_UPDATES_FROM: 'VergeCommon <updates@vergecommon.com>',
   VERGE_UPDATES_REPLY_TO: 'justin@vergecommon.com',
