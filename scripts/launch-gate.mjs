@@ -267,7 +267,7 @@ export async function runChecks({
   return results;
 }
 
-function certificateExpiry(origin) {
+export function certificateExpiry(origin) {
   const url = new URL(origin);
   if (url.protocol !== 'https:') return Promise.resolve(null);
   return new Promise((resolve, reject) => {
