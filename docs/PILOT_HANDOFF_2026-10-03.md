@@ -8,6 +8,7 @@ Two demonstrated recovery gaps are closed: missing local deletion-ledger directo
 
 ## Changed files and reasons
 
+- `.gitleaksignore`: exact fingerprint for the classified authored synthetic template version-ID match; no real credential or broad suppression.
 - `scripts/pilot-readiness.mjs`, `package.json`, `docs/pilot-evidence.example.json`, `.gitignore`: bounded local CLI/report and private-manifest guidance. `scripts/launch-gate.mjs` only exports the existing certificate helper; existing monitor success semantics stay intact.
 - `self-hosted/operations.py`, `self-hosted/rollback-check.mjs`: fail closed on missing recovery ledger and unsafe operator safety state respectively.
 - `components/community-board.tsx`: current-details/calendar language and successful reschedule/cancellation handoff to agreed manual contact, acknowledgements and fallback. Existing commands/RSVPs/request identities unchanged.
@@ -66,7 +67,7 @@ Container build, multi-account acceptance and backup passed locally; final candi
 
 Other local CI checks passed: `swift test --package-path ios` (**82 tests**); `xcodebuild -quiet -project ios/VergeCommon.xcodeproj -scheme VergeCommon -destination 'generic/platform=iOS Simulator' -derivedDataPath /tmp/verge-pilot-ios CODE_SIGNING_ALLOWED=NO build`; pinned requirements installed in `/tmp/verge-pilot-imagery-venv`, then its Python ran `workers/imagery/test_processor.py` (**5 tests**) and `test_fetch.py` (**6 tests**, mock transport). Python is 3.14 locally vs CI 3.12; hosted Ubuntu/macOS job execution remains unperformed until a separately authorized push. Full existing CI remains the release standard.
 
-CI-pinned gitleaks **8.21.2**, `gitleaks git . --log-opts=HEAD --no-banner --redact`, passed on the selected main history. Repeat on final local candidate; receipt `outputs/pilot-review/selected-secret-scan.log`. Local 8.30.1 also passed selected history. An unscoped local scan included unrelated email-branch history; those excluded commits are not attributed to this pilot. PR #33 and PR #32 status/findings are described with dated identities in the audit; no suppressions were added or credential values printed.
+CI-pinned gitleaks **8.21.2**, `gitleaks git . --log-opts=HEAD --no-banner --redact`, passed on the selected main history. Repeat on final local candidate; receipt `outputs/pilot-review/selected-secret-scan.log`. Local 8.30.1 also passed selected history. An unscoped local scan included unrelated email-branch history; those excluded commits are not attributed to this pilot. PR #33 and PR #32 status/findings are described with dated identities in the audit; no unrelated suppressions were copied or credential values printed. One authored synthetic template version-ID match was classified from source and documented with an exact historical fingerprint in `.gitleaksignore`; no rule/path wildcard was added.
 
 Targeted reproducible drills:
 
