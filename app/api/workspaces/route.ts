@@ -136,7 +136,10 @@ export async function POST(request: Request) {
         (data.op === 'create_project' && data.payload?.kind === 'woodland')) &&
       !woodlandEnabled()
     )
-      throw new DomainError('Woodland projects are not enabled on this service.', 404);
+      throw new DomainError(
+        'Woodland projects are not enabled on this service.',
+        404,
+      );
     if (data.op === 'request_membership') {
       const current = await load(data.id);
       data.version = current.row.version;

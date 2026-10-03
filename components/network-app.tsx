@@ -1,6 +1,6 @@
 'use client';
 import { BrandLogo } from '@/components/brand-logo';
-import { WoodlandPanel, type WoodlandState } from '@/components/woodland-panel';
+import type { WoodlandState } from '@/components/woodland-panel';
 import {
   currencies,
   toMinor,
@@ -19,7 +19,7 @@ import {
   type CommunityState,
   type CommunityEvent,
 } from '@/components/community-board';
-import { allocateCents } from '@/lib/network.mjs';
+import { allocateCents } from '@/lib/allocation.mjs';
 import { allocationReconciliation } from '@/lib/allocation-reconciliation.mjs';
 import { startWorkspaceRefresh } from '@/lib/workspace-refresh.mjs';
 import { conversationActions } from '@/lib/conversation-actions.mjs';
@@ -49,6 +49,8 @@ import {
   agreementIsCurrent,
 } from '@/lib/readiness.mjs';
 import {
+  lazy,
+  Suspense,
   useCallback,
   useEffect,
   useRef,
@@ -56,6 +58,11 @@ import {
   useId,
   useSyncExternalStore,
 } from 'react';
+const WoodlandPanel = lazy(() =>
+  import('@/components/woodland-panel').then((m) => ({
+    default: m.WoodlandPanel,
+  })),
+);
 import Link from 'next/link';
 import { ControlLabel } from '@/components/ui/label';
 import {
@@ -2809,15 +2816,18 @@ export function NetworkApp({
               </TabsList>
               {data.features?.woodland && (
                 <TabsContent value="woodland">
-                  <WoodlandPanel
-                    key={selected}
-                    state={state as unknown as WoodlandState}
-                    steward={steward}
-                    busy={busy}
-                    memberId={data.memberId ?? ''}
-                    growthPaused={data.capacity?.growthPaused}
-                    mutate={mutate}
-                  />
+                  <Suspense fallback={<p>Loading woodland tools…</p>}>
+                    <WoodlandPanel
+                      key={selected}
+                      state={state as unknown as WoodlandState}
+                      steward={steward}
+                      busy={busy}
+                      requestEnvelope={{ id: selected, version: data.version }}
+                      memberId={data.memberId ?? ''}
+                      growthPaused={data.capacity?.growthPaused}
+                      mutate={mutate}
+                    />
+                  </Suspense>
                 </TabsContent>
               )}
               <TabsContent value="care">

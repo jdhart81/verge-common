@@ -5,7 +5,7 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { ControlLabel } from '@/components/ui/label';
 import { ShareActivity } from '@/components/share-activity';
-import { activityPath } from '@/lib/activity.mjs';
+import { activityPath } from '@/lib/activity-path.mjs';
 export type ActivityResult = {
   summary: string;
   attendeeIds: string[];
