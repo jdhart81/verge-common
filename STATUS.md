@@ -2,6 +2,10 @@
 
 **Last updated: 29 September 2026 EDT (v0.9.0 live; 30 September UTC).** This is the single, current summary of what is live, what is verified and what is still open. Update it with every deployment or change in operating state. Dated deployment receipts and reviews are preserved unchanged in [docs/history/](docs/history/).
 
+## Local pilot-readiness increment — 3 October 2026 (undeployed)
+
+The [local readiness report](docs/PILOT_READINESS.md), [audit](docs/PILOT_AUDIT_2026-10-03.md) and [operator rehearsal kit](docs/PILOT_REHEARSAL.md) separate engineering evidence from owner start approval and actual pilot completion. No deployment or fresh production observation is asserted. Custody/recoverability, failure/recovery acknowledgement, Mac stale-run coverage, second operator, cohort/dates/support, urgent contact and real offered-device qualification remain open.
+
 ## At a glance
 
 | Area | State |

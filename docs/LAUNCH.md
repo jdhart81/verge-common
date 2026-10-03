@@ -1,6 +1,6 @@
 # VergeCommon launch kit
 
-Current beta changes and exact deployment evidence are maintained in [the beta release receipt](history/BETA_RELEASE_2026-09-19.md); earlier hashes and counts below are historical milestones.
+Use [STATUS](../STATUS.md) for dated deployed observations and [bounded pilot readiness](PILOT_READINESS.md) for the current pre-pilot go/no-go workflow. **The launch checklist, PR #2 state, counts and sequence below record September 19 history, not current main or a current invitation authorization.** Original receipts remain in [history](history/). BL-13 actual pilot completion is evaluated after activities; broader announcement approval remains separate.
 
 ## Positioning
 
