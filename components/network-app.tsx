@@ -1,5 +1,6 @@
 'use client';
 import { BrandLogo } from '@/components/brand-logo';
+import { WoodlandPanel, type WoodlandState } from '@/components/woodland-panel';
 import {
   currencies,
   toMinor,
@@ -307,6 +308,7 @@ type WorkspaceSummary = {
 };
 type WorkspaceResponse = {
   id: string;
+  features?: { woodland?: boolean };
   error: string;
   state?: Workspace;
   capacity?: WorkspaceCapacityStatus;
@@ -341,12 +343,15 @@ const date = (n: number) => new Date(n).toLocaleDateString();
 const label = (s: string) =>
   s === 'grassland'
     ? 'Grassland & meadow (pollinators)'
-    : s.replaceAll('_', ' ');
+    : s === 'woodland'
+      ? 'Woodland (DFM corridors)'
+      : s.replaceAll('_', ' ');
 const TAB_LABELS: Record<string, string> = {
   community: 'Community',
   start: 'Get started',
   organizations: 'Organizations',
   monitoring: 'Map & monitor',
+  woodland: 'Woodland corridors',
   pooling: 'Land pooling',
   projects: 'Projects',
   parcels: 'Parcels',
@@ -1338,6 +1343,7 @@ export function NetworkApp({
                         'landscape',
                         'restoration',
                         'grassland',
+                        ...(data?.features?.woodland ? ['woodland'] : []),
                       ]),
                       field('region', 'General area', undefined, {
                         max: 120,
@@ -2784,6 +2790,7 @@ export function NetworkApp({
                   'start',
                   'organizations',
                   'monitoring',
+                  ...(data.features?.woodland ? ['woodland'] : []),
                   'pooling',
                   'projects',
                   'parcels',
@@ -2800,6 +2807,19 @@ export function NetworkApp({
                   </TabsTrigger>
                 ))}
               </TabsList>
+              {data.features?.woodland && (
+                <TabsContent value="woodland">
+                  <WoodlandPanel
+                    key={selected}
+                    state={state as unknown as WoodlandState}
+                    steward={steward}
+                    busy={busy}
+                    memberId={data.memberId ?? ''}
+                    growthPaused={data.capacity?.growthPaused}
+                    mutate={mutate}
+                  />
+                </TabsContent>
+              )}
               <TabsContent value="care">
                 <MissionTools
                   state={state}

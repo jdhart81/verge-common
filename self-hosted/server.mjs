@@ -31,6 +31,7 @@ import { accountPage } from './account.mjs';
 import { createSocialAuth } from './social-auth.mjs';
 import { createPush } from './push.mjs';
 import { createHttpHandler, mcpDiscovery } from '../mcp/http.mjs';
+import { woodlandEnabled } from '../lib/woodland-config.mjs';
 const safeReturn = (value) => {
   try {
     const u = new URL(value || '/workspace/', 'https://return.local');
@@ -153,6 +154,7 @@ export function createGateway({
     listWorkspaces: (p) => internal(p, '/api/workspaces'),
     executeCommand: (p, id, input) =>
       internal(p, '/api/workspaces', { id, ...input }),
+    woodland: woodlandEnabled(),
   });
   const server = http.createServer(async (req, res) => {
     res.setHeader('X-Content-Type-Options', 'nosniff');
