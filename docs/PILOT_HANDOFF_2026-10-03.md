@@ -1,5 +1,37 @@
 # Bounded pilot implementation handoff — 3 October 2026
 
+## Post-merge update — 3 October 2026
+
+PR [#36](https://github.com/jdhart81/verge-common/pull/36) was squash-merged into main at `2bb9090a2cfe8fb32b066544c2884c7120803f99`, containing only three exact justified synthetic-fixture fingerprints. PR [#35](https://github.com/jdhart81/verge-common/pull/35) incorporated that main commit without other pilot-content changes, then merged at `23984a908e15028d6b34fce0d079cbaf39c25a72` on 3 October at 20:46:56 UTC. This merged commit is the engineering release identity; it is **not an observed production deployment**.
+
+### Engineering and hosted qualification
+
+All main-branch checks completed successfully for **`23984a908e15028d6b34fce0d079cbaf39c25a72`**:
+
+| Hosted evidence | Result |
+| --- | --- |
+| [Community checks: check, container, imagery, ios](https://github.com/jdhart81/verge-common/actions/runs/37152770057) | All four jobs PASS |
+| [CI-pinned gitleaks 8.21.2](https://github.com/jdhart81/verge-common/actions/runs/37152770040) | PASS |
+| [Scorecard supply-chain security](https://github.com/jdhart81/verge-common/actions/runs/37152770074) | PASS |
+
+The reviewed PR head `4c5784b1500d30008b98920a4f6d9383db2f75a8` and merged main have identical source trees. Post-merge source review found no blocking code issues. The 14 targeted readiness/recovery tests were repeated successfully on that identical source tree; the synthetic template still exits 1 with eligibility NO. These targeted tests do not replace the exact main-commit hosted evidence above.
+
+The original local receipts for `1b0145c911cf1ea4c628b8cc03c3897db0411256` are **SUPERSEDED** for later commits. They were preserved in ignored `outputs/pilot-review-superseded-1b0145c/`, with a supersession marker explaining the merge-only update. The full local suite was not rerun at `4c5784b...` or the merged main SHA; current local receipt metadata explicitly says NOT_RERUN. Do not use the historical PASS statements below to qualify either newer identity. The hosted runs linked above are the final merged-code qualification evidence.
+
+### Production qualification unverified
+
+No current production identity, deployment, fresh off-server backup/restore/latest-ledger loss-scenario rehearsal, independent recovery custody, real two-responder alert acknowledgement, stale-Mac coverage, second-operator rehearsal, offered provider/device acceptance, reminder display, VoiceOver or 200% text acceptance is established by this merge. Engineering checks do not fill these gates.
+
+### Owner decisions and pilot blockers
+
+The owner still must confirm participants/dates, two active stewards, two technical operators and coverage/support; approve independent custody and archive/latest-ledger recoverability; qualify alerts and stale-run coverage; rehearse the consented urgent-contact channel and fallback; qualify offered sign-in/device paths; and record an explicit go/no-go after all required evidence. Pilot start remains blocked until these requirements are satisfied. Actual pilot completion and any broader announcement remain separate.
+
+The private evidence starter has been rebound to the merged engineering identity while retaining all 18 human gates as UNVERIFIED and all owner placeholders. No deployed commit or observation time has been invented. Rebind and requalify release-specific evidence if the intended release or operating configuration changes. Keep real evidence private and outside the repository.
+
+## Historical pre-merge handoff — provenance retained
+
+The following text was prepared before the authorized publication, classification merges and hosted qualification. Its statements about pending/unperformed hosted CI and its original receipt paths describe that earlier state; the dated post-merge update above supersedes them. Historical test, deployment and security observations remain historical evidence, not current production qualification.
+
 ## Review/merge description
 
 The existing launch gate can exit successfully while human gates remain MANUAL; historical runbooks also blur optional reminders and active backup tooling with earlier installation state. This increment adds a local fail-closed pre-pilot evidence report and synthetic unverified template, dated custody/recovery/alert/operator workflows, and clear organizer contact/calendar instructions. It refuses missing/stale/future/wrong-build/config evidence, keeps actual BL-13 completion and broader announcement separate, and preserves existing invitation/event/reminder mechanics.
