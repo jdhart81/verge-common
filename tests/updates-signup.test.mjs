@@ -4,10 +4,11 @@ import { DatabaseSync } from 'node:sqlite';
 import { Readable } from 'node:stream';
 import { readFile } from 'node:fs/promises';
 import { createAuth } from '../self-hosted/auth.mjs';
+import { createResendClient } from '../self-hosted/resend.mjs';
 import { createGateway } from '../self-hosted/server.mjs';
 import {
   createUpdates,
-  signConfirmation,
+  encryptConfirmation,
   verifyConfirmation,
   TTL,
 } from '../self-hosted/updates.mjs';
@@ -117,6 +118,7 @@ await test('I1 every missing configuration disables pages, API and link predicat
     const f = fixture(t, { env });
     assert.equal(updatesEnabled(env), false);
     assert.equal((await f.request('/updates/')).status, 404);
+    assert.equal((await f.request('/updates')).status, 404);
     assert.equal(
       (
         await f.request('/api/updates/subscribe', {
@@ -132,6 +134,7 @@ await test('I1 every missing configuration disables pages, API and link predicat
       updatesEnv: env,
     });
     assert.equal((await gatewayRequest(server, '/updates/')).status, 404);
+    assert.equal((await gatewayRequest(server, '/updates')).status, 404);
     assert.equal(
       (await gatewayRequest(server, '/api/updates/subscribe', {})).status,
       404,
@@ -159,7 +162,7 @@ await test('I1 every missing configuration disables pages, API and link predicat
     );
   }
 });
-await test('I3 I4 I5 full gateway form journey, no contact before click, same success twice', async (t) => {
+await test('I3 I4 I5 full gateway form journey, GET does not subscribe, same POST success twice', async (t) => {
   const f = fixture(t);
   const { server } = createGateway({
     origin,
@@ -187,17 +190,30 @@ await test('I3 I4 I5 full gateway form journey, no contact before click, same su
   assert.equal(f.emails.length, 1);
   assert.equal(f.contacts.size, 0);
   const token = f.emails[0].text.match(/confirm\?t=([\w.-]+)/)[1];
-  const first = await gatewayRequest(server, `/updates/confirm?t=${token}`);
-  const second = await gatewayRequest(server, `/updates/confirm?t=${token}`);
+  const landing = await gatewayRequest(server, `/updates/confirm?t=${token}`);
+  assert.equal(landing.status, 200);
+  assert.equal(f.contacts.size, 0);
+  assert.match(
+    landing.body,
+    /<form method="post" action="\/updates\/confirm">/,
+  );
+  assert.ok(landing.body.includes(`name="t" value="${token}"`));
+  assert.match(landing.body, /Confirm subscription/);
+  assert.match(
+    landing.headers['content-security-policy'],
+    /form-action 'self'/,
+  );
+  const first = await gatewayRequest(server, '/updates/confirm', { t: token });
+  const second = await gatewayRequest(server, '/updates/confirm', { t: token });
   assert.equal(first.status, 200);
   assert.deepEqual(first, second);
   assert.equal(f.contacts.size, 1);
   assert.equal(first.headers['referrer-policy'], 'no-referrer');
 });
-await test('I4 HMAC rejects tampering, expiry, wrong segment, malformed tokens and future lifetime', async (t) => {
+await test('I4 AES-GCM rejects tampering, expiry, wrong segment, malformed tokens and future lifetime', async (t) => {
   const f = fixture(t);
   const secret = fixtureEnv.VERGE_UPDATES_SIGNING_SECRET;
-  const token = signConfirmation(
+  const token = encryptConfirmation(
     'fixture@example.test',
     fixtureEnv.VERGE_UPDATES_SEGMENT_ID,
     secret,
@@ -217,14 +233,19 @@ await test('I4 HMAC rejects tampering, expiry, wrong segment, malformed tokens a
     `${token}x`,
     `${token}.extra`,
     'bad',
-    signConfirmation('fixture@example.test', 'wrong-segment', secret, f.now()),
-    signConfirmation(
+    encryptConfirmation(
+      'fixture@example.test',
+      'wrong-segment',
+      secret,
+      f.now(),
+    ),
+    encryptConfirmation(
       'fixture@example.test',
       fixtureEnv.VERGE_UPDATES_SEGMENT_ID,
       secret,
       f.now() - TTL,
     ),
-    signConfirmation(
+    encryptConfirmation(
       'fixture@example.test',
       fixtureEnv.VERGE_UPDATES_SEGMENT_ID,
       secret,
@@ -232,7 +253,7 @@ await test('I4 HMAC rejects tampering, expiry, wrong segment, malformed tokens a
     ),
   ];
   for (const candidate of cases) {
-    const result = await f.request(`/updates/confirm?t=${candidate}`);
+    const result = await f.request('/updates/confirm', { t: candidate });
     assert.equal(result.status, 400);
   }
   assert.equal(f.contacts.size, 0);
@@ -360,13 +381,15 @@ await test('I2 I11 actual DB, captured logs, failures and responses omit subscri
       await f.request('/api/updates/subscribe', { email: address })
     ).text(),
   ];
-  const token = signConfirmation(
+  const token = encryptConfirmation(
     address,
     fixtureEnv.VERGE_UPDATES_SEGMENT_ID,
     fixtureEnv.VERGE_UPDATES_SIGNING_SECRET,
     f.now(),
   );
-  responses.push(await (await f.request(`/updates/confirm?t=${token}`)).text());
+  responses.push(
+    await (await f.request('/updates/confirm', { t: token })).text(),
+  );
   await f.flow.settled();
   const tables = f.db
     .prepare("SELECT name FROM sqlite_master WHERE type='table'")
@@ -437,4 +460,201 @@ await test('I6 slow provider has no effect on response timing; I7 cooldown reset
   );
   await restarted.settled();
   assert.equal(f.emails.length, 1);
+});
+await test('I3 GET confirmation with valid encrypted token makes zero provider calls; same-origin POST upserts once', async (t) => {
+  const calls = [];
+  const f = fixture(t, {
+    client: {
+      sendEmail: async () => {
+        calls.push('send');
+      },
+      upsertContact: async (email) => {
+        calls.push('upsert');
+        f.contacts.add(email);
+      },
+    },
+  });
+  const token = encryptConfirmation(
+    'fixture@example.test',
+    fixtureEnv.VERGE_UPDATES_SEGMENT_ID,
+    fixtureEnv.VERGE_UPDATES_SIGNING_SECRET,
+    f.now(),
+  );
+  const get = await f.request(`/updates/confirm?t=${token}`);
+  assert.equal(get.status, 200);
+  assert.deepEqual(calls, []);
+  assert.match(await get.text(), /Confirm subscription/);
+  assert.match(
+    get.headers.get('content-security-policy'),
+    /form-action 'self'/,
+  );
+  const post = await f.flow.handle(
+    new Request(`${origin}/updates/confirm`, {
+      method: 'POST',
+      headers: { origin, 'content-type': 'application/x-www-form-urlencoded' },
+      body: new URLSearchParams({ t: token }),
+    }),
+    'client',
+  );
+  assert.equal(post.status, 200);
+  assert.deepEqual(calls, ['upsert']);
+  assert.equal(f.contacts.size, 1);
+  const again = await f.request('/updates/confirm', { t: token });
+  assert.equal(again.status, 200);
+  assert.equal(await again.text(), await post.text());
+  assert.equal(f.contacts.size, 1);
+});
+await test('I3 confirmation cross-origin or missing-origin POST is 403 and makes zero provider calls', async (t) => {
+  const f = fixture(t, {
+    client: {
+      upsertContact: async () => assert.fail('No provider calls allowed'),
+    },
+  });
+  const token = encryptConfirmation(
+    'fixture@example.test',
+    fixtureEnv.VERGE_UPDATES_SEGMENT_ID,
+    fixtureEnv.VERGE_UPDATES_SIGNING_SECRET,
+    f.now(),
+  );
+  for (const source of ['https://evil.test', ''])
+    assert.equal(
+      (await f.request('/updates/confirm', { t: token }, 'client', source))
+        .status,
+      403,
+    );
+  const { server } = createGateway({
+    origin,
+    auth: f.auth,
+    upstreamPort: 1,
+    updatesEnv: fixtureEnv,
+    updatesClient: {
+      upsertContact: async () => assert.fail('No provider calls allowed'),
+    },
+  });
+  assert.equal(
+    (
+      await gatewayRequest(
+        server,
+        '/updates/confirm',
+        { t: token },
+        'https://evil.test',
+      )
+    ).status,
+    403,
+  );
+});
+await test('I4 encrypted URLs hide raw/base64/base64url address and use independent random 12-byte IVs', async (t) => {
+  const f = fixture(t);
+  const email = 'private-fixture@example.test';
+  await f.request('/api/updates/subscribe', { email });
+  const url = f.emails[0].text.match(/https:\/\/\S+/)[0];
+  const token = new URL(url).searchParams.get('t');
+  for (const value of [
+    email,
+    Buffer.from(email).toString('base64'),
+    Buffer.from(email).toString('base64url'),
+  ])
+    assert.equal(url.includes(value), false);
+  const other = encryptConfirmation(
+    email,
+    fixtureEnv.VERGE_UPDATES_SEGMENT_ID,
+    fixtureEnv.VERGE_UPDATES_SIGNING_SECRET,
+    f.now(),
+  );
+  assert.notEqual(other, token);
+  const packed = Buffer.from(token.split('.')[1], 'base64url');
+  assert.equal(packed.subarray(0, 12).length, 12);
+  assert.notDeepEqual(
+    packed.subarray(0, 12),
+    Buffer.from(other.split('.')[1], 'base64url').subarray(0, 12),
+  );
+  for (const offset of [0, 12, packed.length - 1]) {
+    const modified = Buffer.from(packed);
+    modified[offset] ^= 1;
+    assert.equal(
+      verifyConfirmation(
+        `v1.${modified.toString('base64url')}`,
+        fixtureEnv.VERGE_UPDATES_SEGMENT_ID,
+        fixtureEnv.VERGE_UPDATES_SIGNING_SECRET,
+        f.now(),
+      ),
+      null,
+    );
+  }
+  assert.equal(
+    verifyConfirmation(
+      token,
+      fixtureEnv.VERGE_UPDATES_SEGMENT_ID,
+      'different-test-secret'.repeat(2),
+      f.now(),
+    ),
+    null,
+  );
+});
+await test('I1 enabled GET /updates redirects permanently to /updates/ with 308', async (t) => {
+  const f = fixture(t);
+  const result = await f.request('/updates');
+  assert.equal(result.status, 308);
+  assert.equal(result.headers.get('location'), '/updates/');
+  const { server } = createGateway({
+    origin,
+    auth: f.auth,
+    upstreamPort: 1,
+    updatesEnv: fixtureEnv,
+  });
+  const gateway = await gatewayRequest(server, '/updates');
+  assert.equal(gateway.status, 308);
+  assert.equal(gateway.headers.location, '/updates/');
+});
+await test('I5 repeated confirmation POSTs through real adapter create exactly one contact; GET makes zero fetch calls', async (t) => {
+  const calls = [];
+  let contact;
+  const client = createResendClient({
+    apiKey: fixtureEnv.RESEND_API_KEY,
+    fetchImpl: async (url, options) => {
+      const path = new URL(url).pathname;
+      calls.push([path, options.method]);
+      if (path === '/contacts' && options.method === 'POST') {
+        assert.equal(contact, undefined);
+        contact = JSON.parse(options.body);
+        return new Response(JSON.stringify({ id: 'contact-fixture' }));
+      }
+      if (path === '/contacts/contact-fixture/segments')
+        return new Response(
+          JSON.stringify({ data: contact.segments, has_more: false }),
+        );
+      if (options.method === 'GET' && path.startsWith('/contacts/'))
+        return new Response(
+          JSON.stringify(contact ? { id: 'contact-fixture' } : {}),
+          { status: contact ? 200 : 404 },
+        );
+      assert.fail('Unexpected provider request');
+    },
+  });
+  const f = fixture(t, { client });
+  const token = encryptConfirmation(
+    'fixture@example.test',
+    fixtureEnv.VERGE_UPDATES_SEGMENT_ID,
+    fixtureEnv.VERGE_UPDATES_SIGNING_SECRET,
+    f.now(),
+  );
+  assert.equal((await f.request(`/updates/confirm?t=${token}`)).status, 200);
+  assert.deepEqual(calls, []);
+  const first = await f.request('/updates/confirm', { t: token });
+  assert.equal(first.status, 200);
+  assert.equal(
+    calls.filter(([path, method]) => path === '/contacts' && method === 'POST')
+      .length,
+    1,
+  );
+  const second = await f.request('/updates/confirm', { t: token });
+  assert.equal(second.status, 200);
+  assert.equal(await first.text(), await second.text());
+  assert.equal(calls.filter(([, method]) => method === 'POST').length, 1);
+  assert.deepEqual(contact.segments, [
+    { id: fixtureEnv.VERGE_UPDATES_SEGMENT_ID },
+  ]);
+  f.advance(TTL);
+  assert.equal((await f.request('/updates/confirm', { t: token })).status, 400);
+  assert.equal(calls.length, 4);
 });

@@ -1,4 +1,10 @@
-import { createHmac, timingSafeEqual } from 'node:crypto';
+import {
+  createHmac,
+  createCipheriv,
+  createDecipheriv,
+  hkdfSync,
+  randomBytes,
+} from 'node:crypto';
 import { setTimeout as sleep } from 'node:timers/promises';
 import {
   updatesEnabled,
@@ -11,31 +17,52 @@ const consent =
   'Occasional updates about VergeCommon. Unsubscribe anytime. We store your address only with our email provider, Resend.';
 const mac = (secret, value) =>
   createHmac('sha256', secret).update(value).digest();
-export function signConfirmation(email, segment, secret, now = Date.now()) {
-  const payload = Buffer.from(
+const tokenVersion = 'v1';
+const tokenContext = Buffer.from('vergecommon:updates:confirmation:v1');
+const tokenKey = (secret) =>
+  hkdfSync(
+    'sha256',
+    Buffer.from(secret),
+    Buffer.from('VergeCommon updates'),
+    tokenContext,
+    32,
+  );
+export function encryptConfirmation(email, segment, secret, now = Date.now()) {
+  const iv = randomBytes(12);
+  const cipher = createCipheriv('aes-256-gcm', tokenKey(secret), iv);
+  cipher.setAAD(tokenContext);
+  const plaintext = Buffer.from(
     JSON.stringify({ email, expiry: now + TTL, segment }),
-  ).toString('base64url');
-  return `${payload}.${mac(secret, payload).toString('base64url')}`;
+  );
+  const ciphertext = Buffer.concat([cipher.update(plaintext), cipher.final()]);
+  return `${tokenVersion}.${Buffer.concat([iv, ciphertext, cipher.getAuthTag()]).toString('base64url')}`;
 }
 export function verifyConfirmation(token, segment, secret, now = Date.now()) {
   try {
     if (typeof token !== 'string' || token.length > 2048) return null;
-    const [payload, signature, extra] = token.split('.');
+    const [version, encoded, extra] = token.split('.');
     if (
+      version !== tokenVersion ||
       extra !== undefined ||
-      !/^[\w-]+$/.test(payload) ||
-      !/^[\w-]{43}$/.test(signature)
+      !/^[\w-]+$/.test(encoded)
     )
       return null;
-    const expected = mac(secret, payload);
-    const actual = Buffer.from(signature, 'base64url');
-    if (
-      actual.length !== expected.length ||
-      !timingSafeEqual(actual, expected) ||
-      actual.toString('base64url') !== signature
-    )
+    const packed = Buffer.from(encoded, 'base64url');
+    if (packed.length <= 28 || packed.toString('base64url') !== encoded)
       return null;
-    const data = JSON.parse(Buffer.from(payload, 'base64url').toString());
+    const decipher = createDecipheriv(
+      'aes-256-gcm',
+      tokenKey(secret),
+      packed.subarray(0, 12),
+    );
+    decipher.setAAD(tokenContext);
+    decipher.setAuthTag(packed.subarray(-16));
+    // Native GCM authentication must succeed before parsing or using any plaintext.
+    const plaintext = Buffer.concat([
+      decipher.update(packed.subarray(12, -16)),
+      decipher.final(),
+    ]);
+    const data = JSON.parse(plaintext.toString());
     if (
       data.segment !== segment ||
       !Number.isSafeInteger(data.expiry) ||
@@ -49,11 +76,22 @@ export function verifyConfirmation(token, segment, secret, now = Date.now()) {
     return null;
   }
 }
-export function updatesPage(message = '') {
-  return `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Get updates · VergeCommon</title><style>body{margin:0;background:#f5f6ef;color:#16382a;font:18px/1.6 system-ui}main,header,footer{max-width:48rem;margin:auto;padding:2rem}a{color:#165a3c}input,button{font:inherit;padding:.7rem}input{max-width:100%;box-sizing:border-box}button{background:#16382a;color:white;border:0}label{display:block}*:focus-visible{outline:3px solid #985d00;outline-offset:4px}.trap{display:none}</style></head><body><a href="#main">Skip to content</a><header><a href="/">VergeCommon</a></header><main id="main"><h1>Get updates</h1>${message ? `<p role="status">${esc(message)}</p>` : `<p>${consent}</p><form method="post" action="/api/updates/subscribe"><label for="email">Email address</label><input id="email" name="email" type="email" autocomplete="email" maxlength="254" required><div class="trap" aria-hidden="true"><label for="website">Leave this empty</label><input id="website" name="website" tabindex="-1" autocomplete="off"></div><p><button type="submit">Send confirmation link</button></p></form>`}<p><a href="/privacy/">Privacy policy</a> · <a href="/updates/">Sign up again</a></p></main><footer>A Viridis LLC project. Open code. Cooperative conservation.</footer></body></html>`;
+async function readInput(request) {
+  try {
+    const raw = await request.text();
+    if (Buffer.byteLength(raw) > 4096) return {};
+    return request.headers.get('content-type')?.includes('application/json')
+      ? JSON.parse(raw)
+      : Object.fromEntries(new URLSearchParams(raw));
+  } catch {
+    return {};
+  }
 }
-const htmlResponse = (status, message) =>
-  new Response(updatesPage(message), {
+export function updatesPage(message = '', confirmationToken = null) {
+  return `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Get updates · VergeCommon</title><style>body{margin:0;background:#f5f6ef;color:#16382a;font:18px/1.6 system-ui}main,header,footer{max-width:48rem;margin:auto;padding:2rem}a{color:#165a3c}input,button{font:inherit;padding:.7rem}input{max-width:100%;box-sizing:border-box}button{background:#16382a;color:white;border:0}label{display:block}*:focus-visible{outline:3px solid #985d00;outline-offset:4px}.trap{display:none}</style></head><body><a href="#main">Skip to content</a><header><a href="/">VergeCommon</a></header><main id="main"><h1>Get updates</h1>${confirmationToken ? `<p>Confirm that you want to receive occasional VergeCommon updates.</p><form method="post" action="/updates/confirm"><input type="hidden" name="t" value="${esc(confirmationToken)}"><button type="submit">Confirm subscription</button></form>` : message ? `<p role="status">${esc(message)}</p>` : `<p>${consent}</p><form method="post" action="/api/updates/subscribe"><label for="email">Email address</label><input id="email" name="email" type="email" autocomplete="email" maxlength="254" required><div class="trap" aria-hidden="true"><label for="website">Leave this empty</label><input id="website" name="website" tabindex="-1" autocomplete="off"></div><p><button type="submit">Send confirmation link</button></p></form>`}<p><a href="/privacy/">Privacy policy</a> · <a href="/updates/">Sign up again</a></p></main><footer>A Viridis LLC project. Open code. Cooperative conservation.</footer></body></html>`;
+}
+const htmlResponse = (status, message, confirmationToken = null) =>
+  new Response(updatesPage(message, confirmationToken), {
     status,
     headers: {
       'Content-Type': 'text/html; charset=utf-8',
@@ -90,6 +128,11 @@ export function createUpdates({
     async handle(request, clientKey) {
       const url = new URL(request.url);
       if (!enabled) return new Response('Not found', { status: 404 });
+      if (url.pathname === '/updates' && request.method === 'GET')
+        return new Response(null, {
+          status: 308,
+          headers: { Location: '/updates/', 'Cache-Control': 'no-store' },
+        });
       if (url.pathname === '/updates/' && request.method === 'GET')
         return htmlResponse(200, '');
       if (url.pathname === '/api/updates/subscribe') {
@@ -100,18 +143,7 @@ export function createUpdates({
             status: 403,
           });
         const start = now();
-        let input = {};
-        try {
-          const raw = await request.text();
-          if (Buffer.byteLength(raw) <= 4096)
-            input = request.headers
-              .get('content-type')
-              ?.includes('application/json')
-              ? JSON.parse(raw)
-              : Object.fromEntries(new URLSearchParams(raw));
-        } catch {
-          /* All malformed inputs receive the same response. */
-        }
+        const input = await readInput(request);
         const perClient = auth.rateLimit(
           `updates:client:${clientKey}`,
           5,
@@ -128,7 +160,7 @@ export function createUpdates({
           ).toString('hex');
           if (!cooldowns.has(key)) {
             cooldowns.set(key, start + 10 * 60000);
-            const token = signConfirmation(
+            const token = encryptConfirmation(
               email,
               env.VERGE_UPDATES_SEGMENT_ID,
               env.VERGE_UPDATES_SIGNING_SECRET,
@@ -154,14 +186,29 @@ export function createUpdates({
           'If this address can receive updates, check your inbox for a confirmation link.',
         );
       }
-      if (url.pathname === '/updates/confirm' && request.method === 'GET') {
+      if (url.pathname === '/updates/confirm') {
+        if (!['GET', 'POST'].includes(request.method))
+          return new Response('Method not allowed', { status: 405 });
+        if (
+          request.method === 'POST' &&
+          request.headers.get('origin') !== origin
+        )
+          return new Response('A same-origin request is required.', {
+            status: 403,
+          });
+        const token =
+          request.method === 'GET'
+            ? url.searchParams.get('t')
+            : (await readInput(request))?.t;
         const email = verifyConfirmation(
-          url.searchParams.get('t'),
+          token,
           env.VERGE_UPDATES_SEGMENT_ID,
           env.VERGE_UPDATES_SIGNING_SECRET,
           now(),
         );
         if (email) {
+          // Email scanners and link previews may GET this page; only a deliberate POST subscribes.
+          if (request.method === 'GET') return htmlResponse(200, '', token);
           try {
             await client.upsertContact(email, env.VERGE_UPDATES_SEGMENT_ID);
             return htmlResponse(
@@ -169,7 +216,7 @@ export function createUpdates({
               'Your subscription is confirmed. You can unsubscribe anytime.',
             );
           } catch {
-            /* Generic failure; provider bodies never reach the gateway logger. */
+            /* Generic failure; never expose provider bodies. */
           }
         }
         return htmlResponse(400, 'Link expired or invalid — sign up again.');

@@ -201,14 +201,15 @@ export default function PrivacyPage() {
         <p>
           Account sign-up does not require email. If enabled by the operator,
           the separate updates form sends a confirmation through Resend. Your
-          address joins the list only after you click the signed link within 48
-          hours.
+          address joins the list only after you open the encrypted link and
+          submit its confirmation form within 48 hours. Opening the link alone
+          does not subscribe you.
         </p>
         <p>
           Resend is our email processor and only subscriber system of record.
           Subscriber addresses are not stored in VergeCommon databases, logs or
-          audit entries. The address is processed temporarily and encoded in the
-          private signed confirmation link. Campaigns include a Resend-hosted
+          audit entries. The address is processed temporarily and encrypted in
+          the private confirmation link. Campaigns include a Resend-hosted
           unsubscribe link. Open and click tracking are off; no tracking pixels
           or redirect links are added. Resend can retain delivery, bounce and
           suppression records.
