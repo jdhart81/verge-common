@@ -17,6 +17,7 @@ Use **Node 24.19.0**, matching the production Dockerfile, and run commands from 
 | `PORT`              | Gateway port                                                                                          | `3100`                  |
 | `VERGE_TRUST_CADDY` | Set to `1` only when requests arrive through the private Caddy connection that overwrites `X-Real-IP` | Unset                   |
 | `VERGE_SELF_HOSTED` | Selects the Node storage build; set by `build:selfhost`                                               | Unset                   |
+| `VERGE_WOODLAND_DFM` | Set to `1` to enable Woodland (DFM) projects, the corridor check on treatment plans, and the `check_woodland_plan` MCP tool. See `docs/WOODLAND.md` | Unset (off) |
 
 The Dockerfile sets `/data`, `/backups`, `0.0.0.0:3000`, `https://vergecommon.com`, and trusted Caddy forwarding. Its process runs as the unprivileged `node` user. Mount durable directories writable by that user. Neither data directory belongs in source control or a container image.
 

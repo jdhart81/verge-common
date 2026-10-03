@@ -12,7 +12,10 @@ import {
   newWorkspace,
   DomainError,
 } from '@/server/workspaces';
+import { woodlandEnabled } from '@/lib/woodland-config.mjs';
+import { WOODLAND_OPS } from '@/lib/woodland.mjs';
 export const dynamic = 'force-dynamic';
+const features = () => ({ woodland: woodlandEnabled() });
 export async function GET(request: Request) {
   try {
     const user = await authenticated();
@@ -20,7 +23,11 @@ export async function GET(request: Request) {
     if (id) {
       const { row, state } = await load(id);
       if (membership(state, user.id))
-        return json({ ...memberView(state, user.id), version: row.version });
+        return json({
+          ...memberView(state, user.id),
+          version: row.version,
+          features: features(),
+        });
       const m = state.members.find(
         (x: { userId: string; activity?: string; status: string }) =>
           x.userId === user.id,
@@ -124,6 +131,15 @@ export async function POST(request: Request) {
       ].includes(data.op)
     )
       throw new DomainError('Use the invitation endpoint.');
+    if (
+      (WOODLAND_OPS.includes(data.op) ||
+        (data.op === 'create_project' && data.payload?.kind === 'woodland')) &&
+      !woodlandEnabled()
+    )
+      throw new DomainError(
+        'Woodland projects are not enabled on this service.',
+        404,
+      );
     if (data.op === 'request_membership') {
       const current = await load(data.id);
       data.version = current.row.version;
@@ -134,6 +150,7 @@ export async function POST(request: Request) {
     return json({
       ...memberView(result.state, user.id),
       version: result.version,
+      features: features(),
     });
   } catch (e) {
     return failure(e);

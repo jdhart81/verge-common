@@ -40,6 +40,7 @@ This release uses personal API tokens, not OAuth. Clients that require OAuth dis
 | `list_my_workspaces`       | Hosted `mcp:read`                                    | Lists the token owner's co-ops and membership requests. A pending request does not grant private access.                             |
 | `get_private_workspace`    | Hosted `mcp:read` and co-op membership               | Returns the same filtered member view as the website, including the current version.                                                 |
 | `apply_coop_command`       | Hosted `mcp:read` + `mcp:write` and co-op membership | Executes the limited commands below with normal authorization, optimistic concurrency, duplicate-request handling and audit history. |
+| `check_woodland_plan`      | Hosted `mcp:read`, co-op membership, and `VERGE_WOODLAND_DFM=1` | Runs the DFM corridor connectivity check for proposed treatment units against a woodland project's current reviewed layers. Read-only: saves, submits and overrides nothing. |
 
 Read-only tokens do not receive the write tool. `app:read` and `app:write` do not grant MCP access. A token grants the owner's existing access; it never creates co-op membership or a steward role.
 

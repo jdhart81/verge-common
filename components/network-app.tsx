@@ -1,5 +1,6 @@
 'use client';
 import { BrandLogo } from '@/components/brand-logo';
+import type { WoodlandState } from '@/components/woodland-panel';
 import {
   currencies,
   toMinor,
@@ -18,7 +19,7 @@ import {
   type CommunityState,
   type CommunityEvent,
 } from '@/components/community-board';
-import { allocateCents } from '@/lib/network.mjs';
+import { allocateCents } from '@/lib/allocation.mjs';
 import { allocationReconciliation } from '@/lib/allocation-reconciliation.mjs';
 import { startWorkspaceRefresh } from '@/lib/workspace-refresh.mjs';
 import { conversationActions } from '@/lib/conversation-actions.mjs';
@@ -48,6 +49,8 @@ import {
   agreementIsCurrent,
 } from '@/lib/readiness.mjs';
 import {
+  lazy,
+  Suspense,
   useCallback,
   useEffect,
   useRef,
@@ -55,6 +58,11 @@ import {
   useId,
   useSyncExternalStore,
 } from 'react';
+const WoodlandPanel = lazy(() =>
+  import('@/components/woodland-panel').then((m) => ({
+    default: m.WoodlandPanel,
+  })),
+);
 import Link from 'next/link';
 import { ControlLabel } from '@/components/ui/label';
 import {
@@ -307,6 +315,7 @@ type WorkspaceSummary = {
 };
 type WorkspaceResponse = {
   id: string;
+  features?: { woodland?: boolean };
   error: string;
   state?: Workspace;
   capacity?: WorkspaceCapacityStatus;
@@ -341,12 +350,15 @@ const date = (n: number) => new Date(n).toLocaleDateString();
 const label = (s: string) =>
   s === 'grassland'
     ? 'Grassland & meadow (pollinators)'
-    : s.replaceAll('_', ' ');
+    : s === 'woodland'
+      ? 'Woodland (DFM corridors)'
+      : s.replaceAll('_', ' ');
 const TAB_LABELS: Record<string, string> = {
   community: 'Community',
   start: 'Get started',
   organizations: 'Organizations',
   monitoring: 'Map & monitor',
+  woodland: 'Woodland corridors',
   pooling: 'Land pooling',
   projects: 'Projects',
   parcels: 'Parcels',
@@ -1338,6 +1350,7 @@ export function NetworkApp({
                         'landscape',
                         'restoration',
                         'grassland',
+                        ...(data?.features?.woodland ? ['woodland'] : []),
                       ]),
                       field('region', 'General area', undefined, {
                         max: 120,
@@ -2784,6 +2797,7 @@ export function NetworkApp({
                   'start',
                   'organizations',
                   'monitoring',
+                  ...(data.features?.woodland ? ['woodland'] : []),
                   'pooling',
                   'projects',
                   'parcels',
@@ -2800,6 +2814,22 @@ export function NetworkApp({
                   </TabsTrigger>
                 ))}
               </TabsList>
+              {data.features?.woodland && (
+                <TabsContent value="woodland">
+                  <Suspense fallback={<p>Loading woodland tools…</p>}>
+                    <WoodlandPanel
+                      key={selected}
+                      state={state as unknown as WoodlandState}
+                      steward={steward}
+                      busy={busy}
+                      requestEnvelope={{ id: selected, version: data.version }}
+                      memberId={data.memberId ?? ''}
+                      growthPaused={data.capacity?.growthPaused}
+                      mutate={mutate}
+                    />
+                  </Suspense>
+                </TabsContent>
+              )}
               <TabsContent value="care">
                 <MissionTools
                   state={state}

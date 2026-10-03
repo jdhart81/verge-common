@@ -37,9 +37,11 @@ SOFTWARE.
 - @openai/sites-vite-plugin: MIT
 - @shadcn/react: MIT
 - @tailwindcss/postcss: MIT
+- @turf/* (area, buffer, difference, intersect, union and other Turf.js 7 modules used by @viridis/dfm-core): MIT
 - @types/node: MIT
 - @types/react: MIT
 - @types/react-dom: MIT
+- @viridis/dfm-core (vendored package from jdhart81/hdfm-framework): MIT
 - @vitejs/plugin-react: MIT
 - @vitejs/plugin-rsc: MIT
 - class-variance-authority: Apache-2.0
