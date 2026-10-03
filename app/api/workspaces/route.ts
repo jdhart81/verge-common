@@ -13,7 +13,6 @@ import {
   DomainError,
 } from '@/server/workspaces';
 import { woodlandEnabled } from '@/lib/woodland-config.mjs';
-import { woodlandEditorView } from '@/lib/woodland-input.mjs';
 import { WOODLAND_OPS } from '@/lib/woodland.mjs';
 export const dynamic = 'force-dynamic';
 const features = () => ({ woodland: woodlandEnabled() });
@@ -25,11 +24,7 @@ export async function GET(request: Request) {
       const { row, state } = await load(id);
       if (membership(state, user.id))
         return json({
-          ...woodlandEditorView(
-            state,
-            memberView(state, user.id),
-            woodlandEnabled(),
-          ),
+          ...memberView(state, user.id),
           version: row.version,
           features: features(),
         });
@@ -153,11 +148,7 @@ export async function POST(request: Request) {
     if (data.op === 'request_membership' || data.op === 'leave')
       return json({ saved: true });
     return json({
-      ...woodlandEditorView(
-        result.state,
-        memberView(result.state, user.id),
-        woodlandEnabled(),
-      ),
+      ...memberView(result.state, user.id),
       version: result.version,
       features: features(),
     });

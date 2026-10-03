@@ -112,22 +112,16 @@ export function WoodlandMapEditor({
   const [mapOn, setMapOn] = useState(false),
     [drawing, setDrawing] = useState(false);
   const [error, setError] = useState(''),
-    [previewRecord, setPreviewRecord] = useState<{
-      result: Preview;
-      parcels: string;
-    } | null>(null),
+    [preview, setLocalPreview] = useState<Preview | null>(null),
+    [serverPreview, setServerPreview] = useState<Preview | null>(null),
     [checking, setChecking] = useState(false);
   const [light, setLight] = useState<string[]>([]),
     [name, setName] = useState(''),
     [period, setPeriod] = useState('');
-  const preview =
-    previewRecord?.parcels === JSON.stringify(parcels)
-      ? previewRecord.result
-      : null;
-  const setPreview = (result: Preview | null) =>
-    setPreviewRecord(
-      result ? { result, parcels: JSON.stringify(parcels) } : null,
-    );
+  const setPreview = (result: Preview | null) => {
+    setLocalPreview(result);
+    if (!result) setServerPreview(null);
+  };
   const list =
     layer === 'treatments' ? draft.treatments : (draft.layers[layer] ?? []);
   const feature = list[selected];
@@ -215,14 +209,32 @@ export function WoodlandMapEditor({
         );
         if (issues.length) throw new Error(issues.join(' '));
         const result = core.checkConnectivitySync(
-          woodlandCheckInput(
-            draft.layers,
-            draft.treatments,
-            parcels,
-            draft.params,
-          ),
+          woodlandCheckInput(draft.layers, draft.treatments, [], draft.params),
         ) as Preview;
         setPreview({ ...result, lostLinks: result.lostLinks ?? [] });
+      } finally {
+        setChecking(false);
+      }
+    });
+  const runServerPreview = () =>
+    attempt(async () => {
+      setChecking(true);
+      setServerPreview(null);
+      try {
+        const response = await fetch('/api/woodland-preview', {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({
+            id: envelope.id,
+            projectId,
+            treatments: draft.treatments,
+          }),
+          signal: AbortSignal.timeout(30000),
+        });
+        const data: { check?: Preview; error?: string } = await response.json();
+        if (!response.ok || !data.check)
+          throw new Error(data.error || 'Server preview failed.');
+        setServerPreview(data.check);
       } finally {
         setChecking(false);
       }
@@ -736,6 +748,16 @@ export function WoodlandMapEditor({
           >
             Preview corridor check
           </Button>
+          {mode === 'plan' && (
+            <Button
+              type="button"
+              variant="outline"
+              disabled={blocked}
+              onClick={() => void runServerPreview()}
+            >
+              Preview with co-op inputs
+            </Button>
+          )}
           <Button
             type="button"
             disabled={
@@ -751,7 +773,7 @@ export function WoodlandMapEditor({
                     payload,
                   )
                 )
-                  setPreview(null);
+                  setLocalPreview(null);
               })
             }
           >
@@ -783,12 +805,14 @@ export function WoodlandMapEditor({
           aria-label="Local corridor preview"
           aria-live="polite"
           className="mt-3 break-words"
-          data-preview-checksum={preview.inputChecksum}
+          data-local-preview-status={preview.status}
+          data-local-lost-links={JSON.stringify(preview.lostLinks)}
         >
           <strong>Local corridor preview: {preview.status}</strong>
           <p>
-            The server checks the plan again when submitted. Changes to reviewed
-            layers or consents may change its result.
+            This local check uses woodland layers and treatment units. Consent
+            areas and input checksum: computed by the co-op on submit. The
+            server checks the plan again when submitted.
           </p>
           <ul>
             {preview.reasons.map((r, i) => (
@@ -809,14 +833,37 @@ export function WoodlandMapEditor({
             </p>
           ))}
           <details>
-            <summary>Preview warnings and checksum</summary>
+            <summary>Preview warnings</summary>
             <ul>
               {preview.warnings.map((w, i) => (
                 <li key={i}>{w}</li>
               ))}
             </ul>
-            <p className="break-all">{preview.inputChecksum}</p>
           </details>
+        </section>
+      )}
+      {serverPreview && (
+        <section
+          aria-label="Co-op corridor preview"
+          aria-live="polite"
+          className="mt-3 break-words"
+        >
+          <strong>Co-op corridor preview: {serverPreview.status}</strong>
+          <p>
+            This check includes current private consent inputs without sharing
+            parcel geometry. It does not save a plan. Changes to layers or
+            consents before submission can change the checksum.
+          </p>
+          <p>
+            Server preview checksum:{' '}
+            <span
+              className="break-all"
+              data-server-preview-checksum={serverPreview.inputChecksum}
+            >
+              {serverPreview.inputChecksum ||
+                'Unavailable until layers are reviewed.'}
+            </span>
+          </p>
         </section>
       )}
     </div>

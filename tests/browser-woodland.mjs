@@ -159,6 +159,15 @@ try {
       payload: { name },
     });
     assert.ok(r);
+    const denied = await page.request.post(base + '/api/woodland-preview', {
+      headers: { Origin: base },
+      data: { id: coop, projectId: 'not-yet-created', treatments: [] },
+    });
+    assert.equal(
+      denied.status(),
+      403,
+      'pending membership cannot preview full state',
+    );
     const pending = (await state()).state.members.find((m) => m.name === name);
     assert.ok(pending);
     await command(steward, 'member_status', {
@@ -171,6 +180,9 @@ try {
         role: 'steward',
       });
   }
+  mark(
+    'Server preview rejects pending members before accessing private project inputs',
+  );
   const result = await command(steward, 'create_project', {
     name: 'Synthetic North woodlot',
     summary: 'Keep fixture cores linked',
@@ -178,7 +190,7 @@ try {
     kind: 'woodland',
   });
   const projectId = result.state.projects[0].id;
-  // Reviewed parcel reference and current consent: browser preview receives the same private snapshot.
+  // Private steward parcel and current consent participate only in the server preview.
   const pr = await command(steward, 'record_parcel', {
     projectId,
     name: 'Synthetic reference parcel',
@@ -427,10 +439,99 @@ try {
     .getByText('Local corridor preview: fail', { exact: true })
     .waitFor();
   await plan.getByText(/Responsible units: North harvest unit/).waitFor();
-  const checksum = await plan
-    .locator('[data-preview-checksum]')
-    .getAttribute('data-preview-checksum');
+  const memberView = await state(member);
+  const fullView = await state();
+  assert.equal(memberView.state.woodlandParcels, undefined);
+  assert.deepEqual(memberView.state.parcels, []);
+  const privateGeometry = JSON.stringify(
+    fullView.state.parcels[0].boundaries.at(-1).geometry,
+  );
+  assert.ok(!JSON.stringify(memberView).includes(privateGeometry));
+  mark('Member GET response never includes another member parcel geometry');
+  const localLinks = JSON.parse(
+    await plan
+      .locator('[data-local-lost-links]')
+      .getAttribute('data-local-lost-links'),
+  );
+  const serverResponse = member.waitForResponse(
+    (r) =>
+      r.url() === base + '/api/woodland-preview' &&
+      r.request().method() === 'POST',
+  );
+  await plan
+    .getByRole('button', { name: 'Preview with co-op inputs', exact: true })
+    .click();
+  const response = await serverResponse;
+  assert.ok(response.ok());
+  const serverPreview = await response.json();
+  assert.equal(serverPreview.check.status, 'fail');
+  assert.deepEqual(serverPreview.check.lostLinks, localLinks);
+  assert.doesNotMatch(
+    JSON.stringify(serverPreview),
+    /coordinates|geometry|parcels/,
+  );
+  const afterPreview = await state();
+  assert.equal(afterPreview.version, fullView.version);
+  assert.deepEqual(afterPreview.state.audit, fullView.state.audit);
+  assert.deepEqual(
+    afterPreview.state.treatmentPlans,
+    fullView.state.treatmentPlans,
+  );
+  const sent = response.request().postDataJSON();
+  const previewRequest = (data) =>
+    member.request.post(base + '/api/woodland-preview', {
+      headers: { Origin: base },
+      data,
+    });
+  assert.equal(
+    (
+      await previewRequest({
+        ...sent,
+        treatments: Array.from({ length: 51 }, () => sent.treatments[0]),
+      })
+    ).status(),
+    400,
+  );
+  const hugeUnit = structuredClone(sent.treatments[0]);
+  hugeUnit.geometry.coordinates[0] = Array.from({ length: 1200 }, () => [
+    0.00123456789012345, 0.00987654321098765,
+  ]);
+  // Keep the body under 100KB while exceeding the cleaned 40KB plan limit.
+  assert.equal(
+    (await previewRequest({ ...sent, treatments: [hugeUnit] })).status(),
+    413,
+  );
+  const compact = JSON.stringify(sent);
+  const exactBody = compact + ' '.repeat(100000 - Buffer.byteLength(compact));
+  const exactLimit = await member.request.post(base + '/api/woodland-preview', {
+    headers: { Origin: base, 'content-type': 'application/json' },
+    data: exactBody,
+  });
+  assert.equal(exactLimit.status(), 413);
+  const utf8Limit = await previewRequest({ ...sent, extra: 'é'.repeat(50000) });
+  assert.equal(utf8Limit.status(), 413);
+  const wrongOrigin = await member.request.post(
+    base + '/api/woodland-preview',
+    {
+      headers: { Origin: 'https://example.invalid' },
+      data: sent,
+    },
+  );
+  assert.equal(wrongOrigin.status(), 403);
+  assert.equal((await state()).version, fullView.version);
+  mark(
+    'Server preview enforces unit, cleaned plan, UTF-8 body limits and same-origin protection without mutations',
+  );
+  const checksum = serverPreview.check.inputChecksum;
   assert.match(checksum, /^sha256:[0-9a-f]{64}$/);
+  await plan.locator('[data-server-preview-checksum]').waitFor();
+  assert.equal(
+    await plan.locator('[data-server-preview-checksum]').textContent(),
+    checksum,
+  );
+  mark(
+    'Protected non-mutating server preview returns no parcel geometry and agrees with local status/lostLinks',
+  );
   await plan
     .getByRole('button', { name: 'Load background map', exact: true })
     .click();
@@ -438,10 +539,16 @@ try {
     .getByRole('button', { name: 'Fit to features', exact: true })
     .click({ timeout: 30000 });
   await member.waitForTimeout(2500);
-  assert.ok(Number(await plan.getByLabel('Private woodland map',{exact:true}).getAttribute('data-loss-feature-count'))>0);
+  assert.ok(
+    Number(
+      await plan
+        .getByLabel('Private woodland map', { exact: true })
+        .getAttribute('data-loss-feature-count'),
+    ) > 0,
+  );
   await plan.screenshot({ path: out + '/desktop-preview.png' });
   mark(
-    'M8 failed local preview names responsible unit and maps loss against reviewed parcel/layers',
+    'M8 failed local preview names responsible unit and maps loss against reviewed woodland layers',
   );
   // The 51-unit import remains editable but can never be sent.
   const invalid = Array.from({ length: 51 }, () => ({
@@ -472,6 +579,14 @@ try {
   mark(
     'M5 over-limit draft is diagnosed and cannot be submitted; undo restores the valid plan',
   );
+  await plan
+    .getByRole('button', { name: 'Preview with co-op inputs', exact: true })
+    .click();
+  await plan.locator('[data-server-preview-checksum]').waitFor();
+  assert.equal(
+    await plan.locator('[data-server-preview-checksum]').textContent(),
+    checksum,
+  );
   await member.setViewportSize({ width: 390, height: 844 });
   await plan.scrollIntoViewIfNeeded();
   assert.ok(
@@ -481,12 +596,21 @@ try {
   );
   await member.screenshot({ path: out + '/mobile-editor.png', fullPage: true });
   mark('M9 390px mobile has no horizontal overflow');
+  const submitResponse = member.waitForResponse(
+    (r) =>
+      r.url() === base + '/api/workspaces' && r.request().method() === 'POST',
+  );
   await plan
     .getByRole('button', { name: 'Check and submit plan', exact: true })
     .click();
   await member
     .getByText(/Winter corridor cut · Winter 2027 · blocked/)
     .waitFor();
+  const submission = await (await submitResponse).json();
+  assert.deepEqual(submission.state.parcels, []);
+  assert.equal(submission.state.woodlandParcels, undefined);
+  assert.ok(!JSON.stringify(submission).includes(privateGeometry));
+  mark('Member POST response never includes another member parcel geometry');
   const stored = (await state(member)).state.treatmentPlans.at(-1);
   assert.equal(stored.status, 'blocked');
   assert.equal(stored.check.status, 'fail');
@@ -496,7 +620,7 @@ try {
     stored.treatments[0].properties.dfm_id,
   );
   mark(
-    'M1/M8 authoritative server blocks drawn plan with identical preview checksum and cause',
+    'M1/M8 authoritative server blocks drawn plan with identical server preview checksum and cause',
   );
   await member.reload();
   await member

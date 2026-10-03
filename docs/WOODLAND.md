@@ -39,7 +39,7 @@ Choose a layer, create a feature, name it, and add coordinates or enable drawing
 by clicking on the optional map. Polygon rings close automatically; roads use
 LineStrings and crossings use Points. Select a feature and vertex to update or
 remove coordinates, drag its numbered map vertices, delete the feature, or use
-undo/redo. Map fit includes the reviewed parcel boundary references. In plan mode
+undo/redo. Map fit includes reviewed parcel boundaries visible to the viewer. In plan mode
 corridor layers and parcels are read-only. Each layer has a text label and its
 own line pattern, and crossings use a ring symbol.
 
@@ -53,23 +53,31 @@ WGS84, self-crossing, closure and 200-corner rules, with 2–200 vertices for ro
 and one coordinate for crossings. Polygon holes and antimeridian drawings are
 outside this editor's scope.
 
-**Preview corridor check** runs `@viridis/dfm-core` locally, loaded on demand. It
-reports pass/fail/incomplete, reasons, warnings, responsible unit names/IDs and
-the complete input checksum. Lost functional corridor geometry appears in red
-with a dashed outline. The shared `woodlandCheckInput` helper cleans treatment
-properties exactly as the server does and uses the same reviewed layers,
-parameters and current parcel-consent snapshots. The flag-gated member API adds
-only reviewed parcel geometry, parcel IDs and derived consent status for these
-checks; private parcel records, names and consent references keep their existing
-visibility rules, and MCP projections are unchanged. Preview is advisory: **Check
-and submit plan** always calls `submit_treatment_plan`, which checks the inputs
-again on the server. A failed or incomplete check is still stored as blocked.
-Changing reviewed layers or consents before submission can change that result.
+**Preview corridor check** runs `@viridis/dfm-core` locally, loaded on demand,
+using reviewed woodland layers and treatment units without parcel inputs. It
+reports pass/fail/incomplete, reasons, warnings and responsible unit names/IDs;
+lost functional corridor geometry appears in red with a dashed outline. Status,
+lost links, pinch points and reasons match the server for the same layers and
+units. Consent areas and the full input checksum are computed by the co-op on
+submit. Private parcel boundaries are never projected to other members: reference
+boundaries and downloaded packages include only parcels visible to the viewer
+under the existing owner-or-steward rule.
+
+**Preview with co-op inputs** calls the read-only `POST /api/woodland-preview`
+endpoint. It requires active membership, the Woodland flag and a same-origin
+request, enforces the existing treatment/body limits, and runs
+`previewTreatmentCheck` on full server state. It returns check statistics and a
+checksum, with no geometry, private parcel records, state changes or audit entry.
+The server preview checksum is shown alongside the stored plan checksum for
+comparison. **Check and submit plan** still calls `submit_treatment_plan` and
+checks all inputs again on the server; failed or incomplete plans are blocked.
+Changes to reviewed layers or consents before submission can change the checksum
+and result. MCP projections and command semantics are unchanged.
 
 Landscape Package and GeoJSON plan uploads remain alternatives to drawing: they
 open editable drafts using the same validity and size gates. **Download
 Landscape Package** exports the current draft with `toLandscapePackage`,
-including parcel references and parameters; an export may contain an incomplete
+including authorized parcel references and parameters; an export may contain an incomplete
 draft, so check its problems before sharing or importing it elsewhere.
 
 The draft meter displays compact UTF-8 JSON bytes against 90,000 for layers or
@@ -95,7 +103,9 @@ state-only drafts, and keyboard control/legend structure. Existing
 `tests/browser-woodland.mjs` uses three synthetic accounts on a disposable local
 self-hosted instance. It covers drawing and coordinate controls, keyboard-only
 crossing entry, map clicks/dragging, invalid-save prevention, independent steward
-review, a failed named-unit preview, the blocked server plan with the identical
-checksum, file export/import, over-limit prevention, opted-in basemap requests,
+review, a parcel-free failed named-unit preview, the geometry-free full-state
+server preview and blocked plan with the identical server checksum, file export/import, over-limit prevention, opted-in basemap requests,
 flag-off client projection and bundle separation, 390px overflow and browser
-errors. Outputs: `outputs/woodland-editor-review/`.
+errors. `tests/woodland-preview.test.mjs` covers membership/flag checks, plan
+limits, non-mutation, privacy, structural local/server equality, and server
+preview/stored checksum equality with private reviewed consents. Outputs: `outputs/woodland-editor-review/`.

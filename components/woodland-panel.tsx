@@ -6,7 +6,6 @@ import { Button } from '@/components/ui/button';
 import {
   WoodlandMapEditor,
   type WoodlandLayers,
-  type WoodlandFeature,
   type WoodlandParams,
 } from './woodland-map-editor';
 import { consentParcels } from '@/lib/woodland-input.mjs';
@@ -68,7 +67,6 @@ type Plan = {
   reviewNote?: string;
 };
 export type WoodlandState = {
-  woodlandParcels?: Record<string, WoodlandFeature[]>;
   parcels?: {
     id: string;
     projectId: string;
@@ -119,7 +117,13 @@ function CheckSummary({ check }: { check: Check }) {
         </details>
       )}
       <p className="muted">
-        {check.engine} · {check.inputChecksum.slice(0, 19)}…
+        {check.engine} · Stored plan checksum:{' '}
+        <span
+          className="break-all"
+          data-stored-plan-checksum={check.inputChecksum}
+        >
+          {check.inputChecksum}
+        </span>
       </p>
     </div>
   );
@@ -149,8 +153,7 @@ export function WoodlandPanel({
   const [notes, setNotes] = useState('');
   const [reason, setReason] = useState('');
   const disabled = busy || growthPaused;
-  const reference =
-    state.woodlandParcels?.[projectId] ?? consentParcels(state, projectId);
+  const reference = consentParcels(state, projectId);
   if (!woodland.length)
     return (
       <section>

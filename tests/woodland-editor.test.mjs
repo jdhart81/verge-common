@@ -1,5 +1,4 @@
 import { memberView } from '../lib/network.mjs';
-import { woodlandEditorView } from '../lib/woodland-input.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
@@ -441,7 +440,7 @@ await test('M9 keyboard feature/vertex actions, text legend and wrapping layout'
   assert.match(s, /Legend:/);
 });
 
-await test('M6/M7/M8 app member projection includes exact minimal parcel inputs only with the flag', () => {
+await test('M6 non-steward member projection never includes another member parcel geometry', () => {
   const f = setup();
   reviewedLayers(f);
   const id = f.run('record_parcel', {
@@ -477,34 +476,22 @@ await test('M6/M7/M8 app member projection includes exact minimal parcel inputs 
   );
   const view = memberView(f.s, 'member');
   assert.deepEqual(view.state.parcels, []);
-  const off = woodlandEditorView(f.s, view, false);
-  assert.equal(off, view);
-  assert.equal(off.state.woodlandParcels, undefined);
-  const on = woodlandEditorView(f.s, view, true);
-  assert.deepEqual(on.state.parcels, []);
-  assert.deepEqual(
-    on.state.woodlandParcels[f.project],
-    consentParcels(f.s, f.project),
+  assert.equal(view.state.woodlandParcels, undefined);
+  assert.ok(
+    !JSON.stringify(view).includes(JSON.stringify(rect(0, 0, 1000, 1000))),
   );
-  const data = JSON.stringify(on.state.woodlandParcels);
+  assert.equal(memberView(f.s, 'owner').state.parcels.length, 1);
+});
+
+await test('Member GET and POST responses use the privacy-filtered view without an extra parcel projection', async () => {
+  const route = await readFile(
+    new URL('../app/api/workspaces/route.ts', import.meta.url),
+    'utf8',
+  );
+  assert.match(route, /\.\.\.memberView\(state, user.id\)/);
+  assert.match(route, /\.\.\.memberView\(result.state, user.id\)/);
   assert.doesNotMatch(
-    data,
-    /Private|landReference|holder|authority|reference|createdBy|landSnapshot/,
-  );
-  assert.equal(
-    on.state.woodlandParcels[f.project][0].properties.consent,
-    'covered',
-  );
-  const local = checkConnectivitySync(
-    woodlandCheckInput(
-      f.s.woodlandLayers.at(-1).layers,
-      [cut],
-      on.state.woodlandParcels[f.project],
-      params,
-    ),
-  );
-  assert.equal(
-    local.inputChecksum,
-    byId(f, plan(f, [cut])).check.inputChecksum,
+    route,
+    /woodlandEditorView|woodlandParcels|consentParcels/,
   );
 });

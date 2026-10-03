@@ -57,17 +57,21 @@ woodland roads share the unchanged edge-crossing/touching predicate in
 
 Stewards draw core areas, retained corridors, roads, open water and crossings.
 Members draw treatment units over read-only reviewed corridor layers and
-reviewed parcel boundaries. Feature selection, coordinate add/update/remove,
+parcel boundaries visible under the owner-or-steward rule. Feature selection, coordinate add/update/remove,
 delete, undo and redo all have keyboard paths. On desktop, feature properties
 and vertices sit beside the optional map; the layout stacks at mobile widths.
 Labels, a legend, distinct line patterns and visible focus accompany colors.
 
 The local corridor preview dynamically loads the engine, names responsible
 units and draws lost corridor with a red dashed outline. Submitting always
-uses the existing authoritative server command. An existing client import of
-server command code was split into pure budget arithmetic and activity-path
+uses the existing authoritative server command. Local previews omit parcel inputs;
+status, lost/pinched links and reasons still match the server. The protected,
+non-mutating co-op preview uses full private consent state but returns no
+geometry, and its checksum matches the stored plan when inputs are unchanged.
+An existing client import of
+server command code was split into pure DomainError, budget arithmetic (`allocateCents`) and activity-path
 helpers so neither the Woodland editor nor the DFM engine is fetched when the
-client flag is off. The preview checksum test and production bundle/browser
+client flag is off. The server-preview checksum test and production bundle/browser
 checks verify these boundaries.
 
 To repeat the Woodland browser check, use a **disposable** local database and a
@@ -90,8 +94,8 @@ written to `outputs/woodland-editor-review/`. Real-device touch drawing and
 assistive-technology review remain unverified; automated keyboard and mobile
 layout checks do not substitute for those participant checks.
 
-The October 3, 2026 candidate passes all 315 unit tests, full-project lint,
-typechecking, standard/self-hosted/public builds, co-op simulation and 11 local
+The October 3, 2026 candidate passes all 321 unit tests, full-project lint,
+typechecking, standard/self-hosted/public builds, co-op simulation and 16 local
 Woodland browser checks with no runtime or console errors. See the
 [verification receipt and screenshots](review/woodland-map-editor/README.md).
 The September boundary-editor validation notes above are historical.
