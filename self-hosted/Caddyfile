@@ -20,10 +20,10 @@ vergecommon.com {
 # Dendritic Forest Management site (static container from jdhart81/hdfm-framework
 # apps/site) on the private vergecommon network. Add only after DNS for these
 # names points at this server; see docs/DFM_SITE.md.
-www.dendriticforest.org {
-    redir https://dendriticforest.org{uri} permanent
+www.dendriticforest.com {
+    redir https://dendriticforest.com{uri} permanent
 }
-dendriticforest.org {
+dendriticforest.com {
     encode zstd gzip
     header {
         Strict-Transport-Security "max-age=31536000"
@@ -31,7 +31,4 @@ dendriticforest.org {
         -Server
     }
     reverse_proxy dendriticforest-site:8080
-}
-unbrokenwoods.org, www.unbrokenwoods.org {
-    redir https://dendriticforest.org/unbroken/ permanent
 }
