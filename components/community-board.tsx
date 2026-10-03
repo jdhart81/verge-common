@@ -319,7 +319,7 @@ export function CommunityBoard({
     link.click();
     setTimeout(() => URL.revokeObjectURL(url), 1000);
     setNotice(
-      'Calendar file downloaded. It includes private meeting instructions; keep it within your group. Re-download and import after an edit or cancellation. Your calendar may ask whether to update its existing entry.',
+      'Calendar file downloaded. It includes private meeting instructions; keep it within your group. Re-download and import after an edit or cancellation. Imported files are not subscriptions. Calendar behavior varies; cancellation may not remove an entry automatically.',
     );
   }
   return (
@@ -438,7 +438,9 @@ export function CommunityBoard({
                       Event details changed on{' '}
                       {new Date(e.updatedAt).toLocaleString()}. Please check the
                       time and meeting instructions, update your response if
-                      needed, and download the latest calendar entry.
+                      needed, and re-download/import the latest calendar entry.
+                      Imported files are not subscriptions; cancellation does
+                      not guarantee automatic removal from your calendar.
                     </p>
                   )}
                   <p>
@@ -516,7 +518,7 @@ export function CommunityBoard({
                             });
                             if (saved)
                               setNotice(
-                                'Event updated. Existing responses are kept. Tell participants about the change and ask them to check their response and calendar.',
+                                'Event updated. Existing responses are kept. Notify Going and Interested participants and organizer-known attendees through your agreed channel. Privately confirm acknowledgements and follow the fallback for anyone not reached. Ask everyone to view current details and re-download/import the calendar file.',
                               );
                             return saved;
                           }}
@@ -602,10 +604,13 @@ export function CommunityBoard({
                             </p>
                           )}
                           <p className="small">
-                            Existing responses stay recorded. Participants who
-                            opted in can receive a browser reminder. Delivery is
-                            not guaranteed; confirm important changes with them.
-                            Re-download the calendar entry after saving.
+                            Existing responses stay recorded. Use your agreed
+                            contact channel for changes; public viewers are not
+                            known reachable attendees. Optional browser
+                            reminders are supplementary and can be delayed.
+                            Provider acceptance is not device display or human
+                            receipt. Re-download and import the calendar file
+                            after saving.
                           </p>
                         </Form>
                       </details>
@@ -613,10 +618,25 @@ export function CommunityBoard({
                   {(steward || e.isOrganizer) && e.status === 'scheduled' && (
                     <details className="mt-4">
                       <summary>Cancel event</summary>
+                      <p className="small">
+                        Use the agreed channel to notify affected participants
+                        and confirm acknowledgements. If urgent contact fails,
+                        use the agreed fallback or stop the activity.
+                      </p>
                       <Form
                         disabled={busy}
                         submit="Cancel event"
-                        save={(v) => mutate('cancel_event', { ...v, id: e.id })}
+                        save={async (v) => {
+                          const saved = await mutate('cancel_event', {
+                            ...v,
+                            id: e.id,
+                          });
+                          if (saved)
+                            setNotice(
+                              'Event cancelled. Notify Going and Interested participants and organizer-known attendees through your agreed channel. Privately record acknowledgements and use the agreed fallback for anyone not reached. Ask everyone to view current details and re-download/import the calendar file; calendar removal is not automatic.',
+                            );
+                          return saved;
+                        }}
                       >
                         <ControlLabel>
                           Reason for members

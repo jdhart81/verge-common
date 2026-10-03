@@ -124,7 +124,8 @@ def decrypt_extract(config, archive, target):
 def validate_ledger(directory, expected=None):
     receipt = json.loads((Path(directory) / 'ledger-receipt.json').read_text())
     root = Path(directory) / 'erasure-ledger'
-    root.mkdir(exist_ok=True, mode=0o700)
+    if not root.is_dir() or root.is_symlink():
+        raise ValueError('Local erasure ledger is unavailable')
     digest = hashlib.sha256()
     count = 0
     for entry in sorted(root.iterdir()):
