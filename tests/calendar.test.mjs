@@ -21,3 +21,33 @@ await test('calendar escapes injected lines and preserves worldwide UTC times an
   for (const line of calendar.split('\r\n'))
     assert.ok(new TextEncoder().encode(line).length <= 75);
 });
+
+await test('calendar reschedule across New York autumn DST keeps absolute times, UID and sequence', () => {
+  const base = {
+    id: 'dst-synthetic',
+    title: 'Synthetic repeat activity',
+    summary: 'Synthetic only',
+    meetingDetails: 'Private synthetic instructions',
+    timeZone: 'America/New_York',
+    startsAt: Date.parse('2026-11-01T01:30:00-04:00'),
+    endsAt: Date.parse('2026-11-01T02:30:00-05:00'),
+    status: 'scheduled',
+    calendarSequence: 0,
+  };
+  const first = eventCalendar(base);
+  assert.match(first, /DTSTART:20261101T053000Z/);
+  assert.match(first, /DTEND:20261101T073000Z/);
+  const changed = eventCalendar({
+    ...base,
+    startsAt: Date.parse('2026-11-01T01:30:00-05:00'),
+    calendarSequence: 1,
+    updatedAt: Date.parse('2026-10-31T12:00:00Z'),
+  });
+  assert.match(changed, /DTSTART:20261101T063000Z/);
+  assert.equal(first.match(/UID:.+/)[0], changed.match(/UID:.+/)[0]);
+  assert.match(changed, /SEQUENCE:1/);
+  assert.match(
+    eventCalendar({ ...base, status: 'cancelled', calendarSequence: 2 }),
+    /STATUS:CANCELLED/,
+  );
+});

@@ -2,13 +2,13 @@
 
 The dedicated VergeCommon server remains a single-server deployment. The repository includes encrypted backup/recovery tooling, aggregate health checks and optional redacted webhook delivery. **29 September live audit: recurring encrypted backup transfer is active hourly on the owner Mac and successful archive/isolated-restore/deletion-replay receipts were observed. No webhook destination is configured; notification delivery is local receipts only.** Independent key custody and an external failure/recovery alert rehearsal remain open. The sections below describe the installed tooling and its original isolated verification.
 
-## Verified starting point
+## Historical starting point — 19 September 2026
 
 Read-only inspection on 19 September 2026 found the dedicated `codex-keen-forge-bf65` app container healthy, the daily `vergecommon-backup.timer` active, and server disk usage at 65%. Its backup timer runs at 03:15 UTC plus up to five minutes of jitter. The approved Mac destination had approximately 352 GiB free. These figures are observations at inspection time, not continuing guarantees.
 
 ## Encrypted recurring pull
 
-`self-hosted/operations.py` can run hourly through a user LaunchAgent; the existing installed agent is currently unloaded pending the production-transfer authorization described below. It uses the existing SSH alias and requires the previously verified host key. The remote helper is sent over SSH and reads only completed backup directories, the live erasure ledger, container health, file-size totals and database aggregate counts. Operator-report bodies, member identities and private evidence contents never enter the inspection response. It installs no remote agent and does not modify production data.
+`self-hosted/operations.py` runs through a user LaunchAgent. **Dated 29 September observation:** the hourly job was active; this is not evidence of today’s freshness. **Historical installation state (19 September):** the installed agent was unloaded pending production-transfer authorization; the original installation receipt below records that earlier state. It uses the existing SSH alias and requires the previously verified host key. The remote helper is sent over SSH and reads only completed backup directories, the live erasure ledger, container health, file-size totals and database aggregate counts. Operator-report bodies, member identities and private evidence contents never enter the inspection response. It installs no remote agent and does not modify production data.
 
 New archives use the already installed GnuPG with AES-256 symmetric encryption and a machine-generated 384-bit random recovery secret. The secret is read from its restricted file by GnuPG, never written into a command, log, repository or production server. See the official [GnuPG passphrase/input options](https://www.gnupg.org/documentation/manuals/gnupg/GPG-Input-and-Output.html) and [encryption options](https://www.gnupg.org/documentation/manuals/gnupg/GPG-Esoteric-Options.html). Real tests verify round-trip decryption and rejection of corrupted ciphertext or a wrong key.
 
@@ -158,9 +158,9 @@ python3 self-hosted/operations.py --config /private/operator/config.json \
 
 The report lists potential reclaimable bytes and candidates. **There is no apply or delete mode.** Candidate recognition uses names and timestamps, not proof of successful decryption or independent recovery. Before any separately authorized deletion, verify an independent recoverable copy, latest independently retained committed deletion ledger, the chosen retention policy and any preservation requirements. Server backup deletion is also outside this preview.
 
-Before relying on this arrangement, the owner must keep a second independently secured copy of the recovery secret in an approved password manager or offline custody location and rehearse access to it. The key and current archives reside on the same Mac in separate directories; losing both the droplet and this Mac would defeat recovery without that independent copy. No second key copy has been transmitted or invented. FileVault/device access policy, responder coverage and any future always-on offsite destination remain owner decisions.
+Before relying on this arrangement, the owner must keep a second independently secured copy of the recovery secret in an approved password manager or offline custody location and rehearse access to it. The key and current archives reside on the same Mac in separate directories; losing both the droplet and this Mac would defeat recovery without independently accessible encrypted archives and the latest committed deletion ledger as well as the recovery secret. A second key copy alone does not preserve those bytes; simultaneous-loss recoverability remains unverified. No second key copy has been transmitted or invented. FileVault/device access policy, responder coverage and any future always-on offsite destination remain owner decisions.
 
-## Tests and installation receipt
+## Historical tests and installation receipt — 19 September 2026
 
 The 15-case isolated operations suite additionally checks redacted notification transitions, timeout/status handling, delivery retry identity, disabled-by-default behavior, aggregate-only read queries, capacity/backlog thresholds, transfer-free inspection and retention previews. It also checks actual GnuPG encryption/decryption, corruption and wrong-key rejection; path traversal, links, duplicate writes and extraction limits; key permissions; committed-versus-pending ledgers; freshness thresholds; and reversible installer configuration without loading a real scheduler. It runs through `tests/operations.test.mjs` in the normal JavaScript suite and requires Python 3 and GnuPG in the test environment.
 
@@ -185,3 +185,7 @@ The LaunchAgent was reversibly unloaded while that authorization is pending; a s
 
 A failure opens one issue labelled `alert-health` or `alert-launch-gate` (later failures comment on it), and GitHub emails repository watchers. Recovery closes the issue automatically. Keep "Watching → All activity" (or at least Issues) enabled on the repository for the owner account so alerts arrive by email and on the GitHub mobile app. Run it on demand from Actions → Production monitor → Run workflow. GitHub may delay scheduled runs by several minutes under load and disables schedules after 60 days without repository activity; re-enable from the Actions tab if that happens.
 
+
+## Current pilot qualification workflow — 3 October 2026
+
+Use [PILOT_READINESS.md](PILOT_READINESS.md) and [PILOT_REHEARSAL.md](PILOT_REHEARSAL.md) for separate backup <24 h, restore <30 d and operations receipt ≤2 h gates, independent archive/ledger loss scenarios, real two-responder acknowledgement and Mac stale-run coverage. Existing isolated tests are engineering evidence; no current production rehearsal or custody arrangement is asserted.
