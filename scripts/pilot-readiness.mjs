@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 // Local pre-pilot review. No state writes, manifest URL fetches or enrollment.
 import { open } from 'node:fs/promises';
+import { constants } from 'node:fs';
 import { pathToFileURL } from 'node:url';
 import { runChecks, certificateExpiry, PUBLIC_ROUTES } from './launch-gate.mjs';
 
@@ -353,7 +354,10 @@ export function evaluateReadiness(
 }
 
 async function readBounded(path) {
-  const file = await open(path, 'r');
+  const file = await open(
+    path,
+    constants.O_RDONLY | constants.O_NONBLOCK | constants.O_NOFOLLOW,
+  );
   try {
     const info = await file.stat();
     if (!info.isFile() || info.size > 32768) invalid();
@@ -433,6 +437,15 @@ export async function main(argv) {
           securityPolicy,
           tlsExpiry,
         });
+        if (
+          !automated.some(
+            (row) =>
+              row.name === 'build commit' &&
+              row.status === 'PASS' &&
+              row.detail === deployedCommit,
+          )
+        )
+          deployedCommit = null;
         const after = await fetchImpl(new URL('/healthz', url), {
           redirect: 'manual',
         });

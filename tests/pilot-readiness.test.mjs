@@ -292,7 +292,8 @@ await test('CLI reuses all launch checks against explicit loopback target and re
   const directory = await mkdtemp(join(tmpdir(), 'verge-pilot-cli-'));
   t.after(() => rm(directory, { recursive: true, force: true }));
   let healthReads = 0,
-    switchBuild = false;
+    switchBuild = false,
+    midBuild = false;
   const server = http.createServer((req, res) => {
     if (req.url === '/healthz') {
       healthReads++;
@@ -300,7 +301,12 @@ await test('CLI reuses all launch checks against explicit loopback target and re
       res.end(
         JSON.stringify({
           status: 'ok',
-          commit: switchBuild && healthReads >= 3 ? 'b'.repeat(40) : commit,
+          commit:
+            switchBuild && healthReads >= 3
+              ? 'b'.repeat(40)
+              : midBuild && healthReads === 2
+                ? commit.slice(0, 7) + 'b'.repeat(33)
+                : commit,
         }),
       );
     } else {
@@ -351,6 +357,14 @@ await test('CLI reuses all launch checks against explicit loopback target and re
   );
   assert.doesNotMatch(stdout, /synthetic-receipt|synthetic-operator/);
   healthReads = 0;
+  midBuild = true;
+  await assert.rejects(
+    exec(process.execPath, args),
+    (error) =>
+      error.code === 1 && JSON.parse(error.stdout).deployedCommit === null,
+  );
+  healthReads = 0;
+  midBuild = false;
   switchBuild = true;
   await assert.rejects(
     exec(process.execPath, args),
