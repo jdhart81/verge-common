@@ -1,3 +1,5 @@
+export const dynamic = 'force-dynamic';
+import { UpdatesLink } from '@/components/updates-link';
 import { BrandLogo } from '@/components/brand-logo';
 import Link from 'next/link';
 import {
@@ -392,6 +394,7 @@ export default function Home({
           <BrandLogo />
         </Link>
         <span>Open code. Cooperative conservation.</span>
+        {!publicPreview ? <UpdatesLink /> : null}
         <div>
           <a href={docs + '/LICENSE'}>AGPL-3.0</a>
           <a

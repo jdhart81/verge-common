@@ -1,3 +1,5 @@
+export const dynamic = 'force-dynamic';
+import { UpdatesLink } from '@/components/updates-link';
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { ArrowUpRight } from 'lucide-react';
@@ -16,6 +18,7 @@ export default function SupportProjectPage() {
       title="Help keep common ground growing."
       intro="Open-source conservation needs people who care for the tools, too. Help us make VergeCommon useful to more communities."
     >
+      <UpdatesLink />
       {projectSupport.stripePaymentLink ? (
         <section className="information-highlight">
           <h2>Optional project support</h2>

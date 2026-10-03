@@ -196,6 +196,30 @@ export default function PrivacyPage() {
           GitHub and payment providers have their own privacy policies.
         </p>
       </section>
+      <section>
+        <h2>Optional email updates</h2>
+        <p>
+          Account sign-up does not require email. If enabled by the operator,
+          the separate updates form sends a confirmation through Resend. Your
+          address joins the list only after you open the encrypted link and
+          submit its confirmation form within 48 hours. Opening the link alone
+          does not subscribe you.
+        </p>
+        <p>
+          Resend is our email processor and only subscriber system of record.
+          Subscriber addresses are not stored in VergeCommon databases, logs or
+          audit entries. The address is processed temporarily and encrypted in
+          the private confirmation link. Campaigns include a Resend-hosted
+          unsubscribe link. Open and click tracking are off; no tracking pixels
+          or redirect links are added. Resend can retain delivery, bounce and
+          suppression records.
+        </p>
+        <p>
+          Email subscriptions are separate from accounts and account deletion.
+          Use a campaign’s unsubscribe link to stop updates, or contact the
+          operator to request deletion of the provider-held address.
+        </p>
+      </section>
       <section id="your-choices">
         <h2>Your choices and account deletion</h2>
         <p>
