@@ -1,0 +1,19 @@
+{
+  "passed": [
+    "M7/M8 flag-off projection renders no woodland controls and fetches no editor/engine chunks; production manifest confirms lazy engine",
+    "M2/M3/M9 steward draws typed layers and adds verified crossing entirely by keyboard",
+    "M6 no third-party requests before explicit basemap opt-in",
+    "M4/M9 map click, draggable vertices, undo/redo, deletion and invalid-save guard",
+    "M1 two independent stewards save and review drawn layers",
+    "M8 failed local preview names responsible unit and maps loss against reviewed parcel/layers",
+    "M5 over-limit draft is diagnosed and cannot be submitted; undo restores the valid plan",
+    "M9 390px mobile has no horizontal overflow",
+    "M1/M8 authoritative server blocks drawn plan with identical preview checksum and cause",
+    "M6 unsaved draft is not persisted across reload",
+    "No browser runtime or console errors; external requests limited to opted-in basemap"
+  ],
+  "errors": [],
+  "consoleErrors": [],
+  "externalRequests": 26,
+  "fixtureId": "5c10d4d1-f392-44b0-a91a-868076e96722"
+}

@@ -45,3 +45,53 @@ Live basemap checks need internet access. The failure-recovery check deliberatel
 5. Resolve the existing full-project lint backlog before a broader release.
 
 These remain separate from independent ecological validation, carbon certification, hosted publication and native distribution.
+
+## Woodland corridor and treatment editor
+
+Woodland projects now have a separate typed map editor; the Polygon-only parcel
+boundary editor keeps its existing controls and workflow. See
+[Woodland drawing and preview](WOODLAND.md#drawing-layers-and-treatment-units).
+Polygon validation continues to use `validateBoundary`. Boundary polygons and
+woodland roads share the unchanged edge-crossing/touching predicate in
+`lib/geometry.mjs`. No new map or analysis dependency is added.
+
+Stewards draw core areas, retained corridors, roads, open water and crossings.
+Members draw treatment units over read-only reviewed corridor layers and
+reviewed parcel boundaries. Feature selection, coordinate add/update/remove,
+delete, undo and redo all have keyboard paths. On desktop, feature properties
+and vertices sit beside the optional map; the layout stacks at mobile widths.
+Labels, a legend, distinct line patterns and visible focus accompany colors.
+
+The local corridor preview dynamically loads the engine, names responsible
+units and draws lost corridor with a red dashed outline. Submitting always
+uses the existing authoritative server command. An existing client import of
+server command code was split into pure budget arithmetic and activity-path
+helpers so neither the Woodland editor nor the DFM engine is fetched when the
+client flag is off. The preview checksum test and production bundle/browser
+checks verify these boundaries.
+
+To repeat the Woodland browser check, use a **disposable** local database and a
+self-hosted build (Node 22.13+). Enable `VERGE_WOODLAND_DFM=1` only on that local
+test process. The test accepts localhost ports 3000 and 3001 and creates three
+synthetic accounts plus an archived fixture co-op:
+
+```sh
+npm run build:selfhost
+VERGE_DATA_DIR=/tmp/woodland-test-db VERGE_ORIGIN=http://localhost:3001 \
+  PORT=3001 VERGE_WOODLAND_DFM=1 npm run start:selfhost
+VERGE_TEST_ORIGIN=http://localhost:3001 node tests/browser-woodland.mjs
+```
+
+If Playwright is supplied by an external runtime, set `VERGE_PLAYWRIGHT_MODULE`
+to its entry point. Chrome and internet access for opted-in OpenFreeMap tiles
+are needed. No production configuration, deployment or hosted account is used.
+Desktop layer/preview and 390px mobile screenshots and the browser results are
+written to `outputs/woodland-editor-review/`. Real-device touch drawing and
+assistive-technology review remain unverified; automated keyboard and mobile
+layout checks do not substitute for those participant checks.
+
+The October 3, 2026 candidate passes all 315 unit tests, full-project lint,
+typechecking, standard/self-hosted/public builds, co-op simulation and 11 local
+Woodland browser checks with no runtime or console errors. See the
+[verification receipt and screenshots](review/woodland-map-editor/README.md).
+The September boundary-editor validation notes above are historical.
