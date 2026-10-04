@@ -1,6 +1,6 @@
 # Release notes
 
-## v0.10.0 — woodland corridors and the old-growth spine (candidate, not deployed)
+## v0.10.0 — woodland corridors and the old-growth spine (deployed 4 October 2026, 22:03 UTC; woodland projects off)
 
 Everything merged after v0.9.0, plus the spine integration. Woodland projects stay off unless the operator sets `VERGE_WOODLAND_DFM=1`.
 
@@ -15,7 +15,7 @@ Everything merged after v0.9.0, plus the spine integration. Woodland projects st
 - **DFM site on this server** ([PR #34](https://github.com/jdhart81/verge-common/pull/34), [PR #38](https://github.com/jdhart81/verge-common/pull/38)): additive Caddy runbook for dendriticforest.com; footers link the woodland page.
 - `/healthz` reports the version from `package.json` (now 0.10.0). The launch gate also checks `/woodland/`.
 
-Validation before deployment: see the pull request. CI runs the woodland acceptance (`tests/woodland_acceptance.py`) inside the production image with the flag on.
+Validation before deployment: see the pull request. CI runs the woodland acceptance (`tests/woodland_acceptance.py`) inside the production image with the flag on. Deployment receipt: [history/DEPLOYMENT_V0100_2026-10-04.md](history/DEPLOYMENT_V0100_2026-10-04.md).
 
 ## v0.9.0 — participation and continuing care (29 September 2026)
 
