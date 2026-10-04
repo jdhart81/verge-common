@@ -41,7 +41,7 @@ SOFTWARE.
 - @types/node: MIT
 - @types/react: MIT
 - @types/react-dom: MIT
-- @viridis/dfm-core (vendored package from jdhart81/hdfm-framework): MIT
+- @viridis/dfm-core 0.2.0 (vendored package from jdhart81/hdfm-framework, Copyright (c) 2025 Justin Hart): MIT. `tests/dfm-watershed-fixture.mjs` is copied from the same repository under the same license.
 - @vitejs/plugin-react: MIT
 - @vitejs/plugin-rsc: MIT
 - class-variance-authority: Apache-2.0

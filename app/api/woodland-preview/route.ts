@@ -30,7 +30,7 @@ export async function POST(request: Request) {
     );
     const { state, row } = await load(data.id);
     return json({
-      check: woodlandServerPreview(
+      check: await woodlandServerPreview(
         state,
         user.id,
         data.projectId,

@@ -99,6 +99,12 @@ async function fixture(t, lifecycle = {}, gatewayOptions = {}) {
     if (url.pathname === '/public-echo')
       return send(200, { headers: req.headers });
     if (url.pathname === '/api/network') return send(200, { coops: [] });
+    if (
+      ['/api/woodland-analysis', '/api/woodland-preview'].includes(url.pathname)
+    )
+      return actor
+        ? send(200, { analysis: { kind: input?.kind }, check: { status: 'pass' } })
+        : send(401, { error: 'Sign in first.' });
     if (url.pathname !== '/api/workspaces')
       return send(404, { error: 'Not found.' });
     if (!actor) return send(401, { error: 'Sign in first.' });
@@ -954,4 +960,127 @@ await test('Supabase login forms allow the exact broker redirect without broaden
   assert.equal(directives['default-src'], "'none'");
   assert.equal(directives['frame-ancestors'], "'none'");
   assert(!policy.includes('*.supabase.co'));
+});
+
+await test('WS7: agents and the browser share one per-account budget for woodland engine work', async (t) => {
+  process.env.VERGE_WOODLAND_DFM = '1';
+  t.after(() => delete process.env.VERGE_WOODLAND_DFM);
+  const f = await fixture(t);
+  const token = f.auth.createToken(f.alice.user.id, 'Woodland agent', 'mcp:read');
+  const client = new Client({ name: 'woodland-budget', version: '1' });
+  await client.connect(
+    new StreamableHTTPClientTransport(new URL(`${f.url}/mcp`), {
+      fetch: nodeFetch,
+      requestInit: {
+        headers: {
+          host: new URL(origin).host,
+          authorization: `Bearer ${token}`,
+        },
+      },
+    }),
+  );
+  t.after(() => client.close());
+  const analyze = () =>
+    client.callTool({
+      name: 'analyze_woodland_spine',
+      arguments: { id: aliceCoop, projectId, kind: 'network' },
+    });
+  for (let i = 0; i < 12; i += 1) {
+    const r = await analyze();
+    assert.equal(r.isError, undefined, `analysis ${i + 1}`);
+    assert.equal(r.structuredContent.data.analysis.kind, 'network');
+  }
+  const limited = await analyze();
+  assert.equal(limited.isError, true);
+  assert.match(limited.content[0].text, /many landscape analyses/);
+  const analyses = f.seen.filter((x) => x.path === '/api/woodland-analysis');
+  assert.equal(analyses.length, 12, 'the 13th never reached the app');
+  assert.equal(analyses[0].actor, f.alice.user.id);
+  // The browser path draws on the same budget.
+  const browser = await f.request('/api/woodland-analysis', {
+    method: 'POST',
+    headers: {
+      origin,
+      cookie: cookieFor(f.alice),
+      'content-type': 'application/json',
+    },
+    body: JSON.stringify({ id: aliceCoop, projectId, kind: 'network' }),
+  });
+  assert.equal(browser.status, 429);
+  // Plan checks have their own budget, so the agent can still check a plan.
+  const check = await client.callTool({
+    name: 'check_woodland_plan',
+    arguments: { id: aliceCoop, projectId },
+  });
+  assert.deepEqual(check.structuredContent.data, { status: 'pass' });
+  for (let i = 1; i < 30; i += 1)
+    await client.callTool({
+      name: 'check_woodland_plan',
+      arguments: { id: aliceCoop, projectId },
+    });
+  const checkLimited = await client.callTool({
+    name: 'check_woodland_plan',
+    arguments: { id: aliceCoop, projectId },
+  });
+  assert.equal(checkLimited.isError, true);
+  assert.match(checkLimited.content[0].text, /many woodland plans/);
+  assert.equal(
+    f.seen.filter((x) => x.path === '/api/woodland-preview').length,
+    30,
+  );
+});
+
+await test('agent commands draw on the same per-account command budget as the browser', async (t) => {
+  const f = await fixture(t);
+  const token = f.auth.createToken(f.alice.user.id, 'Busy agent', 'mcp:write');
+  const client = new Client({ name: 'command-budget', version: '1' });
+  await client.connect(
+    new StreamableHTTPClientTransport(new URL(`${f.url}/mcp`), {
+      fetch: nodeFetch,
+      requestInit: {
+        headers: {
+          host: new URL(origin).host,
+          authorization: `Bearer ${token}`,
+        },
+      },
+    }),
+  );
+  t.after(() => client.close());
+  const apply = () =>
+    client.callTool({
+      name: 'apply_coop_command',
+      arguments: {
+        id: aliceCoop,
+        version: 4,
+        requestId: crypto.randomUUID(),
+        command: { op: 'create_task', payload: { projectId, title: 'Survey' } },
+      },
+    });
+  // Half the minute's budget from the browser, half from the agent.
+  for (let i = 0; i < 20; i += 1) {
+    const r = await f.request('/api/workspaces', {
+      method: 'POST',
+      headers: {
+        origin,
+        cookie: cookieFor(f.alice),
+        'content-type': 'application/json',
+      },
+      body: JSON.stringify({ id: aliceCoop, op: 'create_task', payload: {} }),
+    });
+    assert.equal(r.status, 200);
+  }
+  for (let i = 0; i < 20; i += 1) assert.equal((await apply()).isError, undefined);
+  const limited = await apply();
+  assert.equal(limited.isError, true);
+  assert.match(limited.content[0].text, /changes very quickly/);
+  const browser = await f.request('/api/workspaces', {
+    method: 'POST',
+    headers: {
+      origin,
+      cookie: cookieFor(f.alice),
+      'content-type': 'application/json',
+    },
+    body: JSON.stringify({ id: aliceCoop, op: 'create_task', payload: {} }),
+  });
+  assert.equal(browser.status, 429);
 });

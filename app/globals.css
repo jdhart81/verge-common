@@ -1048,3 +1048,36 @@ p {
     grid-template-columns: minmax(0, 1fr) minmax(360px, 1.5fr);
   }
 }
+
+/* Woodland old-growth spine results (components/woodland-spine-panel.tsx). */
+.spine-table-scroll {
+  max-width: 100%;
+  overflow-x: auto;
+  margin: 12px 0;
+}
+.spine-table-scroll:focus-visible {
+  outline: 2px solid var(--foreground);
+  outline-offset: 2px;
+}
+.spine-table {
+  width: 100%;
+  /* Narrow screens scroll the labelled region instead of squeezing columns. */
+  min-width: 34rem;
+  border-collapse: collapse;
+  font-size: 14px;
+}
+.spine-table th,
+.spine-table td {
+  border-bottom: 1px solid var(--border);
+  padding: 8px 10px 8px 0;
+  text-align: left;
+  vertical-align: top;
+  overflow-wrap: anywhere;
+}
+.spine-table th {
+  font-weight: 600;
+}
+.spine-table td.nowrap {
+  white-space: nowrap;
+  overflow-wrap: normal;
+}

@@ -2,6 +2,10 @@
 
 **Last updated: 29 September 2026 EDT (v0.9.0 live; 30 September UTC).** This is the single, current summary of what is live, what is verified and what is still open. Update it with every deployment or change in operating state. Dated deployment receipts and reviews are preserved unchanged in [docs/history/](docs/history/).
 
+## v0.10.0 candidate — woodland corridors and the old-growth spine, 4 October 2026 (undeployed)
+
+Main now holds woodland projects ([PR #33](https://github.com/jdhart81/verge-common/pull/33), [PR #37](https://github.com/jdhart81/verge-common/pull/37)) and, with this candidate, the old-growth spine from dfm-core 0.2.0: spine lines and drafted corridors, network robustness, projections from consent and stand ages, climate routes, the next woodlots to invite, reproducible check packages and the public [/woodland/](https://vergecommon.com/woodland/) page that dendriticforest.com links to. Woodland projects stay off unless `VERGE_WOODLAND_DFM=1`; whether to enable them for the Vermont pilot is an owner decision. Production still runs v0.9.0, and dendriticforest.com still serves the site from before the spine release. See [release notes](docs/RELEASE_NOTES.md) and [woodland projects](docs/WOODLAND.md).
+
 ## Local pilot-readiness increment — 3 October 2026 (undeployed)
 
 The [local readiness report](docs/PILOT_READINESS.md), [audit](docs/PILOT_AUDIT_2026-10-03.md) and [operator rehearsal kit](docs/PILOT_REHEARSAL.md) separate engineering evidence from owner start approval and actual pilot completion. No deployment or fresh production observation is asserted. Custody/recoverability, failure/recovery acknowledgement, Mac stale-run coverage, second operator, cohort/dates/support, urgent contact and real offered-device qualification remain open.
