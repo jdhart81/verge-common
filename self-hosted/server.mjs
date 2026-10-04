@@ -32,6 +32,10 @@ import { createSocialAuth } from './social-auth.mjs';
 import { createPush } from './push.mjs';
 import { createHttpHandler, mcpDiscovery } from '../mcp/http.mjs';
 import { woodlandEnabled } from '../lib/woodland-config.mjs';
+import {
+  createWoodlandAnalysisPool,
+  registerWoodlandAnalysis,
+} from './woodland-analysis.mjs';
 const safeReturn = (value) => {
   try {
     const u = new URL(value || '/workspace/', 'https://return.local');
@@ -127,7 +131,7 @@ export function createGateway({
     }
     return headers;
   };
-  const internal = async (principal, path, payload) => {
+  const internal = async (principal, path, payload, timeoutMs = 20000) => {
     const headers = verifiedHeaders(principal, {
       'content-type': 'application/json',
       origin,
@@ -137,7 +141,7 @@ export function createGateway({
       headers,
       body: payload ? JSON.stringify(payload) : undefined,
       redirect: 'manual',
-      signal: AbortSignal.timeout(20000),
+      signal: AbortSignal.timeout(timeoutMs),
     });
     const result = await r.json();
     if (!r.ok)
@@ -154,6 +158,9 @@ export function createGateway({
     listWorkspaces: (p) => internal(p, '/api/workspaces'),
     executeCommand: (p, id, input) =>
       internal(p, '/api/workspaces', { id, ...input }),
+    // Spine analyses wait for the worker thread (up to its 25 s limit) inside the app.
+    analyzeWoodland: (p, id, input) =>
+      internal(p, '/api/woodland-analysis', { id, ...input }, 29000),
     woodland: woodlandEnabled(),
   });
   const server = http.createServer(async (req, res) => {
@@ -599,6 +606,15 @@ export function createGateway({
           return json(429, {
             error: 'You are making changes very quickly. Wait a few minutes.',
           });
+        // Each spine analysis can hold the analysis worker for seconds.
+        if (
+          url.pathname === '/api/woodland-analysis' &&
+          !auth.rateLimit(`analysis:${principal.id}`, 12, 10 * 60000)
+        )
+          return json(429, {
+            error:
+              'You have run many landscape analyses. Wait a few minutes and try again.',
+          });
       }
       if (['/api/push', '/api/push/test'].includes(url.pathname)) {
         if (!push)
@@ -761,6 +777,15 @@ export async function start() {
       });
   }, 60000);
   pushTimer.unref();
+  // WS7: spine analyses run in a worker thread, registered for the app in this process.
+  const analysis = woodlandEnabled()
+    ? registerWoodlandAnalysis(
+        createWoodlandAnalysisPool({
+          timeoutMs:
+            Number(process.env.VERGE_WOODLAND_ANALYSIS_TIMEOUT_MS) || 25000,
+        }),
+      )
+    : null;
   const { startProdServer } = await import('vinext/server/prod-server');
   const internal = await startProdServer({
     port: 0,
@@ -797,6 +822,7 @@ export async function start() {
   const close = () => {
     clearInterval(upkeep);
     clearInterval(pushTimer);
+    void analysis?.close();
     server.close();
     internal.server.close();
   };

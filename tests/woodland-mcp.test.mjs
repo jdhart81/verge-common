@@ -69,3 +69,45 @@ await test('check_woodland_plan is read-only and reports a cut corridor as fail 
   assert.equal(missing.isError, true);
   await client.close();
 });
+
+await test('analyze_woodland_spine is registered only with woodland and the analysis callback, read-only, and passes the request through', async () => {
+  const calls = [];
+  const principal = { id: 'owner', kind: 'token', scopes: ['mcp:read'] };
+  const make = async (options) => {
+    const server = createServer({
+      woodland: true,
+      privateAccess: { principal, readWorkspace: async () => ({}), ...options },
+    });
+    const client = new Client({ name: 'test', version: '1' });
+    const [a, b] = InMemoryTransport.createLinkedPair();
+    await Promise.all([server.connect(a), client.connect(b)]);
+    return client;
+  };
+  const without = await make({});
+  assert.ok(!(await without.listTools()).tools.some((t) => t.name === 'analyze_woodland_spine'));
+  await without.close();
+  const client = await make({
+    analyzeWoodland: async (p, id, input) => {
+      calls.push([p.id, id, input]);
+      return { analysis: { kind: input.kind, result: { status: 'ok' } } };
+    },
+  });
+  const tool = (await client.listTools()).tools.find((t) => t.name === 'analyze_woodland_spine');
+  assert.equal(tool.annotations.readOnlyHint, true);
+  const r = await client.callTool({
+    name: 'analyze_woodland_spine',
+    arguments: { id: coop, projectId: 'p1', kind: 'frontier' },
+  });
+  assert.equal(r.structuredContent.data.analysis.kind, 'frontier');
+  assert.deepEqual(calls, [['owner', coop, { projectId: 'p1', kind: 'frontier' }]]);
+  const bad = await client.callTool({
+    name: 'analyze_woodland_spine',
+    arguments: { id: coop, projectId: 'p1', kind: 'everything' },
+  });
+  assert.equal(bad.isError, true);
+  const caps = await client.callTool({ name: 'vergecommon_capabilities', arguments: {} });
+  assert.ok(
+    caps.structuredContent.available.some((a) => /spine analyses/.test(a)),
+  );
+  await client.close();
+});

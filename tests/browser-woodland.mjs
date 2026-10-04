@@ -563,12 +563,13 @@ try {
       JSON.stringify({ type: 'FeatureCollection', features: invalid }),
     ),
   });
+  // The file is read asynchronously: wait for the diagnosis before asserting the gate.
+  await plan.getByText(/Plan has 51 units; limit is 50/).waitFor();
   assert.ok(
     await plan
       .getByRole('button', { name: 'Check and submit plan', exact: true })
       .isDisabled(),
   );
-  await plan.getByText(/Plan has 51 units; limit is 50/).waitFor();
   await plan.getByRole('button', { name: 'Undo', exact: true }).click();
   await plan
     .getByRole('button', { name: 'Preview corridor check', exact: true })

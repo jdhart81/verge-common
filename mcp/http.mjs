@@ -78,6 +78,7 @@ export function createHttpHandler({
   readWorkspace,
   listWorkspaces,
   executeCommand,
+  analyzeWoodland,
   fetcher = fetch,
   woodland = false,
 } = {}) {
@@ -153,6 +154,7 @@ export function createHttpHandler({
           readWorkspace,
           listWorkspaces,
           executeCommand,
+          analyzeWoodland,
         },
       });
       const transport = new StreamableHTTPServerTransport({
