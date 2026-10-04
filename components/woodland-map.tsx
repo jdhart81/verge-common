@@ -89,6 +89,8 @@ export function WoodlandMap(props: Props) {
             ['retained', '#8b6c15', [6, 2]],
             ['roads', '#353535', [2, 2]],
             ['water', '#176da5', [6, 2, 1, 2]],
+            ['streams', '#0b5d8f', [1, 0]],
+            ['connectors', '#6b4aa0', [8, 2, 1, 2]],
             ['treatments', '#a63aa6', [1, 2]],
             ['parcels', '#555555', [2, 4]],
             ['loss', '#df2424', [5, 2]],
@@ -119,7 +121,7 @@ export function WoodlandMap(props: Props) {
               ],
               paint: {
                 'line-color': color,
-                'line-width': layer === 'loss' ? 4 : 2,
+                'line-width': layer === 'loss' ? 4 : layer === 'streams' ? 3 : 2,
                 'line-dasharray': dash,
               },
             });

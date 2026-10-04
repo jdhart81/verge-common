@@ -1,7 +1,7 @@
 'use client';
 // Woodland (DFM) panel: corridor layers, treatment plans and override votes.
 // The server checks every submitted plan; local previews are advisory.
-import { useId, useState } from 'react';
+import { lazy, Suspense, useId, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import {
   WoodlandMapEditor,
@@ -17,6 +17,12 @@ import {
   NativeSelect,
   NativeSelectOption,
 } from '@/components/ui/native-select';
+// Loaded only when a woodland project has reviewed layers.
+const WoodlandSpinePanel = lazy(() =>
+  import('./woodland-spine-panel').then((m) => ({
+    default: m.WoodlandSpinePanel,
+  })),
+);
 
 type Save = (op: string, payload: Record<string, unknown>) => Promise<boolean>;
 type Feature = {
@@ -42,7 +48,7 @@ type LayersVersion = {
   status: string;
   createdAt: number;
   notes: string;
-  params: { minWidthM: number; minWidthSource: string; roadWidthM?: number };
+  params: WoodlandParams;
   layers: Record<string, Feature[]> | null;
   canReview?: boolean;
 };
@@ -71,6 +77,8 @@ export type WoodlandState = {
   parcels?: {
     id: string;
     projectId: string;
+    name?: string;
+    plannedJoinYear?: number;
     status: string;
     boundaries?: { status: string; geometry: unknown }[];
     consents?: { status: string; landSnapshot: unknown }[];
@@ -85,7 +93,24 @@ export type WoodlandState = {
 const ha = (m2?: number) => `${((m2 ?? 0) / 10000).toFixed(2)} ha`;
 const pairs = (list?: Pair[]) =>
   list?.length ? list.map((p) => `${p.a}–${p.b}`).join(', ') : 'none';
-const LAYER_KEYS = ['coreAreas', 'retained', 'roads', 'water', 'crossings'];
+const LAYER_KEYS = [
+  'coreAreas',
+  'retained',
+  'roads',
+  'water',
+  'crossings',
+  'streams',
+  'connectors',
+];
+const LAYER_NAMES: Record<string, string> = {
+  coreAreas: 'core areas',
+  retained: 'retained corridors',
+  roads: 'roads',
+  water: 'open water',
+  crossings: 'crossings',
+  streams: 'streams',
+  connectors: 'ridge, valley and saddle links',
+};
 
 function CheckSummary({ check }: { check: Check }) {
   return (
@@ -152,7 +177,11 @@ export function WoodlandPanel({
   const [projectId, setProjectId] = useState(woodland[0]?.id ?? '');
   const [error, setError] = useState('');
   const [notes, setNotes] = useState('');
-  const [reason, setReason] = useState('');
+  // Per-record text, so typing in one card never fills another.
+  const [reasons, setReasons] = useState<Record<string, string>>({});
+  const [reviewNotes, setReviewNotes] = useState<Record<string, string>>({});
+  const reviewNote = (id: string, fallback: string) =>
+    reviewNotes[id]?.trim() || fallback;
   const disabled = busy || growthPaused;
   const reference = consentParcels(state, projectId);
   if (!woodland.length)
@@ -224,9 +253,14 @@ export function WoodlandPanel({
           Current reviewed layers: minimum width {current.params.minWidthM} m (
           {current.params.minWidthSource}).{' '}
           {current.layers
-            ? LAYER_KEYS.map(
-                (k) => `${current.layers?.[k]?.length ?? 0} ${k}`,
-              ).join(' · ')
+            ? LAYER_KEYS.filter(
+                (k) => k in (current.layers ?? {}) || !k.match(/^(streams|connectors)$/),
+              )
+                .map(
+                  (k) =>
+                    `${current.layers?.[k]?.length ?? 0} ${LAYER_NAMES[k]}`,
+                )
+                .join(' · ')
             : ''}
         </p>
       ) : (
@@ -244,37 +278,52 @@ export function WoodlandPanel({
               minimum width {v.params.minWidthM} m · {v.notes}
             </p>
             {v.canReview && (
-              <div className="actions">
-                <Button
+              <>
+                <Textarea
+                  aria-label="Layer review note"
+                  placeholder="Review note: what you checked, or what needs correcting"
+                  value={reviewNotes[v.id] ?? ''}
+                  maxLength={1500}
                   disabled={disabled}
-                  onClick={() =>
-                    run(() =>
-                      mutate('review_woodland_layers', {
-                        id: v.id,
-                        decision: 'approve',
-                        note: 'Reviewed against the field map.',
-                      }),
-                    )
+                  onChange={(e) =>
+                    setReviewNotes((n) => ({ ...n, [v.id]: e.target.value }))
                   }
-                >
-                  Approve layers
-                </Button>
-                <Button
-                  variant="outline"
-                  disabled={disabled}
-                  onClick={() =>
-                    run(() =>
-                      mutate('review_woodland_layers', {
-                        id: v.id,
-                        decision: 'reject',
-                        note: 'Needs correction.',
-                      }),
-                    )
-                  }
-                >
-                  Reject
-                </Button>
-              </div>
+                />
+                <div className="actions">
+                  <Button
+                    disabled={disabled}
+                    onClick={() =>
+                      run(() =>
+                        mutate('review_woodland_layers', {
+                          id: v.id,
+                          decision: 'approve',
+                          note: reviewNote(
+                            v.id,
+                            'Reviewed against the field map.',
+                          ),
+                        }),
+                      )
+                    }
+                  >
+                    Approve layers
+                  </Button>
+                  <Button
+                    variant="outline"
+                    disabled={disabled}
+                    onClick={() =>
+                      run(() =>
+                        mutate('review_woodland_layers', {
+                          id: v.id,
+                          decision: 'reject',
+                          note: reviewNote(v.id, 'Needs correction.'),
+                        }),
+                      )
+                    }
+                  >
+                    Reject
+                  </Button>
+                </div>
+              </>
             )}
           </article>
         ))}
@@ -313,6 +362,20 @@ export function WoodlandPanel({
           />
         </>
       )}
+      {current?.layers && (
+        <Suspense fallback={<p className="small">Loading spine tools…</p>}>
+          <WoodlandSpinePanel
+            key={projectId + current.id}
+            coopId={requestEnvelope.id}
+            projectId={projectId}
+            current={current}
+            state={state}
+            steward={steward}
+            disabled={disabled}
+            mutate={mutate}
+          />
+        </Suspense>
+      )}
       <h3 className="mt-6">Treatment plans</h3>
       {current?.layers && (
         <WoodlandMapEditor
@@ -344,37 +407,49 @@ export function WoodlandPanel({
             )}
             <CheckSummary check={p.check} />
             {p.canReview && (
-              <div className="actions">
-                <Button
+              <>
+                <Textarea
+                  aria-label="Plan review note"
+                  placeholder="Review note: what you checked, or what needs to change"
+                  value={reviewNotes[p.id] ?? ''}
+                  maxLength={1500}
                   disabled={disabled}
-                  onClick={() =>
-                    run(() =>
-                      mutate('review_treatment_plan', {
-                        id: p.id,
-                        decision: 'approve',
-                        note: 'Corridor check reviewed.',
-                      }),
-                    )
+                  onChange={(e) =>
+                    setReviewNotes((n) => ({ ...n, [p.id]: e.target.value }))
                   }
-                >
-                  Approve plan
-                </Button>
-                <Button
-                  variant="outline"
-                  disabled={disabled}
-                  onClick={() =>
-                    run(() =>
-                      mutate('review_treatment_plan', {
-                        id: p.id,
-                        decision: 'reject',
-                        note: 'Plan needs changes.',
-                      }),
-                    )
-                  }
-                >
-                  Reject
-                </Button>
-              </div>
+                />
+                <div className="actions">
+                  <Button
+                    disabled={disabled}
+                    onClick={() =>
+                      run(() =>
+                        mutate('review_treatment_plan', {
+                          id: p.id,
+                          decision: 'approve',
+                          note: reviewNote(p.id, 'Corridor check reviewed.'),
+                        }),
+                      )
+                    }
+                  >
+                    Approve plan
+                  </Button>
+                  <Button
+                    variant="outline"
+                    disabled={disabled}
+                    onClick={() =>
+                      run(() =>
+                        mutate('review_treatment_plan', {
+                          id: p.id,
+                          decision: 'reject',
+                          note: reviewNote(p.id, 'Plan needs changes.'),
+                        }),
+                      )
+                    }
+                  >
+                    Reject
+                  </Button>
+                </div>
+              </>
             )}
             {o && (
               <p className="small">
@@ -425,17 +500,20 @@ export function WoodlandPanel({
                     void run(() =>
                       mutate('propose_plan_override', {
                         id: p.id,
-                        reason,
+                        reason: reasons[p.id] ?? '',
                         days: 14,
                       }),
                     );
                   }}
                 >
                   <Textarea
+                    aria-label="Override reason"
                     placeholder="Why this plan should proceed despite the lost link"
-                    value={reason}
+                    value={reasons[p.id] ?? ''}
                     maxLength={2000}
-                    onChange={(e) => setReason(e.target.value)}
+                    onChange={(e) =>
+                      setReasons((r) => ({ ...r, [p.id]: e.target.value }))
+                    }
                     required
                   />
                   <Button type="submit" variant="outline" disabled={disabled}>
