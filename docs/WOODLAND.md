@@ -69,7 +69,7 @@ The corridor check's input is the Landscape Package's canonical form: every pack
 
 The contract runs both ways. dfm-core's own tests read a package downloaded from a VergeCommon plan (written by `scripts/dfm-contract-fixture.mjs`) and must reproduce its stored result and checksum, so a change in the engine cannot silently break plans stored here.
 
-Packages from the DFM mapping workspace or other tools import into the editor: non-UUID IDs become UUIDs and the original ID becomes the feature's name when it has none; spine lines keep their link to the corridors drafted from them; the planning `boundary` layer is not kept. `tests/woodland-interop.test.mjs` checks a package exported by the workspace: the same status, lost links and responsible units by name, and areas within 0.01% (records are stored at 1e-7 degrees, about 1 cm).
+Packages from the DFM mapping workspace or other tools import into the editor: non-UUID IDs become UUIDs and the original ID becomes the feature's name when it has none; spine lines keep their link to the corridors drafted from them; the planning `boundary` layer is not kept. An upload lists anything it leaves out, so nothing is dropped silently: the planning boundary, woodlots and treatment units (which have their own places here), and any layer, setting or feature property VergeCommon does not use yet, such as a newer DFM tool's stepping stones or exits. With those, the check here can differ from the tool that wrote the package. `tests/woodland-interop.test.mjs` checks a package exported by the workspace: the same status, lost links and responsible units by name, and areas within 0.01% (records are stored at 1e-7 degrees, about 1 cm).
 
 ## Erasure and rollback
 

@@ -11,7 +11,7 @@ import {
   toLandscapePackage,
 } from '@viridis/dfm-core';
 import { newWorkspace, applyCommand, memberView } from '../lib/network.mjs';
-import { importDraft, isUUID } from '../lib/woodland-editor.mjs';
+import { importDraft, importNotes, isUUID } from '../lib/woodland-editor.mjs';
 import { consentParcels, planCheckInput } from '../lib/woodland-input.mjs';
 
 const workspacePackage = JSON.parse(
@@ -128,4 +128,30 @@ await test('WS12 a stored plan check is reproduced exactly, checksum included, f
   );
   // Once the version's geometry is dropped, there is nothing exact to download.
   assert.equal(planCheckInput([], stored, []), null);
+});
+
+await test('WS12 an upload says what it leaves out, so nothing in a package is dropped silently', () => {
+  // The workspace export carries its planning boundary and the plan's units beside the layers.
+  assert.deepEqual(importNotes(workspacePackage, 'layers'), [
+    'Not imported: the planning boundary (the co-op’s woodlots stand in for it); treatment units (draw or upload them as a treatment plan).',
+  ]);
+  assert.deepEqual(importNotes(workspacePackage, 'plan'), [], 'a plan upload takes the units');
+  // Content from a newer DFM tool is named, never dropped silently.
+  const newer = structuredClone(workspacePackage);
+  newer.layers.exits = [
+    { type: 'Feature', geometry: { type: 'Point', coordinates: [0.001, 0.001] }, properties: { dfm_id: 'exit-north', temp_c: 5 } },
+  ];
+  newer.params.gapCrossingM = 40;
+  newer.params.gapCrossingSource = 'Synthetic dispersal study';
+  newer.layers.retained[0].properties.remnant = true;
+  newer.layers.retained[0].properties.remnant_source = 'Synthetic survey';
+  const notes = importNotes(newer, 'layers');
+  assert.equal(notes.length, 3);
+  assert.match(notes[0], /the exits layer, which VergeCommon does not use yet/);
+  assert.match(notes[1], /^Settings VergeCommon does not use yet: gapCrossingM, gapCrossingSource\./);
+  assert.match(notes[2], /^Feature properties VergeCommon does not keep: remnant, remnant_source\./);
+  // What VergeCommon writes, it reads back with nothing to report; plain GeoJSON is not a package.
+  const own = toLandscapePackage({ ...fromLandscapePackage(workspacePackage), boundary: [], treatments: [] });
+  assert.deepEqual(importNotes(own, 'layers'), []);
+  assert.deepEqual(importNotes({ type: 'FeatureCollection', features: [] }, 'plan'), []);
 });

@@ -18,6 +18,7 @@ import {
   withPoints,
   draftProblems,
   importDraft,
+  importNotes,
   mergeSpineDraft,
   sizeReport,
 } from '@/lib/woodland-editor.mjs';
@@ -162,6 +163,8 @@ export function WoodlandMapEditor({
   const [milestoneText, setMilestoneText] = useState(
     (initialParams.milestoneYears ?? []).join(', '),
   );
+  // What the last upload left out (WS12), so nothing in a package is dropped silently.
+  const [uploadNotes, setUploadNotes] = useState<string[]>([]);
   const setPreview = (result: Preview | null) => {
     setLocalPreview(result);
     if (!result) setServerPreview(null);
@@ -1001,7 +1004,10 @@ export function WoodlandMapEditor({
               if (!file) return;
               if (file.size > 100000)
                 throw new Error('File must be under 100000 bytes.');
-              const imported = importDraft(JSON.parse(await file.text()), mode);
+              setUploadNotes([]);
+              const json = JSON.parse(await file.text());
+              const imported = importDraft(json, mode);
+              setUploadNotes(importNotes(json, mode));
               edit(
                 mode === 'layers'
                   ? {
@@ -1034,6 +1040,13 @@ export function WoodlandMapEditor({
             e.target.value = '';
           }}
         />
+        {uploadNotes.length > 0 && (
+          <ul className="small" aria-label="Upload notes" data-upload-notes>
+            {uploadNotes.map((note) => (
+              <li key={note}>{note}</li>
+            ))}
+          </ul>
+        )}
         <div className="flex flex-wrap gap-2 mt-3">
           <Button
             type="button"
