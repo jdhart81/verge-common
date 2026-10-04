@@ -24,6 +24,7 @@ export const PUBLIC_ROUTES = [
   '/terms/',
   '/support/',
   '/support-project/',
+  '/woodland/',
   '/report/',
   '/account',
   '/account?mode=register',
@@ -37,6 +38,7 @@ export const COPY_ROUTES = [
   '/terms/',
   '/support/',
   '/support-project/',
+  '/woodland/',
   '/app/',
 ];
 // Promises the service must never make (BL-15). Negated explanations such as

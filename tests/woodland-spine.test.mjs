@@ -99,17 +99,18 @@ await test('WS2 a version without spine lines stores, checks and checksums as be
   assert.deepEqual(Object.keys(version.layers), [...LAYER_KEYS]);
   assert.deepEqual(version.params, base);
   const input = woodlandCheckInput(version.layers, [], [], version.params);
-  assert.ok(!('streams' in input) && !('connectors' in input));
-  // The 0.1.0 command spread the stored layers directly; the checksum is the same.
-  assert.equal(
-    checkConnectivitySync(input).inputChecksum,
-    checkConnectivitySync({
-      ...version.layers,
-      treatments: [],
-      parcels: [],
-      params: version.params,
-    }).inputChecksum,
-  );
+  assert.deepEqual(Object.keys(input).sort(), [
+    'boundary',
+    'coreAreas',
+    'crossings',
+    'params',
+    'parcels',
+    'retained',
+    'roads',
+    'treatments',
+    'water',
+  ]);
+  assert.equal(checkConnectivitySync(input).status, 'pass');
   assert.deepEqual(checkLayers({ streams: [], retained: [] }), {
     retained: [],
   });

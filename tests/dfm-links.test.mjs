@@ -14,12 +14,14 @@ await test('the DFM site address is a bare https origin on dendriticforest.com',
   assert.equal(u.pathname, '/');
 });
 
-await test('the public footers and the woodland panel link to the DFM site', async () => {
-  for (const f of ['app/page.tsx', 'components/information-page.tsx']) {
-    const s = await read(f);
-    assert.match(s, /href=\{DFM_SITE_URL\}/, f);
-    assert.match(s, /from '@\/lib\/dfm-site\.mjs'/, f);
-  }
+await test('the public footers lead to the woodland page, which links the DFM site; the panel credits DFM', async () => {
+  for (const f of ['app/page.tsx', 'components/information-page.tsx'])
+    assert.match(await read(f), /\/woodland\//, f);
+  const page = await read('app/woodland/page.tsx');
+  assert.match(page, /href=\{DFM_SITE_URL\}/);
+  assert.match(page, /from '@\/lib\/dfm-site\.mjs'/);
+  assert.match(page, /dfm\('unbroken\/'\)/, 'the campaign is linked');
+  assert.match(page, /dfm\('data-format\/'\)/, 'the exchange format is linked');
   const panel = await read('components/woodland-panel.tsx');
   assert.equal(
     panel.match(/href=\{DFM_SITE_URL\}/g)?.length,

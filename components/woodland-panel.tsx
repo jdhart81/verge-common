@@ -8,7 +8,7 @@ import {
   type WoodlandLayers,
   type WoodlandParams,
 } from './woodland-map-editor';
-import { consentParcels } from '@/lib/woodland-input.mjs';
+import { consentParcels, planCheckInput } from '@/lib/woodland-input.mjs';
 import { emptyLayers } from '@/lib/woodland-editor.mjs';
 import { DFM_SITE_URL } from '@/lib/dfm-site.mjs';
 import { Textarea } from '@/components/ui/textarea';
@@ -68,6 +68,7 @@ type Plan = {
   status: string;
   layersVersionId: string;
   check: Check;
+  treatments?: Feature[];
   createdAt: number;
   canReview?: boolean;
   override?: Override;
@@ -91,6 +92,18 @@ export type WoodlandState = {
 };
 
 const ha = (m2?: number) => `${((m2 ?? 0) / 10000).toFixed(2)} ha`;
+function downloadJson(value: unknown, filename: string) {
+  const url = URL.createObjectURL(
+    new Blob([JSON.stringify(value, null, 2) + '\n'], {
+      type: 'application/json',
+    }),
+  );
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
 const pairs = (list?: Pair[]) =>
   list?.length ? list.map((p) => `${p.a}–${p.b}`).join(', ') : 'none';
 const LAYER_KEYS = [
@@ -406,6 +419,38 @@ export function WoodlandPanel({
               </p>
             )}
             <CheckSummary check={p.check} />
+            {steward &&
+              planCheckInput(state.woodlandLayers ?? [], p, reference) && (
+                <div className="actions">
+                  <Button
+                    variant="outline"
+                    onClick={() =>
+                      run(async () => {
+                        const { toLandscapePackage } =
+                          await import('@viridis/dfm-core');
+                        downloadJson(
+                          toLandscapePackage(
+                            planCheckInput(
+                              state.woodlandLayers ?? [],
+                              p,
+                              reference,
+                            ),
+                            { name: p.name, generator: 'VergeCommon' },
+                          ),
+                          `woodland-plan-${p.id.slice(0, 8)}.json`,
+                        );
+                      })
+                    }
+                  >
+                    Download check inputs
+                  </Button>
+                  <span className="small">
+                    A Landscape Package that reproduces this result and its
+                    checksum with the open-source engine, while the co-op’s
+                    woodlot consents are unchanged.
+                  </span>
+                </div>
+              )}
             {p.canReview && (
               <>
                 <Textarea
