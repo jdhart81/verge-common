@@ -4,7 +4,7 @@
 
 ## v0.10.0 — woodland corridors and the old-growth spine, deployed 4 October 2026
 
-**Production runs exact source `824019ce50d1ab0974369118d00493d78d9058ab`**, including the final dfm-core 0.2.0 engine. The initial v0.10.0 release went live at 22:03 UTC on 4 October (`aab3ba2`). It adds:
+**The follow-up deployment runs exact source `824019ce50d1ab0974369118d00493d78d9058ab`**, including the final dfm-core 0.2.0 engine. The initial v0.10.0 release went live at 22:03 UTC on 4 October. It adds:
 - woodland projects ([PR #33](https://github.com/jdhart81/verge-common/pull/33), [PR #37](https://github.com/jdhart81/verge-common/pull/37));
 - the old-growth spine from dfm-core 0.2.0 ([PR #40](https://github.com/jdhart81/verge-common/pull/40));
 - the public [/woodland/](https://vergecommon.com/woodland/) page;
@@ -12,13 +12,13 @@
 
 **Woodland projects are off in production.** `/woodland/` says they are being tested. Whether to turn them on for the Vermont pilot is an owner decision.
 
-[PR #41](https://github.com/jdhart81/verge-common/pull/41) is merged and deployed: the vendored engine SHA-256 is `dd5d1f41a1cb24ff49cfeb851ab0eaa13df2fa311ffb2fd5a4597046069d16f9`. The final dfm-core 0.2.0 engine includes the spine network soundness fix. Woodland activation remains an owner decision. dendriticforest.com serves exact hdfm-framework source `e27dbe4e4e24d0d6288333e74623b354cba0763e`, including merged [#45](https://github.com/jdhart81/hdfm-framework/pull/45): its homepage and Unbroken Woods links reach `/woodland/` and `#first-woodlot`, while the spine and prairie sections remain present.
+[PR #41](https://github.com/jdhart81/verge-common/pull/41) is merged and deployed: the vendored engine SHA-256 is `dd5d1f41a1cb24ff49cfeb851ab0eaa13df2fa311ffb2fd5a4597046069d16f9`. The final engine includes the spine network soundness fix. Woodland activation remains an owner decision. dendriticforest.com serves exact hdfm-framework source `e27dbe4e4e24d0d6288333e74623b354cba0763e`, including merged [#45](https://github.com/jdhart81/hdfm-framework/pull/45): its homepage and Unbroken Woods links reach `/woodland/` and `#first-woodlot`, while the spine and prairie sections remain present.
 
-Receipts: [initial deployment 4 October 2026](docs/history/DEPLOYMENT_V0100_2026-10-04.md) and [DFM public-site deployment 3 October 2026](docs/history/DEPLOYMENT_DFM_SITE_2026-10-03.md), preserved as historical records. See also the [release notes](docs/RELEASE_NOTES.md) and [woodland projects](docs/WOODLAND.md).
+Receipt: [follow-up deployment 4 October 2026](docs/history/DEPLOYMENT_FOLLOWUP_2026-10-04.md). The [initial deployment](docs/history/DEPLOYMENT_V0100_2026-10-04.md) and [DFM public-site deployment 3 October 2026](docs/history/DEPLOYMENT_DFM_SITE_2026-10-03.md) remain immutable historical records. The annotated [`v0.10.0` tag](https://github.com/jdhart81/verge-common/releases/tag/v0.10.0) is published on exact `824019ce50d1ab0974369118d00493d78d9058ab`; tag object `1fee3843d3f653d43a5e8b06d48a0b5100a3988a`. The receipt records the tag as pending at its deployment checkpoint; this status records its later completion. See also the [release notes](docs/RELEASE_NOTES.md) and [woodland projects](docs/WOODLAND.md).
 
-## Local pilot-readiness increment — 3 October 2026 (undeployed)
+## Pilot-readiness tooling — deployed; human qualification pending
 
-The [local readiness report](docs/PILOT_READINESS.md), [audit](docs/PILOT_AUDIT_2026-10-03.md) and [operator rehearsal kit](docs/PILOT_REHEARSAL.md) separate engineering evidence from owner start approval and actual pilot completion. No deployment or fresh production observation is asserted. Custody/recoverability, failure/recovery acknowledgement, Mac stale-run coverage, second operator, cohort/dates/support, urgent contact and real offered-device qualification remain open.
+The [local readiness report](docs/PILOT_READINESS.md), [audit](docs/PILOT_AUDIT_2026-10-03.md) and [operator rehearsal kit](docs/PILOT_REHEARSAL.md) describe the 3 October engineering checkpoint. That tooling is included in deployed `824019c`; owner start approval and actual pilot completion remain separate gates. Custody/recoverability, failure/recovery acknowledgement, Mac stale-run coverage, second operator, cohort/dates/support, urgent contact and real offered-device qualification remain open.
 
 ## At a glance
 
@@ -26,18 +26,18 @@ The [local readiness report](docs/PILOT_READINESS.md), [audit](docs/PILOT_AUDIT_
 | --- | --- |
 | Website and shared app | **Live public technical beta** at https://vergecommon.com — accounts, private co-ops, invitations, discussion and conversation actions, events, parcels/boundaries, evidence, governance records, operator report queue, hosted MCP. Free to use. |
 | Hosting | One dedicated DigitalOcean droplet (`601953476`), Docker container behind Caddy, SQLite + private evidence files. Separate from Viridis Conservation. |
-| Source of truth | Production runs **v0.10.0**, exact commit `824019ce50d1ab0974369118d00493d78d9058ab` ([PR #41](https://github.com/jdhart81/verge-common/pull/41)), with woodland unset. Final-engine follow-up deployed 4 October 2026 at 23:11 UTC. |
-| Automated checks | Exact v0.10.0 candidate: **382/382 Node tests, TypeScript, lint and self-hosted build pass**; three private-copy self-hosted acceptance suites and seven empty-data woodland acceptance checks pass. Fresh pre/post-switch backups pass isolated restore; live rollback guard passes. |
+| Source of truth | Production runs **v0.10.0**, exact commit `824019ce50d1ab0974369118d00493d78d9058ab` ([PR #41](https://github.com/jdhart81/verge-common/pull/41)), with woodland unset. [Follow-up deployment and recovery receipt](docs/history/DEPLOYMENT_FOLLOWUP_2026-10-04.md). |
+| Automated checks | Exact v0.10.0 candidate: **382/382 Node tests, TypeScript, lint and self-hosted build pass**; private-copy self-hosted acceptance and empty-data woodland acceptance pass. Fresh pre/post-switch backups pass isolated restore; live rollback guard passes. Test-only Python/GnuPG were supplied in a disposable check container. |
 | Launch gate | `node scripts/launch-gate.mjs --expect-commit 824019ce50d1ab0974369118d00493d78d9058ab` against production: **25 pass, 0 fail, 9 manual, 0 skipped**. Manual operational and owner gates remain open. |
 | Real adoption | Unproven. At 30 Sep 01:38 UTC: 2 accounts including owner tests, no active co-op or evidence files. Apple/Google records and one new registration do not establish external adoption. |
 
-## Deployed release (v0.9.0)
+## Previous deployed release (v0.9.0)
 
 - Public activity/progress pages with social previews and QR codes; sign-in/join returns to the activity.
 - Actual attendance, independent completed-work review and explicit publication/withdrawal.
 - Evidence-backed recurring care and disturbance history, private notices and classified participation/repeat/shared-link contribution reports in **Care & participation**.
 - Optional browser reminders, off by default; actual device display remains unqualified.
-- `/healthz` reports version `0.9.0` and exact commit `6089e6a`.
+- At that release, `/healthz` reported version `0.9.0` and exact commit `6089e6a`; the current build identity is recorded above.
 - Preserves v0.8.1 production monitor, contrast fixes and shared-network request limits.
 
 - Security review fixes: see [docs/history/SECURITY_REVIEW_2026-09-27.md](docs/history/SECURITY_REVIEW_2026-09-27.md). Abuse limits for open sign-up, IPv6-aware rate limits, per-member and per-uploader caps, open-redirect fix, HSTS, no raw database errors.
