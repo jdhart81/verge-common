@@ -69,6 +69,7 @@ type Plan = {
   layersVersionId: string;
   check: Check;
   treatments?: Feature[];
+  erasureRedacted?: boolean;
   createdAt: number;
   canReview?: boolean;
   override?: Override;
@@ -420,6 +421,7 @@ export function WoodlandPanel({
             )}
             <CheckSummary check={p.check} />
             {steward &&
+              !p.erasureRedacted &&
               planCheckInput(state.woodlandLayers ?? [], p, reference) && (
                 <div className="actions">
                   <Button

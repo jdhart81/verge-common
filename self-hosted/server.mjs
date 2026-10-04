@@ -1,4 +1,5 @@
 import http from 'node:http';
+import { readFileSync } from 'node:fs';
 import { Readable } from 'node:stream';
 import { pathToFileURL } from 'node:url';
 import { resolve } from 'node:path';
@@ -61,6 +62,10 @@ export function userMessage(error) {
     error?.message ?? 'The service could not complete this request.',
   );
 }
+/** The release in package.json, reported by /healthz so it cannot drift from the source. */
+export const SERVICE_VERSION = JSON.parse(
+  readFileSync(new URL('../package.json', import.meta.url), 'utf8'),
+).version;
 export const UPLOAD_CONCURRENCY = 8;
 export const STATIC_ASSET_PATH =
   /^\/(?:_next\/static\/|icons\/|brand\/|fonts\/|favicon\.(?:svg|ico)$|manifest\.webmanifest$|sw\.js$)/;
@@ -253,7 +258,7 @@ export function createGateway({
         return json(maintenanceHealthy() ? 200 : 503, {
           status: maintenanceHealthy() ? 'ok' : 'attention',
           service: 'vergecommon',
-          version: '0.9.0',
+          version: SERVICE_VERSION,
           commit: buildCommit,
         });
       if (url.pathname === '/.well-known/mcp.json')

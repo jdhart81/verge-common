@@ -1,5 +1,20 @@
 # Release notes
 
+## v0.10.0 — woodland corridors and the old-growth spine (candidate, not deployed)
+
+Everything merged after v0.9.0, plus the spine integration. Woodland projects stay off unless the operator sets `VERGE_WOODLAND_DFM=1`.
+
+- **Woodland projects** ([PR #33](https://github.com/jdhart81/verge-common/pull/33), [PR #37](https://github.com/jdhart81/verge-common/pull/37)): corridor layers reviewed by a second steward; every treatment plan checked by the open-source DFM engine and blocked if it breaks a link between core areas, with a recorded override vote; drawing, import and local/server previews.
+- **The old-growth spine** (dfm-core 0.2.0, byte-identical to the published package; the corridor check is unchanged): optional stream and ridge/valley/saddle lines, spine settings with sources, **Draft spine corridors**, and four analyses run in a server worker thread: network robustness, the years ahead from consent and stand ages, climate routes, and the next woodlots whose consent would complete a link. Planned join years model the build-out without standing in for consent. Members other than stewards see only the woodlots they recorded. See [woodland projects](WOODLAND.md).
+- **Interoperability with Dendritic Forest Management:** the check input is the Landscape Package's canonical form, so a steward's **Download check inputs** reproduces a stored plan result and its checksum with the open-source engine; packages from the DFM workspace import with names kept. New public page [/woodland/](https://vergecommon.com/woodland/) links to dendriticforest.com, which links back to it.
+- **Agents:** read-only MCP tool `analyze_woodland_spine` beside `check_woodland_plan`.
+- **Privacy and recovery:** account erasure now covers woodland plans, layer notes and override reasons; the rollback guard refuses writers older than v0.10.0 once woodland records exist. Reviewers write their own review notes on layers and plans.
+- **Pilot readiness** ([PR #35](https://github.com/jdhart81/verge-common/pull/35)): fail-closed readiness report, recovery and operator rehearsal kit, missing-ledger and rollback guards, truthful event and urgent-contact copy.
+- **DFM site on this server** ([PR #34](https://github.com/jdhart81/verge-common/pull/34), [PR #38](https://github.com/jdhart81/verge-common/pull/38)): additive Caddy runbook for dendriticforest.com; footers link the woodland page.
+- `/healthz` reports the version from `package.json` (now 0.10.0). The launch gate also checks `/woodland/`.
+
+Validation before deployment: see the pull request. CI runs the woodland acceptance (`tests/woodland_acceptance.py`) inside the production image with the flag on.
+
 ## v0.9.0 — participation and continuing care (29 September 2026)
 
 - Individual public project, event and progress pages with social metadata, native share/copy fallback and QR codes. Shared-link source codes are explained at joining and retained privately; no tracking cookies or external analytics.

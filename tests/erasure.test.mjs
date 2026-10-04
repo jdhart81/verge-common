@@ -864,3 +864,57 @@ await test('deletion-ledger replay removes restored provider links and queues au
     1,
   );
 });
+
+await test('woodland erasure: own plans go, a plan others voted on keeps only its structure, layer notes and override reasons go', async () => {
+  const { spineCoop, reviewWatershedLayers, owner, reviewer, member } =
+    await import('./woodland-spine-fixture.mjs');
+  const { UNITS } = await import('./dfm-watershed-fixture.mjs');
+  const f = spineCoop({ consents: false, planned: false });
+  reviewWatershedLayers(f);
+  // The member's two plans: one blocked (cuts the main stem), one that passes.
+  const blocked = f.run(
+    'submit_treatment_plan',
+    { projectId: f.project, name: 'Member cut', period: '2028', treatments: [UNITS['cut-main']] },
+    member,
+  );
+  const quiet = f.run(
+    'submit_treatment_plan',
+    { projectId: f.project, name: 'Member thinning', period: '2027', treatments: [UNITS['unit-a']] },
+    member,
+  );
+  // The founding steward's plan, blocked, put to an override vote by the reviewer.
+  const stewardPlan = f.run(
+    'submit_treatment_plan',
+    { projectId: f.project, name: 'Steward cut', period: '2028', treatments: [UNITS['cut-main']] },
+    owner,
+  );
+  f.run('propose_plan_override', { id: blocked, reason: 'Member wants it', days: 14 }, owner);
+  f.run('vote_plan_override', { id: blocked, choice: 'oppose' }, reviewer);
+  f.run('propose_plan_override', { id: stewardPlan, reason: 'Reviewer text', days: 14 }, reviewer);
+  f.run('vote_plan_override', { id: stewardPlan, choice: 'approve' }, member);
+  const memberId = f.s.members.find((m) => m.userId === member.id).id;
+  const { state } = eraseWorkspaceState(f.s, member.id, now);
+  const plans = new Map(state.treatmentPlans.map((p) => [p.id, p]));
+  assert.ok(!plans.has(quiet), 'a plan nobody else voted on is removed');
+  const kept = plans.get(blocked);
+  assert.equal(kept.erasureRedacted, true);
+  assert.equal(kept.name, 'Deleted plan');
+  assert.deepEqual(kept.treatments, []);
+  assert.deepEqual(Object.keys(kept.check).sort(), ['engine', 'reasons', 'status', 'warnings']);
+  assert.equal(kept.override.votes.length, 1, 'the neighbor’s vote is unchanged');
+  assert.equal(kept.override.reason, 'Member wants it', 'the steward’s reason stays');
+  const other = plans.get(stewardPlan);
+  assert.equal(other.name, 'Steward cut');
+  assert.notEqual(other.override.votes[0].memberId, memberId, 'the erased vote is pseudonymous');
+  const values = (v) =>
+    v && typeof v === 'object' ? Object.values(v).flatMap(values) : [v];
+  assert.ok(!values(state).includes(member.id), 'no record names the erased account');
+  // A steward's erasure clears their layer notes and override reasons, never the shared map.
+  const steward = eraseWorkspaceState(f.s, reviewer.id, now).state;
+  assert.equal(steward.treatmentPlans.find((p) => p.id === stewardPlan).override.reason, '');
+  const ownerErased = eraseWorkspaceState(f.s, owner.id, now).state;
+  const layers = ownerErased.woodlandLayers.at(-1);
+  assert.equal(layers.notes, '');
+  assert.equal(layers.erasureRedacted, true);
+  assert.equal(layers.layers.streams.length, 12);
+});

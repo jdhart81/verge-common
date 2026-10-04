@@ -382,6 +382,41 @@ export function eraseWorkspaceState(
       : p,
   );
 
+  // Woodland projects. A member's treatment plan describes work on their land, so it goes
+  // with them; a plan other members voted on keeps only a pseudonymous structural record
+  // (status and vote) without its name, units or mapped result. Layer versions are shared
+  // co-op maps that other members' plans were checked against: they stay, without the
+  // author's notes. An override reason goes with the steward who wrote it.
+  s.treatmentPlans = rows(s, 'treatmentPlans')
+    .filter(
+      (p) =>
+        !authored(p, userId) ||
+        rows(p.override ?? {}, 'votes').some((v) => !memberIds.has(v.memberId)),
+    )
+    .map((p) => {
+      const plan = authored(p, userId)
+        ? {
+            ...pick(p, [...common, 'status', 'layersVersionId', 'override']),
+            name: 'Deleted plan',
+            period: '',
+            treatments: [],
+            check: {
+              status: p.check?.status,
+              engine: p.check?.engine,
+              reasons: [],
+              warnings: [],
+            },
+            erasureRedacted: true,
+          }
+        : p;
+      return plan.override?.createdBy === userId
+        ? { ...plan, override: { ...plan.override, reason: '' } }
+        : plan;
+    });
+  s.woodlandLayers = rows(s, 'woodlandLayers').map((v) =>
+    authored(v, userId) ? { ...v, notes: '', erasureRedacted: true } : v,
+  );
+
   let financialRedacted = false;
   const redactFinancial = (record, keys, extra = {}) => {
     financialRedacted = true;

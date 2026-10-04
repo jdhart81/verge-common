@@ -11,6 +11,7 @@
 - Charter proposals and member voting, exact allocations, independently reviewed external credit/payment records, and stewardship/treasury receipts with allocation reconciliation.
 - Automatic foreground browser refresh, independently actionable monitoring/financial review queues, and native discussion replies with protected exact retries.
 - Audit history, scoped exports, membership removal, and archival.
+- Woodland projects (behind `VERGE_WOODLAND_DFM`): corridor-checked treatment plans and the old-growth spine from [Dendritic Forest Management](https://dendriticforest.com/), built woodlot by woodlot as holders consent. Next: a first real woodlot with a consulting forester (the Unbroken Woods first season), then hosted imagery to keep the corridor layers current.
 
 The [19 September launch candidate](docs/history/LAUNCH_BUILD_2026-09-19.md) additionally implements same-tab invitation continuity, safe upload discard/expiry/retry, current setup indicators, an independent operator report queue with private receipts, event editing/calendar revisions, pending-work notices, a private steward parcel overview, public directory search with stable pagination, and native calendar-date/reporting/search improvements. Candidate implementation is not a deployment or Apple distribution receipt. No real partner adoption or verified environmental impact is claimed.
 

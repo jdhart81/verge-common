@@ -20,7 +20,7 @@ export default function PrivacyPage() {
       intro="Understand what your co-op shares, what stays private, and what happens when you leave. VergeCommon is operated by Viridis LLC."
     >
       <p>
-        Updated September 29, 2026. This page summarizes the hosted public beta.
+        Updated October 4, 2026. This page summarizes the hosted public beta.
         The{' '}
         <a href={documentBranch + '/PRIVACY.md'}>
           full privacy and visibility policy
@@ -187,6 +187,15 @@ export default function PrivacyPage() {
           Space. Member identities, land references and consent documents are
           not sent. Revoking permission stops future searches for that boundary
           version but cannot erase previous requests to a provider.
+        </p>
+        <p>
+          Woodland projects, where enabled, keep corridor layers and treatment
+          plans visible to active members. Old-growth spine analyses run on the
+          co-op server and are not stored. Other members see the woodlots they
+          recorded and counts, never another member’s woodlot, boundary or
+          planned join year; stewards see all. Account deletion removes your
+          treatment plans; a plan others voted on keeps only its status and
+          pseudonymous votes.
         </p>
         <p>
           The local planner keeps its plan in browser storage. The hypothetical
