@@ -2,6 +2,7 @@ import { BrandLogo } from '@/components/brand-logo';
 import Link from 'next/link';
 import { ArrowUpRight } from 'lucide-react';
 import type { ReactNode } from 'react';
+import { DFM_SITE_URL } from '@/lib/dfm-site.mjs';
 import './information-page.css';
 
 export const sourceBranch = 'https://github.com/jdhart81/verge-common';
@@ -53,6 +54,10 @@ export function InformationPage({
           <Link href="/terms/">Terms</Link>
           <Link href="/support/">Get help</Link>
           <Link href="/support-project/">Support the project</Link>
+          <a href={DFM_SITE_URL}>
+            Woodland corridors (DFM){' '}
+            <ArrowUpRight size={14} aria-hidden="true" />
+          </a>
           <a href={sourceBranch}>
             Source <ArrowUpRight size={14} aria-hidden="true" />
           </a>

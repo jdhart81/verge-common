@@ -10,6 +10,7 @@ import {
 } from './woodland-map-editor';
 import { consentParcels } from '@/lib/woodland-input.mjs';
 import { emptyLayers } from '@/lib/woodland-editor.mjs';
+import { DFM_SITE_URL } from '@/lib/dfm-site.mjs';
 import { Textarea } from '@/components/ui/textarea';
 import { ControlLabel } from '@/components/ui/label';
 import {
@@ -162,6 +163,10 @@ export function WoodlandPanel({
           Create a project with the type “Woodland (DFM corridors)” to plan
           retained corridors and check harvest plans.
         </p>
+        <p className="woodland-credit">
+          Corridor check by{' '}
+          <a href={DFM_SITE_URL}>Dendritic Forest Management</a>, open source.
+        </p>
       </section>
     );
   const versions = (state.woodlandLayers ?? []).filter(
@@ -189,6 +194,10 @@ export function WoodlandPanel({
         areas is blocked; members can override it only by a recorded vote. The
         check is structural: it does not establish species movement, genetics or
         old-growth condition.
+      </p>
+      <p className="woodland-credit">
+        Corridor check by <a href={DFM_SITE_URL}>Dendritic Forest Management</a>
+        , open source.
       </p>
       <ControlLabel htmlFor={ids.project}>Woodland project</ControlLabel>
       <NativeSelect
