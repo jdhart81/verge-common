@@ -67,6 +67,8 @@ Structural connectivity at a minimum width: whether core areas stay linked by re
 
 The corridor check's input is the Landscape Package's canonical form: every package layer is present (`boundary` is empty, because co-op parcels stand in for it), spine layers only when they hold features, and treatment units rounded as stored. Checks stored from v0.10.0 on say so (`check.inputForm: "landscape-package-1.0"`). For those, a steward's **Download check inputs** on a plan gives the exact package the plan was checked against, so the open-source engine reproduces its result and input checksum (`checkConnectivity(fromLandscapePackage(pkg))`) while the co-op's woodlot consents are unchanged. Earlier checks used an input without the empty `boundary` layer, so they are not offered; submit such a plan again to check it in the new form.
 
+The contract runs both ways. dfm-core's own tests read a package downloaded from a VergeCommon plan (written by `scripts/dfm-contract-fixture.mjs`) and must reproduce its stored result and checksum, so a change in the engine cannot silently break plans stored here.
+
 Packages from the DFM mapping workspace or other tools import into the editor: non-UUID IDs become UUIDs and the original ID becomes the feature's name when it has none; spine lines keep their link to the corridors drafted from them; the planning `boundary` layer is not kept. `tests/woodland-interop.test.mjs` checks a package exported by the workspace: the same status, lost links and responsible units by name, and areas within 0.01% (records are stored at 1e-7 degrees, about 1 cm).
 
 ## Erasure and rollback
