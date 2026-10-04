@@ -50,26 +50,56 @@ sudo docker exec vergecommon-web wget -qO- http://dendriticforest-site:8080/heal
 
 The container publishes no host port. Only Caddy reaches it over the private network.
 
-## 3. Update the Caddyfile and restart the proxy
+## 3. Add the DFM blocks to the live Caddyfile and restart the proxy
 
-The release Caddyfile in `self-hosted/Caddyfile` contains the three blocks above. Find the bind-mounted file on the host, keep a copy, validate, then replace it:
+Production host configuration is preserved across VergeCommon releases, so the live Caddyfile may differ from `self-hosted/Caddyfile` in the repository. **Do not replace the live file with the repository copy.** Append only the two DFM blocks to the file that is running, validate, then restart.
 
 ```sh
+# The bind-mounted Caddyfile on the host
 sudo docker inspect vergecommon-web --format '{{range .Mounts}}{{.Source}} -> {{.Destination}}{{"\n"}}{{end}}'
 CADDYFILE=/path/from/the/line/ending/in/etc/caddy/Caddyfile
-sudo cp "$CADDYFILE" "/opt/vergecommon/releases/$REL/Caddyfile.before"
-sudo docker run --rm -v "$PWD/Caddyfile.new:/etc/caddy/Caddyfile:ro" \
-  "$(sudo docker inspect vergecommon-web --format '{{.Config.Image}}')" caddy validate --config /etc/caddy/Caddyfile
+CADDY_IMAGE="$(sudo docker inspect vergecommon-web --format '{{.Config.Image}}')"
+cd "/opt/vergecommon/releases/$REL"
+sudo cp "$CADDYFILE" Caddyfile.before
+sha256sum Caddyfile.before
+
+# Stop if the live file already names the DFM site (a previous attempt); review it by hand instead.
+! grep -q dendriticforest Caddyfile.before
+
+sudo cp Caddyfile.before Caddyfile.new
+sudo tee -a Caddyfile.new >/dev/null <<'CADDY'
+
+# Dendritic Forest Management site (jdhart81/hdfm-framework apps/site); see verge-common docs/DFM_SITE.md.
+www.dendriticforest.com {
+    redir https://dendriticforest.com{uri} permanent
+}
+dendriticforest.com {
+    encode zstd gzip
+    header {
+        Strict-Transport-Security "max-age=31536000"
+        X-Frame-Options DENY
+        -Server
+    }
+    reverse_proxy dendriticforest-site:8080
+}
+CADDY
+
+diff -u Caddyfile.before Caddyfile.new    # must show only the added blocks
+sudo docker run --rm -v "$PWD/Caddyfile.new:/etc/caddy/Caddyfile:ro" "$CADDY_IMAGE" \
+  caddy validate --config /etc/caddy/Caddyfile --adapter caddyfile
+
+# cp (not mv) keeps the inode, so a single-file bind mount sees the new contents
 sudo cp Caddyfile.new "$CADDYFILE"
+sudo docker exec vergecommon-web cat /etc/caddy/Caddyfile | sha256sum   # equals sha256sum Caddyfile.new
 sudo docker restart vergecommon-web   # admin API is off, so a restart loads the file
 ```
 
-`Caddyfile.new` is the reviewed `self-hosted/Caddyfile` from the VergeCommon release being deployed. Do not hand-edit the live file.
+The restart interrupts vergecommon.com for a few seconds. If the proxy does not come back healthy within a minute, restore `Caddyfile.before` (see Rollback) before anything else.
 
 ## 4. Verify
 
 ```sh
-curl -fsS https://vergecommon.com/healthz                     # VergeCommon first
+curl -fsS https://vergecommon.com/healthz                     # VergeCommon first: must still pass
 curl -sSI https://dendriticforest.com/ | head -n 12           # 200, HSTS, CSP
 curl -sSI https://www.dendriticforest.com/ | grep -i location # -> https://dendriticforest.com/
 curl -s -o /dev/null -w '%{http_code}\n' https://dendriticforest.com/missing   # 404
