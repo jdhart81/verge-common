@@ -14,7 +14,7 @@
 
 [PR #41](https://github.com/jdhart81/verge-common/pull/41) is merged and deployed: the vendored engine SHA-256 is `dd5d1f41a1cb24ff49cfeb851ab0eaa13df2fa311ffb2fd5a4597046069d16f9`. The final engine includes the spine network soundness fix. Woodland activation remains an owner decision. dendriticforest.com serves exact hdfm-framework source `e27dbe4e4e24d0d6288333e74623b354cba0763e`, including merged [#45](https://github.com/jdhart81/hdfm-framework/pull/45): its homepage and Unbroken Woods links reach `/woodland/` and `#first-woodlot`, while the spine and prairie sections remain present.
 
-Receipt: [follow-up deployment 4 October 2026](docs/history/DEPLOYMENT_FOLLOWUP_2026-10-04.md). The [initial deployment](docs/history/DEPLOYMENT_V0100_2026-10-04.md) remains an immutable historical record. The annotated `v0.10.0` tag on `824019c` remains an owner follow-up; its command is in the new receipt. See also the [release notes](docs/RELEASE_NOTES.md) and [woodland projects](docs/WOODLAND.md).
+Receipt: [follow-up deployment 4 October 2026](docs/history/DEPLOYMENT_FOLLOWUP_2026-10-04.md). The [initial deployment](docs/history/DEPLOYMENT_V0100_2026-10-04.md) remains an immutable historical record. The annotated [`v0.10.0` tag](https://github.com/jdhart81/verge-common/releases/tag/v0.10.0) is published on exact `824019ce50d1ab0974369118d00493d78d9058ab`; tag object `1fee3843d3f653d43a5e8b06d48a0b5100a3988a`. The receipt records the tag as pending at its deployment checkpoint; this status records its later completion. See also the [release notes](docs/RELEASE_NOTES.md) and [woodland projects](docs/WOODLAND.md).
 
 ## Pilot-readiness tooling — deployed; human qualification pending
 
