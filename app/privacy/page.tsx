@@ -191,11 +191,14 @@ export default function PrivacyPage() {
         <p>
           Woodland projects, where enabled, keep corridor layers and treatment
           plans visible to active members. Old-growth spine analyses run on the
-          co-op server and are not stored. Other members see the woodlots they
-          recorded and counts, never another member’s woodlot, boundary or
-          planned join year; stewards see all. Account deletion removes your
-          treatment plans; a plan others voted on keeps only its status and
-          pseudonymous votes.
+          co-op server and are not stored. Stewards see every woodlot in them.
+          Other members see the woodlots they recorded and counts, and the
+          build-out toward the next woodlots only as a co-op total; their
+          projections use only planned join years they recorded. They never
+          see another member’s woodlot, boundary, planned join year or place in
+          the build-out order. Account deletion removes your treatment plans; a
+          plan another member reviewed or voted on keeps only its status, the
+          review decision and pseudonymous votes.
         </p>
         <p>
           The local planner keeps its plan in browser storage. The hypothetical

@@ -407,18 +407,20 @@ await test('WS8 + engine parity: co-op analyses reproduce the DFM watershed resu
     climate.cores.map((c) => [c.id, c.status]),
     climateRoutes(fixture).cores.map((c) => [c.id, c.status]),
   );
-  // WS8: the member who recorded woodlots 4 and 5 sees only those, plus counts.
+  // WS8: any other member gets the build-out total only. A per-woodlot row would reveal where
+  // neighbours have consented (its place in the order and the links it completes).
   const seen = spineResultForViewer('frontier', frontier, {
     steward: false,
     ownParcelIds: ['woodlot-4', 'woodlot-5'],
+    parcelIds: input.parcels.map((p) => p.properties.dfm_id),
   });
-  assert.deepEqual(
-    seen.frontier.map((e) => e.parcel),
-    ['woodlot-4', 'woodlot-5'],
-  );
+  assert.deepEqual(seen.frontier, []);
+  assert.deepEqual(seen.laterParcels, []);
+  assert.equal(seen.frontierForStewards, true);
   assert.deepEqual(seen.committed.parcels, []);
   assert.equal(seen.committed.parcelCount, 3);
-  assert.deepEqual(seen.laterParcels, []);
+  assert.equal(seen.committed.spineM2, frontier.committed.spineM2);
+  assert.equal(seen.committed.share, frontier.committed.share);
   const view = spineResultForViewer('outlook', outlook, {
     steward: false,
     ownParcelIds: ['woodlot-4'],
@@ -442,17 +444,61 @@ await test('WS8 + engine parity: co-op analyses reproduce the DFM watershed resu
 await test('WS8 messages naming another member’s woodlot are reworded for non-stewards', () => {
   const mine = '11111111-1111-4111-8111-111111111111';
   const theirs = '22222222-2222-4222-8222-222222222222';
+  const core = '33333333-3333-4333-8333-333333333333';
   const result = {
     status: 'incomplete',
-    reasons: [`Parcel ${theirs} consent_year must be a year.`],
+    reasons: [
+      `Parcel ${theirs} consent_year must be a year.`,
+      `Core ${core} has no width source.`,
+    ],
     warnings: [`Parcel ${mine} already has covering consent.`],
   };
   const seen = spineResultForViewer('outlook', result, {
     steward: false,
     ownParcelIds: [mine],
+    parcelIds: [mine, theirs],
   });
+  // Only other members' woodlot ids are reworded; core, line and unit ids every member already
+  // sees in the reviewed layers are left alone, so the message stays actionable.
   assert.deepEqual(seen.reasons, [
     'Parcel another woodlot consent_year must be a year.',
+    `Core ${core} has no width source.`,
   ]);
   assert.deepEqual(seen.warnings, result.warnings);
+  assert.equal(
+    spineResultForViewer('outlook', result, { steward: true }),
+    result,
+  );
+});
+
+await test('WS8 a member’s projection uses only the planned join years of woodlots they recorded', () => {
+  const f = spineCoop();
+  reviewWatershedLayers(f);
+  const planned = (viewer) =>
+    Object.fromEntries(
+      spineAnalysisInput(f.s, f.project, { now: NOW, viewer })
+        .input.parcels.filter((p) => p.properties.planned_year)
+        .map((p) => [p.properties.dfm_id, p.properties.planned_year]),
+    );
+  const all = {
+    'woodlot-4': 2030,
+    'woodlot-5': 2032,
+    'woodlot-7': 2040,
+    'woodlot-8': 2045,
+  };
+  assert.deepEqual(planned(null), all, 'server-side callers see every year');
+  assert.deepEqual(planned({ userId: reviewer.id, steward: true }), all);
+  // The member recorded woodlots 4 and 5; years on woodlots 7 and 8 are someone else's.
+  assert.deepEqual(planned({ userId: member.id, steward: false }), {
+    'woodlot-4': 2030,
+    'woodlot-5': 2032,
+  });
+  // Consent years are records every analysis uses alike: they are not the viewer's to filter.
+  const consentYears = (viewer) =>
+    spineAnalysisInput(f.s, f.project, { now: NOW, viewer })
+      .input.parcels.map((p) => p.properties.consent_year ?? null);
+  assert.deepEqual(
+    consentYears({ userId: member.id, steward: false }),
+    consentYears(null),
+  );
 });

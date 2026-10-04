@@ -2,7 +2,8 @@
 
 Synthetic accounts only. Exercises the woodland page, spine layers with independent review,
 woodlot consent, a planned join year, all four spine analyses in the server's analysis worker,
-member privacy, and cleanup (archive and account closure). Local targets by default; a
+a plan preview and a submitted plan checked there too, member privacy, and cleanup (archive and
+account closure). Local targets by default; a
 specifically authorized production check needs VERGE_ALLOW_PRODUCTION_FIXTURES=1.
 """
 import json, os, re, uuid, urllib.request, urllib.error, http.cookiejar, pathlib, time
@@ -93,15 +94,43 @@ outlook = results['outlook']['result']
 assert any(parcels['Woodlot B'] in m['committedParcels'] for m in outlook['milestones']), 'the planned year counts'
 assert [c_['status'] for c_ in results['climate']['result']['cores']]
 checks.append('network, outlook, climate and frontier analyses in the analysis worker')
-# Member privacy: C sees only C's woodlots; outsiders and unknown kinds are refused.
+# Plan checks run in the analysis worker too: a member's preview (with the co-op's private
+# consents, without parcel geometry) and their submitted plan agree on the result and checksum.
+def unit(dfm_id, x0, y0, x1, y1, intensity):
+    ring = [[x0, y0], [x1, y0], [x1, y1], [x0, y1], [x0, y0]]
+    return {'type': 'Feature', 'geometry': {'type': 'Polygon', 'coordinates': [ring]}, 'properties': {'dfm_id': dfm_id, 'intensity': intensity, 'name': 'Synthetic ' + dfm_id}}
+cut = unit('cut-main-brook', 0.0075, 0.0039, 0.0080, 0.0051, 'clearcut')
+away = unit('thin-northeast', 0.0095, 0.0070, 0.0105, 0.0080, 'shelterwood')
+def preview(client, units):
+    code, body = client.call('/api/woodland-preview', {'id': coop, 'projectId': project, 'treatments': units})
+    assert code == 200, (code, body)
+    return body['check']
+blocked_preview, quiet_preview = preview(c, [cut]), preview(c, [away])
+assert blocked_preview['status'] == 'fail' and blocked_preview['lostLinks'], blocked_preview
+assert quiet_preview['status'] == 'pass', quiet_preview
+for check in (blocked_preview, quiet_preview):
+    text = json.dumps(check)
+    assert 'coordinates' not in text and 'Woodlot' not in text and parcels['Woodlot A'] not in text, text[:300]
+s = ok(c, 'submit_treatment_plan', {'projectId': project, 'name': 'Synthetic cut plan', 'period': str(year + 1), 'treatments': [cut]})
+plan = next(p for p in s['state']['treatmentPlans'] if p['name'] == 'Synthetic cut plan')
+assert plan['status'] == 'blocked', plan['status']
+assert plan['check']['inputChecksum'] == blocked_preview['inputChecksum'], (plan['check']['inputChecksum'], blocked_preview['inputChecksum'])
+assert plan['check']['inputForm'] == 'landscape-package-1.0', plan['check'].get('inputForm')
+s = ok(c, 'submit_treatment_plan', {'projectId': project, 'name': 'Synthetic thinning plan', 'period': str(year + 1), 'treatments': [away]})
+plan = next(p for p in s['state']['treatmentPlans'] if p['name'] == 'Synthetic thinning plan')
+assert plan['status'] == 'submitted' and plan['check']['inputChecksum'] == quiet_preview['inputChecksum'], plan['check']
+checks.append('plan previews and submitted plans checked in the analysis worker, with matching checksums')
+# Member privacy: C sees only C's woodlots and the build-out total; outsiders and unknown kinds
+# are refused.
 mine = analyze(c, 'frontier')
 assert mine['viewer'] == 'member'
-assert [e['parcel'] for e in mine['result']['frontier']] == [parcels['Woodlot B']]
+assert mine['result']['frontier'] == [] and mine['result']['laterParcels'] == [], mine['result']
+assert mine['result']['frontierForStewards'] is True
 assert mine['result']['committed']['parcels'] == [] and mine['result']['committed']['parcelCount'] == 1
 assert parcels['Woodlot A'] not in json.dumps(analyze(c, 'outlook'))
 assert analyze(d, 'frontier', 403)
 assert analyze(a, 'everything', 400)
-checks.append('member sees only their woodlots; outsiders and unknown analyses refused')
+checks.append('member sees only their woodlots and the build-out total; outsiders and unknown analyses refused')
 # Cleanup: archive the fixture, then close every synthetic account.
 assert command(a, 'archive', {})[0] == 200
 for client in [a, b, c, d]:

@@ -30,7 +30,7 @@ The spine is the dendritic network of retained forest along a landscape's stream
    - **Test the network** (`spineNetwork`): which core pairs the spine links, its loops, and where one disturbance up to the stated width would still cut a link (single points of failure, verified or not at nominal width). Robustness is reported only from a completed search, never assumed.
    - **Project the years ahead** (`projectSpine`): at each milestone, links through committed forest and through forest at old-growth age. A woodlot counts from the UTC year its current consent was reviewed; stand ages recorded as of the stand-age year (default: the year the layers were saved) are rolled forward to the current year.
    - **Find climate routes** (`climateRoutes`): for each core, the coolest core it can reach through links that hold, flagged when short of the warming target or unknown.
-   - **Find the next woodlots** (`buildOutFrontier`): woodlots without current consent whose spine touches the committed spine, the links each would complete if it alone joined, and its direction. To commit one, record its holder's pooling consent and have another steward review it.
+   - **Find the next woodlots** (`buildOutFrontier`): woodlots without current consent whose spine touches the committed spine, the links each would complete if it alone joined, and its direction. To commit one, record its holder's pooling consent and have another steward review it. Other members see this as **See the committed spine**: the co-op total only (see Privacy).
    Optionally apply a treatment plan to see its effect.
 4. **Plan the build-out.** A woodlot without consent can carry a **planned join year** (`plan_parcel_join`), set by whoever recorded it or a steward. It is a projection assumption only: it never counts as consent, and only a year after the current one is used.
 
@@ -38,11 +38,25 @@ Analyses are structural. They do not establish species movement, genetic viabili
 
 ### Privacy (WS8)
 
-Analyses need active membership, the woodland flag and a same-origin request. Network and climate results hold only reviewed-layer data, which every member already sees. Outlook and next-woodlot results name woodlots: stewards see all of them; any other member sees the woodlots they recorded, plus counts, and messages naming anyone else's woodlot are reworded. No parcel geometry is ever part of a result. Planned join years live on the parcel record, which only its recorder and stewards see.
+Analyses need active membership, the woodland flag and a same-origin request. Network and climate results hold only reviewed-layer data, which every member already sees. Stewards see every woodlot in outlook and next-woodlot results. Any other member:
+
+- gets an outlook projected with planned join years only for woodlots they recorded (someone else's planned year is an assumption on a record they cannot see, and a changed count would reveal it), naming only their woodlots, plus counts;
+- gets the build-out as the co-op total (share of the spine committed, woodlot count, links held), without per-woodlot rows: a woodlot's place on that list, and the links it would complete, would show where neighbours have or have not consented;
+- sees messages naming another member's woodlot reworded as "another woodlot"; core, line and unit names, which every member sees in the reviewed layers, are left alone.
+
+No parcel geometry is ever part of a result. Planned join years live on the parcel record, which only its recorder and stewards see.
 
 ### Analysis worker (WS7)
 
-The engine's network, projection, climate and build-out functions take seconds on a watershed and block the thread they run on. The self-hosted gateway therefore registers a worker-thread runner (`self-hosted/woodland-analysis.mjs`) when `VERGE_WOODLAND_DFM=1`: one analysis at a time, two queued at most (a full queue answers 503 at once), and a deadline of `VERGE_WOODLAND_ANALYSIS_TIMEOUT_MS` (default 25,000 ms) from the moment a request is queued, so every answer arrives before the gateway's 30-second proxy limit. An analysis that reaches its deadline answers 504 and its worker is replaced. Results are cached in memory by exact input (32 entries), then reduced for each viewer. Each account may run 12 analyses per 10 minutes. `vinext dev` runs analyses inline; a production build without the runner refuses them.
+The engine's network, projection, climate and build-out functions, and on a watershed the corridor check itself, take seconds and block the thread they run on. The self-hosted gateway therefore registers a worker-thread runner (`self-hosted/woodland-analysis.mjs`) when `VERGE_WOODLAND_DFM=1`, and all engine work on the server runs there: spine analyses, plan previews (browser and MCP), and the check on a submitted plan, which runs before the command and is used only if its input checksum equals the input the command builds (otherwise the command checks again itself).
+
+- One job at a time, two queued at most: a full queue answers 503 at once.
+- One job per account at a time: a second concurrent request from the same account answers 429.
+- A deadline of `VERGE_WOODLAND_ANALYSIS_TIMEOUT_MS` (default and maximum 25,000 ms) from the moment a request is queued, so every answer arrives before the gateway's 30-second proxy limit. A job that reaches its deadline answers 504 and its worker is replaced; a worker that cannot start answers 503.
+- Analysis results are cached in memory by exact input (32 entries), then reduced for each viewer.
+- Each account may run 12 analyses and 30 plan previews per 10 minutes, shared between the browser and MCP agents.
+
+`vinext dev` runs engine work inline; a production build without the runner refuses it (503).
 
 ## What the check establishes
 
@@ -50,19 +64,19 @@ Structural connectivity at a minimum width: whether core areas stay linked by re
 
 ## Exchanging packages and reproducing results (WS12)
 
-The corridor check's input is the Landscape Package's canonical form: every package layer is present (`boundary` is empty, because co-op parcels stand in for it), spine layers only when they hold features, and treatment units rounded as stored. A steward's **Download check inputs** on a plan gives the exact package the plan was checked against, so the open-source engine reproduces its result and input checksum (`checkConnectivity(fromLandscapePackage(pkg))`) while the co-op's woodlot consents are unchanged.
+The corridor check's input is the Landscape Package's canonical form: every package layer is present (`boundary` is empty, because co-op parcels stand in for it), spine layers only when they hold features, and treatment units rounded as stored. Checks stored from v0.10.0 on say so (`check.inputForm: "landscape-package-1.0"`). For those, a steward's **Download check inputs** on a plan gives the exact package the plan was checked against, so the open-source engine reproduces its result and input checksum (`checkConnectivity(fromLandscapePackage(pkg))`) while the co-op's woodlot consents are unchanged. Earlier checks used an input without the empty `boundary` layer, so they are not offered; submit such a plan again to check it in the new form.
 
 Packages from the DFM mapping workspace or other tools import into the editor: non-UUID IDs become UUIDs and the original ID becomes the feature's name when it has none; spine lines keep their link to the corridors drafted from them; the planning `boundary` layer is not kept. `tests/woodland-interop.test.mjs` checks a package exported by the workspace: the same status, lost links and responsible units by name, and areas within 0.01% (records are stored at 1e-7 degrees, about 1 cm).
 
 ## Erasure and rollback
 
-When a member deletes their account, their treatment plans go with them, because each describes work on their land; a plan other members voted on keeps only a pseudonymous structural record (status and vote), without its name, units or mapped result. Layer versions are shared co-op maps and stay, without the author's notes; an override reason goes with the steward who wrote it. Writers older than v0.10.0 do not apply these rules: `self-hosted/rollback-check.mjs` refuses a rollback once woodland records or planned join years exist.
+When a member deletes their account, their treatment plans go with them, because each describes work on their land. A plan another member acted on (a steward reviewed it, or members voted on its override) keeps only a pseudonymous structural record of that decision (status, review and vote), without its name, units, review note or mapped result. Such a record is inert (E1): it cannot be reviewed, voted on, put to an override or applied in an analysis, and an override vote still open on it is closed as withdrawn. Layer versions are shared co-op maps and stay, without the author's notes; an override reason goes with the steward who wrote it. Writers older than v0.10.0 do not apply these rules: `self-hosted/rollback-check.mjs` refuses a rollback once woodland records or planned join years exist.
 
 ## Limits
 
 - Layers: 90 KB per version after rounding, 400 features per layer, 5 versions with geometry per project (older versions keep their record but drop their geometry). Drafted spine corridors and spine lines may have up to 1,000 vertices; drawn features keep the 200-vertex limit. The DFM watershed on dendriticforest.com (2.8 × 2.6 km, 14 lines, 4 cores) uses about 79 KB.
 - Plans: 50 treatment units and 40 KB each; 40 plans per project.
-- The corridor check runs synchronously inside the command (typically well under a second for woodlot-scale layers). Spine analyses run in the analysis worker; on the watershed above each takes 1–6 seconds. Analyze one watershed at a time.
+- Engine work runs in the analysis worker (WS7). For woodlot-scale layers the corridor check takes well under a second. On the watershed above, the check on drafted spine corridors takes about 2–6 seconds and each spine analysis 1–6 seconds, so plan previews and submissions there take seconds too. Analyze one watershed at a time; a landscape whose check cannot finish within the deadline cannot take plans until it is split.
 
 ## Drawing layers and treatment units
 

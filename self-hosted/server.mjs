@@ -36,6 +36,7 @@ import { woodlandEnabled } from '../lib/woodland-config.mjs';
 import {
   createWoodlandAnalysisPool,
   registerWoodlandAnalysis,
+  deadlineMs,
 } from './woodland-analysis.mjs';
 const safeReturn = (value) => {
   try {
@@ -163,9 +164,25 @@ export function createGateway({
     listWorkspaces: (p) => internal(p, '/api/workspaces'),
     executeCommand: (p, id, input) =>
       internal(p, '/api/workspaces', { id, ...input }),
-    // Spine analyses wait for the worker thread (up to its 25 s limit) inside the app.
-    analyzeWoodland: (p, id, input) =>
-      internal(p, '/api/woodland-analysis', { id, ...input }, 29000),
+    // Woodland engine work waits for the analysis worker (up to its 25 s deadline) inside the
+    // app. internal() skips the gateway's request limits, so agents get the same per-account
+    // budgets as the browser here.
+    analyzeWoodland: (p, id, input) => {
+      if (!auth.rateLimit(`analysis:${p.id}`, 12, 10 * 60000))
+        throw Object.assign(
+          new Error('You have run many landscape analyses. Wait a few minutes.'),
+          { status: 429 },
+        );
+      return internal(p, '/api/woodland-analysis', { id, ...input }, 29000);
+    },
+    previewWoodland: (p, id, input) => {
+      if (!auth.rateLimit(`preview:${p.id}`, 30, 10 * 60000))
+        throw Object.assign(
+          new Error('You have checked many woodland plans. Wait a few minutes.'),
+          { status: 429 },
+        );
+      return internal(p, '/api/woodland-preview', { id, ...input }, 29000);
+    },
     woodland: woodlandEnabled(),
   });
   const server = http.createServer(async (req, res) => {
@@ -611,7 +628,7 @@ export function createGateway({
           return json(429, {
             error: 'You are making changes very quickly. Wait a few minutes.',
           });
-        // Each spine analysis can hold the analysis worker for seconds.
+        // Each spine analysis or plan preview can hold the analysis worker for seconds.
         if (
           url.pathname === '/api/woodland-analysis' &&
           !auth.rateLimit(`analysis:${principal.id}`, 12, 10 * 60000)
@@ -619,6 +636,14 @@ export function createGateway({
           return json(429, {
             error:
               'You have run many landscape analyses. Wait a few minutes and try again.',
+          });
+        if (
+          url.pathname === '/api/woodland-preview' &&
+          !auth.rateLimit(`preview:${principal.id}`, 30, 10 * 60000)
+        )
+          return json(429, {
+            error:
+              'You have checked many woodland plans. Wait a few minutes and try again.',
           });
       }
       if (['/api/push', '/api/push/test'].includes(url.pathname)) {
@@ -786,8 +811,7 @@ export async function start() {
   const analysis = woodlandEnabled()
     ? registerWoodlandAnalysis(
         createWoodlandAnalysisPool({
-          timeoutMs:
-            Number(process.env.VERGE_WOODLAND_ANALYSIS_TIMEOUT_MS) || 25000,
+          timeoutMs: deadlineMs(process.env.VERGE_WOODLAND_ANALYSIS_TIMEOUT_MS),
         }),
       )
     : null;

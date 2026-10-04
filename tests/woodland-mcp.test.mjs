@@ -111,3 +111,48 @@ await test('analyze_woodland_spine is registered only with woodland and the anal
   );
   await client.close();
 });
+
+await test('hosted check_woodland_plan is the co-op preview: it passes the request through and reports busy answers', async () => {
+  const calls = [];
+  const principal = { id: 'owner', kind: 'token', scopes: ['mcp:read'] };
+  const server = createServer({
+    woodland: true,
+    privateAccess: {
+      principal,
+      previewWoodland: async (p, id, input) => {
+        calls.push([p.id, id, input]);
+        if (input.projectId === 'limited')
+          throw Object.assign(new Error('You have checked many woodland plans. Wait a few minutes.'), { status: 429 });
+        if (input.projectId === 'busy')
+          throw Object.assign(new Error('Landscape analysis is busy. Try again in a minute.'), { status: 503 });
+        if (input.projectId === 'broken')
+          throw Object.assign(new Error('SQLITE internal detail'), { status: 500 });
+        return { check: { status: 'pass', lostLinks: [], layersVersionId: 'v1' } };
+      },
+    },
+  });
+  const client = new Client({ name: 'test', version: '1' });
+  const [a, b] = InMemoryTransport.createLinkedPair();
+  await Promise.all([server.connect(a), client.connect(b)]);
+  const tool = (await client.listTools()).tools.find((t) => t.name === 'check_woodland_plan');
+  assert.equal(tool.annotations.readOnlyHint, true);
+  const r = await client.callTool({ name: 'check_woodland_plan', arguments: { id: coop, projectId: 'p1' } });
+  assert.deepEqual(r.structuredContent.data, { status: 'pass', lostLinks: [], layersVersionId: 'v1' });
+  const unit = F(rect(700, 300, 800, 800), { dfm_id: 'harvest-3' });
+  await client.callTool({ name: 'check_woodland_plan', arguments: { id: coop, projectId: 'p1', treatments: [unit] } });
+  assert.deepEqual(calls, [
+    ['owner', coop, { projectId: 'p1', treatments: [] }],
+    ['owner', coop, { projectId: 'p1', treatments: [unit] }],
+  ]);
+  for (const [projectId, message] of [
+    ['limited', /Wait a few minutes/],
+    ['busy', /busy/],
+    ['broken', /could not be completed/],
+  ]) {
+    const failed = await client.callTool({ name: 'check_woodland_plan', arguments: { id: coop, projectId } });
+    assert.equal(failed.isError, true);
+    assert.match(failed.content[0].text, message);
+    assert.doesNotMatch(failed.content[0].text, /SQLITE/);
+  }
+  await client.close();
+});

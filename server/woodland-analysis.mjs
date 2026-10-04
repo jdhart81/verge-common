@@ -1,9 +1,10 @@
-// Read-only spine analyses for woodland projects (POST /api/woodland-analysis).
+// Read-only spine analyses for woodland projects (POST /api/woodland-analysis), and the engine
+// runner shared with the corridor check on previews and submitted plans.
 //
-//   WS7 Analyses never run on the thread that answers requests in production: the self-hosted
-//       gateway registers a worker-thread runner (self-hosted/woodland-analysis.mjs) and this
-//       module hands each job to it. Without a runner, production refuses (503); development
-//       runs inline so `vinext dev` still works.
+//   WS7 Engine work never runs on the thread that answers requests in production: the
+//       self-hosted gateway registers a worker-thread runner (self-hosted/woodland-analysis.mjs)
+//       and this module hands each job to it, one per account at a time. Without a runner,
+//       production refuses (503); development runs inline so `vinext dev` still works.
 //   WS8 Membership and the woodland flag are checked before any project input is read, and the
 //       result is reduced to what the viewer may see (lib/woodland-spine.mjs).
 //   WS10 Results are cached by analysis and exact input, for every viewer alike; the per-viewer
@@ -34,8 +35,37 @@ async function inputKey(kind, input) {
   ).join('');
 }
 async function inline(kind, input) {
-  const { runSpineAnalysis } = await import('../lib/woodland-spine-run.mjs');
-  return runSpineAnalysis(kind, input);
+  const { runWoodlandJob } = await import('../lib/woodland-spine-run.mjs');
+  return runWoodlandJob(kind, input);
+}
+const isProduction = () => globalThis.process?.env?.NODE_ENV === 'production';
+
+/**
+ * Run one engine job ('check' or a spine analysis) off the request thread (WS7).
+ * Runner errors keep their 4xx/503/504 status as DomainErrors; anything else is rethrown.
+ * @param {string} kind
+ * @param {object} input
+ * @param {{runner?: {run: Function} | null, production?: boolean, key?: string | null}} [options]
+ */
+export async function runEngine(
+  kind,
+  input,
+  { runner = registeredRunner(), production = isProduction(), key = null } = {},
+) {
+  if (!runner && production)
+    throw new DomainError(
+      'Woodland analysis needs the self-hosted analysis worker.',
+      503,
+    );
+  try {
+    return runner
+      ? await runner.run(kind, input, { key })
+      : await inline(kind, input);
+  } catch (error) {
+    const status = Number.isInteger(error?.status) ? error.status : 500;
+    if (status >= 500 && status !== 503 && status !== 504) throw error;
+    throw new DomainError(error.message, status);
+  }
 }
 
 /**
@@ -49,7 +79,7 @@ export async function woodlandAnalysis(state, userId, data, options) {
     enabled,
     runner = registeredRunner(),
     now = Date.now(),
-    production = globalThis.process?.env?.NODE_ENV === 'production',
+    production = isProduction(),
   } = options;
   const viewer = membership(state, userId);
   if (!viewer)
@@ -68,11 +98,14 @@ export async function woodlandAnalysis(state, userId, data, options) {
     (typeof data.planId !== 'string' || data.planId.length > 100)
   )
     throw new DomainError('Choose a treatment plan.');
+  const steward = isSteward(state, userId);
   let prepared;
   try {
+    // WS8: another member's planned join years never enter a non-steward's projection.
     prepared = spineAnalysisInput(state, data.projectId, {
       now,
       planId: data.planId ?? null,
+      viewer: { userId, steward },
     });
   } catch (error) {
     throw new DomainError(error.message, error.status ?? 400);
@@ -81,25 +114,10 @@ export async function woodlandAnalysis(state, userId, data, options) {
   const key = await inputKey(kind, input);
   let result = cache.get(key);
   if (result) cache.delete(key);
-  else {
-    if (!runner && production)
-      throw new DomainError(
-        'Spine analysis needs the self-hosted analysis worker.',
-        503,
-      );
-    try {
-      result = runner
-        ? await runner.run(kind, input)
-        : await inline(kind, input);
-    } catch (error) {
-      const status = Number.isInteger(error?.status) ? error.status : 500;
-      if (status >= 500 && status !== 503 && status !== 504) throw error;
-      throw new DomainError(error.message, status);
-    }
-  }
+  else
+    result = await runEngine(kind, input, { runner, production, key: userId });
   cache.set(key, result);
   while (cache.size > CACHE_ENTRIES) cache.delete(cache.keys().next().value);
-  const steward = isSteward(state, userId);
   const ownParcelIds = (state.parcels ?? [])
     .filter((p) => p.createdBy === userId)
     .map((p) => p.id);
@@ -108,6 +126,10 @@ export async function woodlandAnalysis(state, userId, data, options) {
     projectId: data.projectId,
     ...context,
     viewer: steward ? 'steward' : 'member',
-    result: spineResultForViewer(kind, result, { steward, ownParcelIds }),
+    result: spineResultForViewer(kind, result, {
+      steward,
+      ownParcelIds,
+      parcelIds: input.parcels.map((p) => p.properties.dfm_id),
+    }),
   };
 }

@@ -15,6 +15,7 @@ import {
 import { runSpineAnalysis } from '../lib/woodland-spine-run.mjs';
 import {
   owner,
+  reviewer,
   member,
   outsider,
   NOW,
@@ -94,22 +95,30 @@ await test('WS10 results are cached by exact input and reduced per viewer after 
   const data = { projectId: coop.project, kind: 'frontier' };
   const options = { enabled: true, runner, now: NOW };
   const stewardView = await woodlandAnalysis(coop.s, owner.id, data, options);
-  const memberView = await woodlandAnalysis(coop.s, member.id, data, options);
+  // Another steward asks for the same analysis of the same input: served from the cache.
+  const secondSteward = await woodlandAnalysis(coop.s, reviewer.id, data, options);
   assert.deepEqual(runner.calls, ['frontier']);
+  assert.deepEqual(secondSteward.result, stewardView.result);
+  // The member's input leaves out planned years on woodlots others recorded (WS8), so it is a
+  // different input with its own cache entry; asking again is a hit.
+  const memberView = await woodlandAnalysis(coop.s, member.id, data, options);
+  await woodlandAnalysis(coop.s, member.id, data, options);
+  assert.deepEqual(runner.calls, ['frontier', 'frontier']);
   assert.equal(stewardView.viewer, 'steward');
   assert.equal(stewardView.result.frontier.length, 6);
   assert.equal(memberView.viewer, 'member');
-  assert.deepEqual(
-    memberView.result.frontier.map((e) => e.parcel),
-    ['woodlot-4', 'woodlot-5'],
-  );
+  // WS8: a member gets the build-out total only; per-woodlot rows stay with stewards.
+  assert.deepEqual(memberView.result.frontier, []);
+  assert.deepEqual(memberView.result.laterParcels, []);
+  assert.equal(memberView.result.frontierForStewards, true);
   assert.equal(memberView.result.committed.parcelCount, 1);
+  assert.equal(stewardView.result.frontierForStewards, undefined);
   // WS11: provenance travels with every result.
   for (const key of ['layersVersionId', 'analysisYear', 'ageShiftYears', 'ageAsOfYear'])
     assert.ok(key in memberView, key);
   // A different analysis year changes the input, so the cache misses.
   await woodlandAnalysis(coop.s, owner.id, data, { ...options, now: Date.UTC(2027, 0, 2) });
-  assert.deepEqual(runner.calls, ['frontier', 'frontier']);
+  assert.deepEqual(runner.calls, ['frontier', 'frontier', 'frontier']);
 });
 
 await test('WS7 runner errors keep their status; unexpected failures stay generic', async () => {
@@ -170,6 +179,72 @@ await test('WS7 a full queue answers 503 at once; the deadline includes waiting 
   } finally {
     await pool.close();
   }
+});
+
+await test('WS7 one job per account at a time: a second concurrent request from it answers 429', async () => {
+  const pool = createWoodlandAnalysisPool({ timeoutMs: 10000, maxWaiting: 2, workerUrl: testWorker });
+  try {
+    const first = pool.run('slow', { ms: 400 }, { key: 'alice' });
+    await assert.rejects(
+      pool.run('echo', { n: 1 }, { key: 'alice' }),
+      (e) => e.status === 429 && /still running/.test(e.message),
+    );
+    // Another account queues behind it; jobs without a key never conflict.
+    const other = pool.run('echo', { n: 2 }, { key: 'bob' });
+    const anonymous = pool.run('echo', { n: 3 });
+    assert.equal((await first).status, 'ok');
+    assert.deepEqual((await other).echo, { n: 2 });
+    assert.deepEqual((await anonymous).echo, { n: 3 });
+    // Once its job is done the account can run again.
+    assert.deepEqual((await pool.run('echo', { n: 4 }, { key: 'alice' })).echo, { n: 4 });
+    // A queued (not yet running) job holds its account's place too.
+    const running = pool.run('slow', { ms: 300 }, { key: 'bob' });
+    const queued = pool.run('echo', { n: 5 }, { key: 'carol' });
+    await assert.rejects(pool.run('echo', {}, { key: 'carol' }), (e) => e.status === 429);
+    await Promise.all([running, queued]);
+  } finally {
+    await pool.close();
+  }
+});
+
+await test('WS7 a worker that cannot start, or a job it cannot receive, answers 503 and the pool recovers', async () => {
+  // The Worker constructor throws (here: a path it refuses; in production: thread exhaustion).
+  const broken = createWoodlandAnalysisPool({ timeoutMs: 2000, workerUrl: 'not-a-module-path.mjs' });
+  try {
+    for (let i = 0; i < 2; i += 1)
+      await assert.rejects(
+        broken.run('echo', {}, { key: 'alice' }),
+        (e) => e.status === 503 && /could not start/.test(e.message),
+      );
+    assert.deepEqual(
+      { busy: broken.stats().busy, waiting: broken.stats().waiting, worker: broken.stats().worker },
+      { busy: false, waiting: 0, worker: false },
+      'a failed start leaves nothing behind',
+    );
+  } finally {
+    await broken.close();
+  }
+  const pool = createWoodlandAnalysisPool({ timeoutMs: 2000, workerUrl: testWorker });
+  try {
+    // An input that cannot be sent to the worker fails its own job only.
+    await assert.rejects(
+      pool.run('echo', { fn: () => 1 }),
+      (e) => e.status === 503,
+    );
+    assert.deepEqual((await pool.run('echo', { n: 1 })).echo, { n: 1 });
+  } finally {
+    await pool.close();
+  }
+});
+
+await test('WS7 job deadlines stay inside the gateway proxy limit', async () => {
+  const { deadlineMs, MAX_DEADLINE_MS } = await import('../self-hosted/woodland-analysis.mjs');
+  assert.equal(MAX_DEADLINE_MS, 25000);
+  assert.equal(deadlineMs(undefined), 25000);
+  assert.equal(deadlineMs('60000'), 25000, 'never past the 30 s proxy abort');
+  assert.equal(deadlineMs('10'), 1000);
+  assert.equal(deadlineMs('12000'), 12000);
+  assert.equal(deadlineMs('nonsense'), 25000);
 });
 
 await test('WS7 the real worker runs the engine off the main thread with the same result', async () => {

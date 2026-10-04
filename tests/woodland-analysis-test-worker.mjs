@@ -3,8 +3,8 @@ import { parentPort } from 'node:worker_threads';
 
 parentPort.on('message', ({ id, kind, input }) => {
   if (kind === 'crash') process.exit(3);
-  if (kind === 'hang') {
-    const until = Date.now() + 60000;
+  if (kind === 'hang' || kind === 'slow') {
+    const until = Date.now() + (kind === 'slow' ? input.ms : 60000);
     while (Date.now() < until);
   }
   if (kind === 'throw')

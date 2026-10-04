@@ -25,6 +25,7 @@ import {
   woodlandCheckInput,
   consentParcels,
   previewTreatmentCheck,
+  CHECK_INPUT_FORM,
 } from '../lib/woodland.mjs';
 import {
   setup,
@@ -352,7 +353,12 @@ await test('M1/M8 local preview equals server status, lostLinks and checksum on 
             : v,
       ),
     );
-    assert.equal(JSON.stringify(p.check), JSON.stringify(expected));
+    // WS2/WS12: checks from v0.10.0 on say which input form they used, so only those are
+    // offered for exact reproduction from a downloaded package.
+    assert.equal(
+      JSON.stringify(p.check),
+      JSON.stringify({ ...expected, inputForm: CHECK_INPUT_FORM }),
+    );
   }
 });
 await test('M8 shared input truncates properties exactly as the server and preserves parcel consent shape', () => {

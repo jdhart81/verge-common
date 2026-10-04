@@ -41,6 +41,8 @@ type Check = {
   lostLinks?: (Pair & { causes: string[] })[];
   pinchedLinks?: Pair[];
   consent?: { committedM2: number; proposedM2: number };
+  /** Set on checks made with the Landscape Package's canonical input (v0.10.0 on). */
+  inputForm?: string;
 };
 type LayersVersion = {
   id: string;
@@ -410,18 +412,27 @@ export function WoodlandPanel({
         return (
           <article key={p.id} className="network-card mt-4">
             <h4>
-              {p.name} · {p.period} ·{' '}
+              {p.name}
+              {p.period ? ` · ${p.period}` : ''} ·{' '}
               <span className={`status status-${p.status}`}>{p.status}</span>
             </h4>
-            {p.layersVersionId !== current?.id && p.status === 'submitted' && (
-              <p className="small">
-                Layers changed since this check. Submit the plan again before
-                review.
+            {p.erasureRedacted && (
+              <p className="small" data-plan-redacted>
+                Removed when its author deleted their account. Only the record
+                of the co-op’s decision remains; it can no longer be reviewed or
+                voted on.
               </p>
             )}
+            {!p.erasureRedacted &&
+              p.layersVersionId !== current?.id &&
+              p.status === 'submitted' && (
+                <p className="small">
+                  Layers changed since this check. Submit the plan again
+                  before review.
+                </p>
+              )}
             <CheckSummary check={p.check} />
             {steward &&
-              !p.erasureRedacted &&
               planCheckInput(state.woodlandLayers ?? [], p, reference) && (
                 <div className="actions">
                   <Button
@@ -453,7 +464,7 @@ export function WoodlandPanel({
                   </span>
                 </div>
               )}
-            {p.canReview && (
+            {p.canReview && !p.erasureRedacted && (
               <>
                 <Textarea
                   aria-label="Plan review note"
@@ -507,7 +518,7 @@ export function WoodlandPanel({
                   : ''}
               </p>
             )}
-            {o?.status === 'open' && (
+            {o?.status === 'open' && !p.erasureRedacted && (
               <div className="actions">
                 {(['approve', 'oppose', 'abstain'] as const).map((choice) => (
                   <Button
@@ -537,6 +548,7 @@ export function WoodlandPanel({
               </div>
             )}
             {steward &&
+              !p.erasureRedacted &&
               p.status === 'blocked' &&
               p.check.status === 'fail' &&
               o?.status !== 'open' && (

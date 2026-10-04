@@ -1,11 +1,11 @@
-// Worker thread for woodland spine analyses; see self-hosted/woodland-analysis.mjs.
+// Worker thread for woodland engine jobs; see self-hosted/woodland-analysis.mjs.
 import { parentPort } from 'node:worker_threads';
-import { runSpineAnalysis } from '../lib/woodland-spine-run.mjs';
+import { runWoodlandJob } from '../lib/woodland-spine-run.mjs';
 
 parentPort.on('message', ({ id, kind, input }) => {
   let reply;
   try {
-    reply = { id, result: runSpineAnalysis(kind, input) };
+    reply = { id, result: runWoodlandJob(kind, input) };
   } catch (error) {
     reply = {
       id,

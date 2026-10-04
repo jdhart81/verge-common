@@ -17,8 +17,8 @@ Use **Node 24.19.0**, matching the production Dockerfile, and run commands from 
 | `PORT`              | Gateway port                                                                                          | `3100`                  |
 | `VERGE_TRUST_CADDY` | Set to `1` only when requests arrive through the private Caddy connection that overwrites `X-Real-IP` | Unset                   |
 | `VERGE_SELF_HOSTED` | Selects the Node storage build; set by `build:selfhost`                                               | Unset                   |
-| `VERGE_WOODLAND_DFM` | Set to `1` to enable Woodland (DFM) projects: the corridor check on treatment plans, the old-growth spine analyses (run in a worker thread) and the `check_woodland_plan` and `analyze_woodland_spine` MCP tools. See `docs/WOODLAND.md` | Unset (off) |
-| `VERGE_WOODLAND_ANALYSIS_TIMEOUT_MS` | Deadline for one spine analysis, queue time included; keep it under the gateway's 30-second proxy limit | `25000` |
+| `VERGE_WOODLAND_DFM` | Set to `1` to enable Woodland (DFM) projects: the corridor check on treatment plans, the old-growth spine analyses and the `check_woodland_plan` and `analyze_woodland_spine` MCP tools. All engine work runs in one worker thread. See `docs/WOODLAND.md` | Unset (off) |
+| `VERGE_WOODLAND_ANALYSIS_TIMEOUT_MS` | Deadline for one engine job (a spine analysis, a plan preview or the check on a submitted plan), queue time included. Clamped to 1,000–25,000 so every answer arrives inside the gateway's 30-second proxy limit | `25000` |
 
 The Dockerfile sets `/data`, `/backups`, `0.0.0.0:3000`, `https://vergecommon.com`, and trusted Caddy forwarding. Its process runs as the unprivileged `node` user. Mount durable directories writable by that user. Neither data directory belongs in source control or a container image.
 

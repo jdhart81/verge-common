@@ -93,7 +93,8 @@ type FrontierResult = Base & {
     distanceM?: number;
   }[];
   laterParcels?: string[];
-  limitedToYourWoodlots?: boolean;
+  /** Members other than stewards get the co-op total only (WS8). */
+  frontierForStewards?: boolean;
 };
 type Analysis<R> = {
   kind: string;
@@ -282,8 +283,9 @@ export function WoodlandSpinePanel({
   const drafted = (layers.retained ?? []).filter(
     (f) => f.properties?.spine === true,
   ).length;
+  // A plan redacted by account erasure has no units to apply (E1).
   const plans = (state.treatmentPlans ?? []).filter(
-    (p) => p.projectId === projectId,
+    (p) => p.projectId === projectId && !p.erasureRedacted,
   );
   type Parcel = NonNullable<WoodlandState['parcels']>[number];
   // Woodlots this viewer can see that have no current consent: owner-or-steward, as everywhere.
@@ -405,7 +407,7 @@ export function WoodlandSpinePanel({
             onClick={() => void run(kind)}
           >
             {kind === 'frontier' && !steward
-              ? 'Your woodlots and the spine'
+              ? 'See the committed spine'
               : LABELS[kind]}
           </Button>
         ))}
@@ -568,6 +570,12 @@ export function WoodlandSpinePanel({
               </ul>
             </details>
           )}
+          {outlook.viewer !== 'steward' && (
+            <p className="small">
+              Your projection counts planned join years only for woodlots you
+              recorded; stewards see the co-op’s full projection.
+            </p>
+          )}
           <Notes result={outlook.result} extra={outlook.warnings} />
         </article>
       )}
@@ -619,7 +627,7 @@ export function WoodlandSpinePanel({
           <h4>
             {frontier.viewer === 'steward'
               ? 'The next woodlots'
-              : 'Your woodlots and the spine'}
+              : 'The committed spine'}
           </h4>
           <p className="muted small">{context(frontier)}</p>
           {frontier.result.committed && (
@@ -632,7 +640,8 @@ export function WoodlandSpinePanel({
               {pairs(frontier.result.committed.links)}.
             </p>
           )}
-          {frontier.result.frontier &&
+          {!frontier.result.frontierForStewards &&
+            frontier.result.frontier &&
             (frontier.result.frontier.length ? (
               <Table
                 label="Woodlots that would extend the committed spine"
@@ -654,9 +663,7 @@ export function WoodlandSpinePanel({
               />
             ) : (
               <p className="small">
-                {frontier.result.limitedToYourWoodlots
-                  ? 'None of your woodlots without consent adjoins the committed spine.'
-                  : 'No woodlot without consent adjoins the committed spine.'}
+                No woodlot without consent adjoins the committed spine.
               </p>
             ))}
           {!!frontier.result.laterParcels?.length && (
@@ -668,8 +675,8 @@ export function WoodlandSpinePanel({
           <p className="small">
             A woodlot’s stretch is committed once its holder’s pooling consent
             is recorded and another steward reviews it, in Land &amp; parcels.
-            {frontier.result.limitedToYourWoodlots
-              ? ' Stewards see every woodlot; you see the ones you recorded.'
+            {frontier.result.frontierForStewards
+              ? ' Stewards see which woodlots would extend it next: where a neighbour’s woodlot sits on that list would show whether they have consented, so members see the co-op total.'
               : ''}
           </p>
           <Notes result={frontier.result} extra={frontier.warnings} />

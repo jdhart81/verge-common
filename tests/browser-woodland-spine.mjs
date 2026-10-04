@@ -272,16 +272,19 @@ try {
   await spine.screenshot({ path: out + '/steward-spine.png' });
   mark('WS7 steward runs network, frontier, outlook and climate analyses in the worker; next woodlot is Woodlot 4');
 
-  // The member sees their own woodlots, never the others' names.
+  // The member sees the co-op total and their own woodlots, never the others' names or places.
   await open(member);
-  const mine = await runAnalysis(member, 'Your woodlots and the spine', 'frontier');
-  const rows = await mine.locator('tbody tr').allInnerTexts();
-  assert.equal(rows.length, 2);
-  assert.ok(rows[0].includes('Woodlot 4') && rows[1].includes('Woodlot 5'));
+  const total = await runAnalysis(member, 'See the committed spine', 'frontier');
+  assert.equal(await total.locator('tbody tr').count(), 0, 'no per-woodlot rows');
+  await total.getByText('so members see the co-op total', { exact: false }).waitFor();
+  assert.ok(!/Woodlot \d/.test(await total.innerText()), 'no woodlot names');
   const memberOutlook = await runAnalysis(member, 'Project the years ahead', 'outlook');
   const text = await memberOutlook.innerText();
   assert.ok(!/Woodlot [12356789]\b/.test(text.replace(/Woodlot 4|Woodlot 5/g, '')), 'no other woodlot names');
-  mark('WS8 a member sees only the woodlots they recorded, with counts for the rest');
+  await memberOutlook
+    .getByText('counts planned join years only for woodlots you recorded', { exact: false })
+    .waitFor();
+  mark('WS8 a member sees the build-out total and only the woodlots they recorded, with counts for the rest');
   await member.setViewportSize({ width: 390, height: 844 });
   await member.locator('[data-woodland-spine]').scrollIntoViewIfNeeded();
   assert.ok(

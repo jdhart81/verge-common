@@ -180,6 +180,16 @@ export function WoodlandMapEditor({
   };
   const setParams = (changes: Partial<WoodlandParams>) =>
     edit({ ...draft, params: { ...draft.params, ...changes } });
+  // Undo and redo restore a whole draft. The milestone field is free text, so it follows a
+  // restored draft only when the restored years differ (typing stays as typed otherwise).
+  const restore = (target: typeof draft) => {
+    const years = (d: typeof draft) => (d.params.milestoneYears ?? []).join(', ');
+    if (years(target) !== years(draft)) setMilestoneText(years(target));
+    setDraft(target);
+    setPreview(null);
+    setSpineNote(null);
+    setError('');
+  };
   const numberParam = (key: NumberParam, value: string) =>
     setParams({ [key]: optionalNumber(value) });
   const textParam = (key: TextParam, value: string) =>
@@ -619,9 +629,8 @@ export function WoodlandMapEditor({
             disabled={!past.length}
             onClick={() => {
               setFuture([draft, ...future]);
-              setDraft(past.at(-1)!);
+              restore(past.at(-1)!);
               setPast(past.slice(0, -1));
-              setPreview(null);
             }}
           >
             Undo
@@ -632,9 +641,8 @@ export function WoodlandMapEditor({
             disabled={!future.length}
             onClick={() => {
               setPast([...past, draft]);
-              setDraft(future[0]);
+              restore(future[0]);
               setFuture(future.slice(1));
-              setPreview(null);
             }}
           >
             Redo
