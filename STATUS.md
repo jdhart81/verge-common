@@ -1,6 +1,20 @@
 # VergeCommon — current status
 
-**Last updated: 29 September 2026 EDT (v0.9.0 live; 30 September UTC).** This is the single, current summary of what is live, what is verified and what is still open. Update it with every deployment or change in operating state. Dated deployment receipts and reviews are preserved unchanged in [docs/history/](docs/history/).
+**Last updated: 4 October 2026 EDT (final v0.10.0 engine live; woodland projects off).** This is the single, current summary of what is live, what is verified and what is still open. Update it with every deployment or change in operating state. Dated deployment receipts and reviews are preserved unchanged in [docs/history/](docs/history/).
+
+## v0.10.0 — woodland corridors and the old-growth spine, deployed 4 October 2026
+
+**Production runs exact source `824019ce50d1ab0974369118d00493d78d9058ab`**, including the final dfm-core 0.2.0 engine. The initial v0.10.0 release went live at 22:03 UTC on 4 October (`aab3ba2`). It adds:
+- woodland projects ([PR #33](https://github.com/jdhart81/verge-common/pull/33), [PR #37](https://github.com/jdhart81/verge-common/pull/37));
+- the old-growth spine from dfm-core 0.2.0 ([PR #40](https://github.com/jdhart81/verge-common/pull/40));
+- the public [/woodland/](https://vergecommon.com/woodland/) page;
+- the pilot-readiness tooling.
+
+**Woodland projects are off in production.** `/woodland/` says they are being tested. Whether to turn them on for the Vermont pilot is an owner decision.
+
+[PR #41](https://github.com/jdhart81/verge-common/pull/41) is merged and deployed: the vendored engine SHA-256 is `dd5d1f41a1cb24ff49cfeb851ab0eaa13df2fa311ffb2fd5a4597046069d16f9`. The final dfm-core 0.2.0 engine includes the spine network soundness fix. Woodland activation remains an owner decision. dendriticforest.com serves exact hdfm-framework source `e27dbe4e4e24d0d6288333e74623b354cba0763e`, including merged [#45](https://github.com/jdhart81/hdfm-framework/pull/45): its homepage and Unbroken Woods links reach `/woodland/` and `#first-woodlot`, while the spine and prairie sections remain present.
+
+Receipts: [initial deployment 4 October 2026](docs/history/DEPLOYMENT_V0100_2026-10-04.md) and [DFM public-site deployment 3 October 2026](docs/history/DEPLOYMENT_DFM_SITE_2026-10-03.md), preserved as historical records. See also the [release notes](docs/RELEASE_NOTES.md) and [woodland projects](docs/WOODLAND.md).
 
 ## Local pilot-readiness increment — 3 October 2026 (undeployed)
 
@@ -12,9 +26,9 @@ The [local readiness report](docs/PILOT_READINESS.md), [audit](docs/PILOT_AUDIT_
 | --- | --- |
 | Website and shared app | **Live public technical beta** at https://vergecommon.com — accounts, private co-ops, invitations, discussion and conversation actions, events, parcels/boundaries, evidence, governance records, operator report queue, hosted MCP. Free to use. |
 | Hosting | One dedicated DigitalOcean droplet (`601953476`), Docker container behind Caddy, SQLite + private evidence files. Separate from Viridis Conservation. |
-| Source of truth | Production runs **v0.9.0**, tagged merge commit `6089e6a` ([PR #10](https://github.com/jdhart81/verge-common/pull/10), [PR #11](https://github.com/jdhart81/verge-common/pull/11)). [Deployment and recovery receipt](docs/history/DEPLOYMENT_V090_2026-09-29.md). |
-| Automated checks | v0.9.0: **287/287 Node tests, TypeScript, lint, simulation and build pass**; all four final source CI jobs and secret scan passed; exact-image isolated acceptance and pre/post-deploy restore checks passed; npm audit 0 vulnerabilities. |
-| Launch gate | `npm run launch-gate -- --expect-commit 6089e6a` against production: **24 pass, 0 fail, 9 manual, 0 skipped**. Manual operational and owner gates remain open. |
+| Source of truth | Production runs **v0.10.0**, exact commit `824019ce50d1ab0974369118d00493d78d9058ab` ([PR #41](https://github.com/jdhart81/verge-common/pull/41)), with woodland unset. Final-engine follow-up deployed 4 October 2026 at 23:11 UTC. |
+| Automated checks | Exact v0.10.0 candidate: **382/382 Node tests, TypeScript, lint and self-hosted build pass**; three private-copy self-hosted acceptance suites and seven empty-data woodland acceptance checks pass. Fresh pre/post-switch backups pass isolated restore; live rollback guard passes. |
+| Launch gate | `node scripts/launch-gate.mjs --expect-commit 824019ce50d1ab0974369118d00493d78d9058ab` against production: **25 pass, 0 fail, 9 manual, 0 skipped**. Manual operational and owner gates remain open. |
 | Real adoption | Unproven. At 30 Sep 01:38 UTC: 2 accounts including owner tests, no active co-op or evidence files. Apple/Google records and one new registration do not establish external adoption. |
 
 ## Deployed release (v0.9.0)

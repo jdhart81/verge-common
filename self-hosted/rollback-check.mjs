@@ -1,4 +1,5 @@
-// Fail closed before restarting a pre-v0.9.0 writer on a live database.
+// Fail closed before restarting an older writer on a live database. Each check names the
+// first release whose privacy and erasure rules protect those records.
 import { DatabaseSync } from 'node:sqlite';
 import { resolve } from 'node:path';
 const path = resolve(
@@ -7,24 +8,37 @@ const path = resolve(
 );
 const db = new DatabaseSync(path, { readOnly: true });
 try {
-  const incompatible = db
+  const states = db
     .prepare('SELECT state_json FROM workspaces')
     .all()
-    .some((row) => {
-      const s = JSON.parse(row.state_json);
-      return (
+    .map((row) => JSON.parse(row.state_json));
+  const checks = [
+    [
+      '0.9.0',
+      (s) =>
         s.careActions?.length ||
         s.events?.some((e) => e.result) ||
         s.members?.some((m) => m.referralId) ||
         s.operatorRestriction ||
         ['updates', 'comments', 'events'].some((key) =>
           s[key]?.some((item) => item.operatorHidden),
-        )
-      );
-    });
-  if (incompatible)
+        ),
+    ],
+    [
+      '0.10.0',
+      (s) =>
+        s.woodlandLayers?.length ||
+        s.treatmentPlans?.length ||
+        s.parcels?.some((p) => p.plannedJoinYear != null),
+    ],
+  ];
+  const needed = checks
+    .filter(([, present]) => states.some(present))
+    .map(([release]) => String(release))
+    .at(-1);
+  if (needed)
     throw new Error(
-      'Pre-v0.9.0 writers cannot protect these new records. Keep current data and ship a compatibility/forward repair; do not restore an older snapshot over live data.',
+      `Writers older than v${needed} cannot protect these records. Keep current data and ship a compatibility/forward repair; do not restore an older snapshot over live data.`,
     );
   console.log(
     JSON.stringify({

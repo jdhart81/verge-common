@@ -1,4 +1,5 @@
 import http from 'node:http';
+import { readFileSync } from 'node:fs';
 import { Readable } from 'node:stream';
 import { pathToFileURL } from 'node:url';
 import { resolve } from 'node:path';
@@ -32,6 +33,11 @@ import { createSocialAuth } from './social-auth.mjs';
 import { createPush } from './push.mjs';
 import { createHttpHandler, mcpDiscovery } from '../mcp/http.mjs';
 import { woodlandEnabled } from '../lib/woodland-config.mjs';
+import {
+  createWoodlandAnalysisPool,
+  registerWoodlandAnalysis,
+  deadlineMs,
+} from './woodland-analysis.mjs';
 const safeReturn = (value) => {
   try {
     const u = new URL(value || '/workspace/', 'https://return.local');
@@ -57,6 +63,10 @@ export function userMessage(error) {
     error?.message ?? 'The service could not complete this request.',
   );
 }
+/** The release in package.json, reported by /healthz so it cannot drift from the source. */
+export const SERVICE_VERSION = JSON.parse(
+  readFileSync(new URL('../package.json', import.meta.url), 'utf8'),
+).version;
 export const UPLOAD_CONCURRENCY = 8;
 export const STATIC_ASSET_PATH =
   /^\/(?:_next\/static\/|icons\/|brand\/|fonts\/|favicon\.(?:svg|ico)$|manifest\.webmanifest$|sw\.js$)/;
@@ -127,7 +137,7 @@ export function createGateway({
     }
     return headers;
   };
-  const internal = async (principal, path, payload) => {
+  const internal = async (principal, path, payload, timeoutMs = 20000) => {
     const headers = verifiedHeaders(principal, {
       'content-type': 'application/json',
       origin,
@@ -137,7 +147,7 @@ export function createGateway({
       headers,
       body: payload ? JSON.stringify(payload) : undefined,
       redirect: 'manual',
-      signal: AbortSignal.timeout(20000),
+      signal: AbortSignal.timeout(timeoutMs),
     });
     const result = await r.json();
     if (!r.ok)
@@ -152,8 +162,38 @@ export function createGateway({
     readWorkspace: (p, id) =>
       internal(p, `/api/workspaces?id=${encodeURIComponent(id)}`),
     listWorkspaces: (p) => internal(p, '/api/workspaces'),
-    executeCommand: (p, id, input) =>
-      internal(p, '/api/workspaces', { id, ...input }),
+    // internal() skips the gateway's request limits, so agent commands draw on the same
+    // per-account command budget as the browser here.
+    executeCommand: (p, id, input) => {
+      if (
+        !auth.rateLimit(`cmd:m:${p.id}`, 40, 60000) ||
+        !auth.rateLimit(`cmd:h:${p.id}`, 400, 3600000)
+      )
+        throw Object.assign(
+          new Error('You are making changes very quickly. Wait a few minutes.'),
+          { status: 429 },
+        );
+      return internal(p, '/api/workspaces', { id, ...input });
+    },
+    // Woodland engine work waits for the analysis worker (up to its 25 s deadline) inside the
+    // app. internal() skips the gateway's request limits, so agents get the same per-account
+    // budgets as the browser here.
+    analyzeWoodland: (p, id, input) => {
+      if (!auth.rateLimit(`analysis:${p.id}`, 12, 10 * 60000))
+        throw Object.assign(
+          new Error('You have run many landscape analyses. Wait a few minutes.'),
+          { status: 429 },
+        );
+      return internal(p, '/api/woodland-analysis', { id, ...input }, 29000);
+    },
+    previewWoodland: (p, id, input) => {
+      if (!auth.rateLimit(`preview:${p.id}`, 30, 10 * 60000))
+        throw Object.assign(
+          new Error('You have checked many woodland plans. Wait a few minutes.'),
+          { status: 429 },
+        );
+      return internal(p, '/api/woodland-preview', { id, ...input }, 29000);
+    },
     woodland: woodlandEnabled(),
   });
   const server = http.createServer(async (req, res) => {
@@ -246,7 +286,7 @@ export function createGateway({
         return json(maintenanceHealthy() ? 200 : 503, {
           status: maintenanceHealthy() ? 'ok' : 'attention',
           service: 'vergecommon',
-          version: '0.9.0',
+          version: SERVICE_VERSION,
           commit: buildCommit,
         });
       if (url.pathname === '/.well-known/mcp.json')
@@ -599,6 +639,23 @@ export function createGateway({
           return json(429, {
             error: 'You are making changes very quickly. Wait a few minutes.',
           });
+        // Each spine analysis or plan preview can hold the analysis worker for seconds.
+        if (
+          url.pathname === '/api/woodland-analysis' &&
+          !auth.rateLimit(`analysis:${principal.id}`, 12, 10 * 60000)
+        )
+          return json(429, {
+            error:
+              'You have run many landscape analyses. Wait a few minutes and try again.',
+          });
+        if (
+          url.pathname === '/api/woodland-preview' &&
+          !auth.rateLimit(`preview:${principal.id}`, 30, 10 * 60000)
+        )
+          return json(429, {
+            error:
+              'You have checked many woodland plans. Wait a few minutes and try again.',
+          });
       }
       if (['/api/push', '/api/push/test'].includes(url.pathname)) {
         if (!push)
@@ -761,6 +818,14 @@ export async function start() {
       });
   }, 60000);
   pushTimer.unref();
+  // WS7: spine analyses run in a worker thread, registered for the app in this process.
+  const analysis = woodlandEnabled()
+    ? registerWoodlandAnalysis(
+        createWoodlandAnalysisPool({
+          timeoutMs: deadlineMs(process.env.VERGE_WOODLAND_ANALYSIS_TIMEOUT_MS),
+        }),
+      )
+    : null;
   const { startProdServer } = await import('vinext/server/prod-server');
   const internal = await startProdServer({
     port: 0,
@@ -797,6 +862,7 @@ export async function start() {
   const close = () => {
     clearInterval(upkeep);
     clearInterval(pushTimer);
+    void analysis?.close();
     server.close();
     internal.server.close();
   };

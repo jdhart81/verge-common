@@ -10,6 +10,7 @@ import { coordinate } from '@/lib/boundary-editor.mjs';
 import {
   CORE_CHOICES,
   PASSAGE_CHOICES,
+  LINK_KINDS,
   emptyLayers,
   newFeature,
   editorFeature,
@@ -17,9 +18,16 @@ import {
   withPoints,
   draftProblems,
   importDraft,
+  importNotes,
+  mergeSpineDraft,
   sizeReport,
 } from '@/lib/woodland-editor.mjs';
 import { woodlandCheckInput } from '@/lib/woodland-input.mjs';
+import {
+  spineParams,
+  spineProblems,
+  MAX_STREAM_ORDER,
+} from '@/lib/woodland-spine.mjs';
 const WoodlandMap = lazy(() =>
   import('./woodland-map').then((m) => ({ default: m.WoodlandMap })),
 );
@@ -39,7 +47,30 @@ export type WoodlandParams = {
   minWidthM: number;
   minWidthSource: string;
   roadWidthM?: number;
+  // Optional old-growth spine, age and climate settings (docs/WOODLAND.md).
+  spineWidthByOrderM?: Record<string, number>;
+  spineWidthSource?: string;
+  connectorWidthM?: number;
+  connectorWidthSource?: string;
+  ageAsOfYear?: number;
+  oldGrowthAgeYears?: number;
+  oldGrowthAgeSource?: string;
+  milestoneYears?: number[];
+  coreTempSource?: string;
+  climateWarmingC?: number;
+  climateSource?: string;
 };
+type NumberParam =
+  | 'connectorWidthM'
+  | 'ageAsOfYear'
+  | 'oldGrowthAgeYears'
+  | 'climateWarmingC';
+type TextParam =
+  | 'spineWidthSource'
+  | 'connectorWidthSource'
+  | 'oldGrowthAgeSource'
+  | 'coreTempSource'
+  | 'climateSource';
 export type MapFeature = Omit<WoodlandFeature, 'geometry'> & {
   geometry: Geometry | { type: 'MultiPolygon'; coordinates: number[][][][] };
 };
@@ -62,8 +93,13 @@ export const LAYER_LABELS: Record<string, string> = {
   roads: 'Roads · short dash',
   water: 'Open water · dash-dot',
   crossings: 'Crossings · ring',
+  streams: 'Streams (spine) · solid line',
+  connectors: 'Ridge, valley and saddle links (spine) · long dash-dot',
   treatments: 'Treatment units · dotted',
 };
+const SPINE_LINE_LAYERS = ['streams', 'connectors'];
+const optionalNumber = (value: string) =>
+  value.trim() === '' ? undefined : Number(value);
 export function WoodlandMapEditor({
   mode,
   initialLayers,
@@ -118,6 +154,17 @@ export function WoodlandMapEditor({
   const [light, setLight] = useState<string[]>([]),
     [name, setName] = useState(''),
     [period, setPeriod] = useState('');
+  const [spineNote, setSpineNote] = useState<{
+    status: string;
+    count: number;
+    reasons: string[];
+    warnings: string[];
+  } | null>(null);
+  const [milestoneText, setMilestoneText] = useState(
+    (initialParams.milestoneYears ?? []).join(', '),
+  );
+  // What the last upload left out (WS12), so nothing in a package is dropped silently.
+  const [uploadNotes, setUploadNotes] = useState<string[]>([]);
   const setPreview = (result: Preview | null) => {
     setLocalPreview(result);
     if (!result) setServerPreview(null);
@@ -131,8 +178,50 @@ export function WoodlandMapEditor({
     setFuture([]);
     setDraft(next);
     setPreview(null);
+    setSpineNote(null);
     setError('');
   };
+  const setParams = (changes: Partial<WoodlandParams>) =>
+    edit({ ...draft, params: { ...draft.params, ...changes } });
+  // Undo and redo restore a whole draft. The milestone field is free text, so it follows a
+  // restored draft only when the restored years differ (typing stays as typed otherwise).
+  const restore = (target: typeof draft) => {
+    const years = (d: typeof draft) => (d.params.milestoneYears ?? []).join(', ');
+    if (years(target) !== years(draft)) setMilestoneText(years(target));
+    setDraft(target);
+    setPreview(null);
+    setSpineNote(null);
+    setError('');
+  };
+  const numberParam = (key: NumberParam, value: string) =>
+    setParams({ [key]: optionalNumber(value) });
+  const textParam = (key: TextParam, value: string) =>
+    setParams({ [key]: value.trim() ? value : undefined });
+  const widthTable = draft.params.spineWidthByOrderM ?? {};
+  const setOrderWidth = (order: number, value: string) => {
+    const table: Record<string, number> = { ...widthTable };
+    const width = optionalNumber(value);
+    if (width === undefined) delete table[order];
+    else table[order] = width;
+    setParams({
+      spineWidthByOrderM: Object.keys(table).length ? table : undefined,
+    });
+  };
+  const streamOrders = (draft.layers.streams ?? [])
+    .map((f) => f.properties.stream_order)
+    .filter((n): n is number => Number.isInteger(n));
+  const orders = Array.from(
+    {
+      length: Math.min(
+        MAX_STREAM_ORDER,
+        Math.max(3, ...streamOrders, ...Object.keys(widthTable).map(Number)),
+      ),
+    },
+    (_, i) => i + 1,
+  );
+  const spineLines = SPINE_LINE_LAYERS.flatMap(
+    (k) => draft.layers[k] ?? [],
+  );
   const setList = (next: WoodlandFeature[]) =>
     edit(
       layer === 'treatments'
@@ -193,6 +282,9 @@ export function WoodlandMapEditor({
         draft.params.roadWidthM <= 0)
     )
       problems.push('Road width must be positive.');
+    problems.push(
+      ...spineProblems(draft.layers, draft.params, new Date().getUTCFullYear()),
+    );
   } else if (!draft.treatments.length)
     problems.push('Add at least one treatment unit.');
   const blocked = disabled || checking || problems.length > 0;
@@ -212,6 +304,41 @@ export function WoodlandMapEditor({
           woodlandCheckInput(draft.layers, draft.treatments, [], draft.params),
         ) as Preview;
         setPreview({ ...result, lostLinks: result.lostLinks ?? [] });
+      } finally {
+        setChecking(false);
+      }
+    });
+  // WS6: the engine drafts corridors along the spine lines; a steward reviews them like any
+  // retained corridor and submits the layers for another steward's review.
+  const draftSpine = () =>
+    attempt(async () => {
+      setChecking(true);
+      try {
+        const core = await import('@viridis/dfm-core');
+        const result = core.deriveSpine({
+          streams: draft.layers.streams ?? [],
+          connectors: draft.layers.connectors ?? [],
+          water: draft.layers.water ?? [],
+          params: draft.params,
+        });
+        if (result.status === 'ok')
+          edit({
+            ...draft,
+            layers: {
+              ...draft.layers,
+              retained: mergeSpineDraft(
+                draft.layers.retained ?? [],
+                result.features,
+                spineLines,
+              ) as WoodlandFeature[],
+            },
+          });
+        setSpineNote({
+          status: result.status,
+          count: result.features.length,
+          reasons: result.reasons,
+          warnings: result.warnings,
+        });
       } finally {
         setChecking(false);
       }
@@ -304,6 +431,124 @@ export function WoodlandMapEditor({
                 })
               }
             />
+            <details className="mt-3" data-spine-settings>
+              <summary>Old-growth spine settings (optional)</summary>
+              <p className="small">
+                Corridor widths by stream order, from your co-op policy or a
+                forester. Each is at least the minimum width, and a larger
+                stream never gets a narrower corridor. Without a table, every
+                stream uses the minimum width plus the 10% pinch margin.
+              </p>
+              <div className="grid min-w-0 gap-x-3 sm:grid-cols-3">
+                {orders.map((order) => (
+                  <div key={order} className="min-w-0">
+                    {label(`order-${order}`, `Order ${order} width (m)`)}
+                    <Input
+                      id={`${prefix}-order-${order}`}
+                      type="number"
+                      min={0}
+                      value={widthTable[order] ?? ''}
+                      onChange={(e) => setOrderWidth(order, e.target.value)}
+                    />
+                  </div>
+                ))}
+              </div>
+              {label('spine-source', 'Spine width source')}
+              <Input
+                id={`${prefix}-spine-source`}
+                maxLength={300}
+                value={draft.params.spineWidthSource ?? ''}
+                onChange={(e) => textParam('spineWidthSource', e.target.value)}
+              />
+              {label('link-width', 'Ridge, valley and saddle link width (m)')}
+              <Input
+                id={`${prefix}-link-width`}
+                type="number"
+                min={0}
+                value={draft.params.connectorWidthM ?? ''}
+                onChange={(e) => numberParam('connectorWidthM', e.target.value)}
+              />
+              {label('link-source', 'Link width source')}
+              <Input
+                id={`${prefix}-link-source`}
+                maxLength={300}
+                value={draft.params.connectorWidthSource ?? ''}
+                onChange={(e) =>
+                  textParam('connectorWidthSource', e.target.value)
+                }
+              />
+            </details>
+            <details className="mt-3" data-age-settings>
+              <summary>Stand ages and climate (optional)</summary>
+              <p className="small">
+                Projections need the year stand ages were recorded and, to
+                show old-growth age, a threshold with its source. Climate
+                routes need core temperatures with their source. Age is not
+                condition, and neither predicts what species will do.
+              </p>
+              {label('as-of', 'Year stand ages were recorded')}
+              <Input
+                id={`${prefix}-as-of`}
+                type="number"
+                value={draft.params.ageAsOfYear ?? ''}
+                onChange={(e) => numberParam('ageAsOfYear', e.target.value)}
+              />
+              {label('og-age', 'Old-growth age threshold (years)')}
+              <Input
+                id={`${prefix}-og-age`}
+                type="number"
+                min={0}
+                value={draft.params.oldGrowthAgeYears ?? ''}
+                onChange={(e) =>
+                  numberParam('oldGrowthAgeYears', e.target.value)
+                }
+              />
+              {label('og-source', 'Old-growth age source')}
+              <Input
+                id={`${prefix}-og-source`}
+                maxLength={300}
+                value={draft.params.oldGrowthAgeSource ?? ''}
+                onChange={(e) => textParam('oldGrowthAgeSource', e.target.value)}
+              />
+              {label('milestones', 'Milestone years, comma-separated')}
+              <Input
+                id={`${prefix}-milestones`}
+                inputMode="numeric"
+                placeholder="Default: now, +10, +25, +50 and +100 years"
+                value={milestoneText}
+                onChange={(e) => {
+                  setMilestoneText(e.target.value);
+                  const years = e.target.value
+                    .split(/[\s,]+/)
+                    .filter(Boolean)
+                    .map(Number);
+                  setParams({ milestoneYears: years.length ? years : undefined });
+                }}
+              />
+              {label('temp-source', 'Core temperature source')}
+              <Input
+                id={`${prefix}-temp-source`}
+                maxLength={300}
+                value={draft.params.coreTempSource ?? ''}
+                onChange={(e) => textParam('coreTempSource', e.target.value)}
+              />
+              {label('warming', 'Warming to plan for (°C)')}
+              <Input
+                id={`${prefix}-warming`}
+                type="number"
+                min={0}
+                step="0.1"
+                value={draft.params.climateWarmingC ?? ''}
+                onChange={(e) => numberParam('climateWarmingC', e.target.value)}
+              />
+              {label('warming-source', 'Warming source')}
+              <Input
+                id={`${prefix}-warming-source`}
+                maxLength={300}
+                value={draft.params.climateSource ?? ''}
+                onChange={(e) => textParam('climateSource', e.target.value)}
+              />
+            </details>
           </>
         )}
         {mode === 'plan' && (
@@ -387,9 +632,8 @@ export function WoodlandMapEditor({
             disabled={!past.length}
             onClick={() => {
               setFuture([draft, ...future]);
-              setDraft(past.at(-1)!);
+              restore(past.at(-1)!);
               setPast(past.slice(0, -1));
-              setPreview(null);
             }}
           >
             Undo
@@ -400,9 +644,8 @@ export function WoodlandMapEditor({
             disabled={!future.length}
             onClick={() => {
               setPast([...past, draft]);
-              setDraft(future[0]);
+              restore(future[0]);
               setFuture(future.slice(1));
-              setPreview(null);
             }}
           >
             Redo
@@ -481,6 +724,83 @@ export function WoodlandMapEditor({
                       ))}
                     </NativeSelect>
                   </>
+                )}
+                {layer === 'streams' && (
+                  <>
+                    {label('order', 'Stream order (Strahler)')}
+                    <NativeSelect
+                      className="w-full"
+                      id={`${prefix}-order`}
+                      value={propertyText(feature.properties.stream_order)}
+                      onChange={(e) =>
+                        property('stream_order', Number(e.target.value))
+                      }
+                    >
+                      {Array.from(
+                        { length: MAX_STREAM_ORDER },
+                        (_, i) => i + 1,
+                      ).map((n) => (
+                        <NativeSelectOption key={n} value={n}>
+                          {n}
+                        </NativeSelectOption>
+                      ))}
+                    </NativeSelect>
+                  </>
+                )}
+                {layer === 'connectors' && (
+                  <>
+                    {label('kind', 'Link kind')}
+                    <NativeSelect
+                      className="w-full"
+                      id={`${prefix}-kind`}
+                      value={String(feature.properties.kind)}
+                      onChange={(e) => property('kind', e.target.value)}
+                    >
+                      {LINK_KINDS.map((v: string) => (
+                        <NativeSelectOption key={v} value={v}>
+                          {v}
+                        </NativeSelectOption>
+                      ))}
+                    </NativeSelect>
+                  </>
+                )}
+                {(layer === 'retained' || layer === 'coreAreas') && (
+                  <>
+                    {label('age', 'Stand age in years (optional)')}
+                    <Input
+                      id={`${prefix}-age`}
+                      type="number"
+                      min={0}
+                      max={3000}
+                      value={propertyText(feature.properties.stand_age)}
+                      onChange={(e) =>
+                        property('stand_age', optionalNumber(e.target.value))
+                      }
+                    />
+                  </>
+                )}
+                {layer === 'coreAreas' && (
+                  <>
+                    {label('temp', 'Mean temperature °C (optional)')}
+                    <Input
+                      id={`${prefix}-temp`}
+                      type="number"
+                      step="0.1"
+                      value={propertyText(feature.properties.temp_c)}
+                      onChange={(e) =>
+                        property('temp_c', optionalNumber(e.target.value))
+                      }
+                    />
+                  </>
+                )}
+                {layer === 'retained' && feature.properties.spine === true && (
+                  <p className="small">
+                    Drafted spine corridor (
+                    {propertyText(feature.properties.origin)},{' '}
+                    {propertyText(feature.properties.width_m)} m:{' '}
+                    {propertyText(feature.properties.width_source)}). Drafting
+                    again replaces it and keeps its name and stand age.
+                  </p>
                 )}
                 {layer === 'treatments' && (
                   <>
@@ -684,7 +1004,10 @@ export function WoodlandMapEditor({
               if (!file) return;
               if (file.size > 100000)
                 throw new Error('File must be under 100000 bytes.');
-              const imported = importDraft(JSON.parse(await file.text()), mode);
+              setUploadNotes([]);
+              const json = JSON.parse(await file.text());
+              const imported = importDraft(json, mode);
+              setUploadNotes(importNotes(json, mode));
               edit(
                 mode === 'layers'
                   ? {
@@ -696,6 +1019,9 @@ export function WoodlandMapEditor({
                           imported.params.minWidthSource ?? '',
                         ),
                         roadWidthM: imported.params.roadWidthM,
+                        ...(spineParams(
+                          imported.params,
+                        ) as Partial<WoodlandParams>),
                       },
                     }
                   : {
@@ -704,10 +1030,23 @@ export function WoodlandMapEditor({
                     },
               );
               setSelected(-1);
+              if (mode === 'layers')
+                setMilestoneText(
+                  (spineParams(imported.params).milestoneYears ?? []).join(
+                    ', ',
+                  ),
+                );
             });
             e.target.value = '';
           }}
         />
+        {uploadNotes.length > 0 && (
+          <ul className="small" aria-label="Upload notes" data-upload-notes>
+            {uploadNotes.map((note) => (
+              <li key={note}>{note}</li>
+            ))}
+          </ul>
+        )}
         <div className="flex flex-wrap gap-2 mt-3">
           <Button
             type="button"
@@ -740,6 +1079,16 @@ export function WoodlandMapEditor({
           >
             Download Landscape Package
           </Button>
+          {mode === 'layers' && (
+            <Button
+              type="button"
+              variant="outline"
+              disabled={disabled || checking || !spineLines.length}
+              onClick={() => void draftSpine()}
+            >
+              Draft spine corridors
+            </Button>
+          )}
           <Button
             type="button"
             variant="outline"
@@ -800,6 +1149,43 @@ export function WoodlandMapEditor({
         </ul>
       )}
       {error && <p role="alert">{error}</p>}
+      {spineNote && (
+        <section
+          aria-label="Spine draft"
+          aria-live="polite"
+          className="mt-3 break-words"
+          data-spine-draft-status={spineNote.status}
+        >
+          <strong>
+            {spineNote.status === 'ok'
+              ? `Spine draft: ${spineNote.count} corridors in Retained corridors`
+              : 'Spine draft: not drafted'}
+          </strong>
+          {spineNote.status === 'ok' && (
+            <p>
+              Check each drafted corridor against the ground, record stand
+              ages, then submit the layers for another steward to review.
+            </p>
+          )}
+          {spineNote.reasons.length > 0 && (
+            <ul>
+              {spineNote.reasons.map((r, i) => (
+                <li key={i}>{r}</li>
+              ))}
+            </ul>
+          )}
+          {spineNote.warnings.length > 0 && (
+            <details>
+              <summary>Spine draft warnings</summary>
+              <ul>
+                {spineNote.warnings.map((w, i) => (
+                  <li key={i}>{w}</li>
+                ))}
+              </ul>
+            </details>
+          )}
+        </section>
+      )}
       {preview && (
         <section
           aria-label="Local corridor preview"

@@ -2,7 +2,12 @@ import { memberView } from '../lib/network.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
-import { checkConnectivitySync, LIGHT_INTENSITIES } from '@viridis/dfm-core';
+import {
+  checkConnectivitySync,
+  LIGHT_INTENSITIES,
+  toLandscapePackage,
+  fromLandscapePackage,
+} from '@viridis/dfm-core';
 import {
   LAYER_TYPES,
   newFeature,
@@ -20,6 +25,7 @@ import {
   woodlandCheckInput,
   consentParcels,
   previewTreatmentCheck,
+  CHECK_INPUT_FORM,
 } from '../lib/woodland.mjs';
 import {
   setup,
@@ -310,16 +316,17 @@ await test('M1/M8 local preview equals server status, lostLinks and checksum on 
       params,
     );
     const local = checkConnectivitySync(input);
-    const original = checkConnectivitySync({
-      ...f.s.woodlandLayers.at(-1).layers,
-      treatments: units,
-      parcels: consentParcels(f.s, f.project),
-      params,
-    });
+    // WS12: the input is the Landscape Package's canonical form, so a downloaded package
+    // reproduces it, its result and its checksum in any DFM tool.
+    const reread = fromLandscapePackage(
+      JSON.parse(JSON.stringify(toLandscapePackage(input))),
+    );
+    assert.deepEqual(reread, input);
+    const original = checkConnectivitySync(reread);
     assert.deepEqual(
       local,
       original,
-      'refactor must preserve the original engine input and result',
+      'the package round trip preserves the engine input and result',
     );
     const p = byId(f, plan(f, units));
     const serverPreview = previewTreatmentCheck(f.s, f.project, units);
@@ -346,7 +353,12 @@ await test('M1/M8 local preview equals server status, lostLinks and checksum on 
             : v,
       ),
     );
-    assert.equal(JSON.stringify(p.check), JSON.stringify(expected));
+    // WS2/WS12: checks from v0.10.0 on say which input form they used, so only those are
+    // offered for exact reproduction from a downloaded package.
+    assert.equal(
+      JSON.stringify(p.check),
+      JSON.stringify({ ...expected, inputForm: CHECK_INPUT_FORM }),
+    );
   }
 });
 await test('M8 shared input truncates properties exactly as the server and preserves parcel consent shape', () => {

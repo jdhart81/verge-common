@@ -11,7 +11,6 @@ import {
   Plus,
 } from 'lucide-react';
 import { ConservationLandscape } from '@/components/conservation-landscape';
-import { DFM_SITE_URL } from '@/lib/dfm-site.mjs';
 import './home.css';
 
 const repo = 'https://github.com/jdhart81/verge-common';
@@ -414,9 +413,12 @@ export default function Home({
           >
             Get help
           </a>
-          <a href={DFM_SITE_URL}>
-            Woodland corridors (DFM)
-            <ArrowUpRight size={14} aria-hidden="true" />
+          <a
+            href={
+              publicPreview ? 'https://vergecommon.com/woodland/' : '/woodland/'
+            }
+          >
+            Woodland corridors
           </a>
           <a href={sourceRepo}>
             Source

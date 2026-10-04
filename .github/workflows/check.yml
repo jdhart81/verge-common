@@ -64,6 +64,17 @@ jobs:
           done
           python3 tests/selfhost_acceptance.py
           docker exec vergecommon-ci node self-hosted/backup.mjs
+      - name: Woodland projects and spine analyses in the deployment image
+        run: |
+          # The same image with VERGE_WOODLAND_DFM=1: the analysis worker must start and run
+          # inside the read-only, unprivileged production container.
+          docker run -d --name vergecommon-woodland --read-only --tmpfs /tmp:rw,noexec,nosuid,size=128m --tmpfs /data:rw,noexec,nosuid,size=3g,uid=1000,gid=1000 --tmpfs /backups:rw,noexec,nosuid,size=128m,uid=1000,gid=1000 --cap-drop ALL --security-opt no-new-privileges --pids-limit 256 --memory 1g -p 127.0.0.1:3101:3000 -e VERGE_ORIGIN=http://127.0.0.1:3101 -e VERGE_TRUST_CADDY=0 -e VERGE_WOODLAND_DFM=1 vergecommon:ci
+          trap 'docker logs vergecommon-woodland; docker rm -f vergecommon-woodland' EXIT
+          for attempt in $(seq 1 45); do
+            if curl -fsS http://127.0.0.1:3101/api/network > /dev/null; then break; fi
+            sleep 1
+          done
+          VERGE_TEST_ORIGIN=http://127.0.0.1:3101 python3 tests/woodland_acceptance.py
 
   imagery:
     runs-on: ubuntu-latest

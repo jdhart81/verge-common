@@ -14,6 +14,7 @@ import {
 } from '@/server/workspaces';
 import { woodlandEnabled } from '@/lib/woodland-config.mjs';
 import { WOODLAND_OPS } from '@/lib/woodland.mjs';
+import { submitCheckContext } from '@/server/woodland-analysis.mjs';
 export const dynamic = 'force-dynamic';
 const features = () => ({ woodland: woodlandEnabled() });
 export async function GET(request: Request) {
@@ -144,7 +145,24 @@ export async function POST(request: Request) {
       const current = await load(data.id);
       data.version = current.row.version;
     }
-    const result = await command(data.id, user, data, data.version);
+    // WS7: a plan's corridor check runs in the analysis worker, never on this thread. The
+    // command is first applied with the check deferred, so a submission it refuses costs no
+    // engine time; the worker's result is used only for exactly the input the command builds.
+    // Skipped when the command will not apply: an invalid request ID (refused), a retried
+    // request (answered from its receipt) or a stale version (refused).
+    let context = {};
+    if (data.op === 'submit_treatment_plan') {
+      const current = await load(data.id);
+      if (
+        /^[0-9a-f-]{36}$/.test(data.requestId ?? '') &&
+        current.row.version === data.version &&
+        !current.state.audit.some(
+          (a: { id: string }) => a.id === data.requestId,
+        )
+      )
+        context = await submitCheckContext(current.state, user, data);
+    }
+    const result = await command(data.id, user, data, data.version, context);
     if (data.op === 'request_membership' || data.op === 'leave')
       return json({ saved: true });
     return json({

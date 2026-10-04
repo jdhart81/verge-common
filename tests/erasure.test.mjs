@@ -864,3 +864,135 @@ await test('deletion-ledger replay removes restored provider links and queues au
     1,
   );
 });
+
+await test('woodland erasure: own plans go, a plan others voted on keeps only its structure, layer notes and override reasons go', async () => {
+  const { spineCoop, reviewWatershedLayers, owner, reviewer, member } =
+    await import('./woodland-spine-fixture.mjs');
+  const { UNITS } = await import('./dfm-watershed-fixture.mjs');
+  const f = spineCoop({ consents: false, planned: false });
+  reviewWatershedLayers(f);
+  // The member's two plans: one blocked (cuts the main stem), one that passes.
+  const blocked = f.run(
+    'submit_treatment_plan',
+    { projectId: f.project, name: 'Member cut', period: '2028', treatments: [UNITS['cut-main']] },
+    member,
+  );
+  const quiet = f.run(
+    'submit_treatment_plan',
+    { projectId: f.project, name: 'Member thinning', period: '2027', treatments: [UNITS['unit-a']] },
+    member,
+  );
+  // The founding steward's plan, blocked, put to an override vote by the reviewer.
+  const stewardPlan = f.run(
+    'submit_treatment_plan',
+    { projectId: f.project, name: 'Steward cut', period: '2028', treatments: [UNITS['cut-main']] },
+    owner,
+  );
+  f.run('propose_plan_override', { id: blocked, reason: 'Member wants it', days: 14 }, owner);
+  f.run('vote_plan_override', { id: blocked, choice: 'oppose' }, reviewer);
+  f.run('propose_plan_override', { id: stewardPlan, reason: 'Reviewer text', days: 14 }, reviewer);
+  f.run('vote_plan_override', { id: stewardPlan, choice: 'approve' }, member);
+  const memberId = f.s.members.find((m) => m.userId === member.id).id;
+  const { state } = eraseWorkspaceState(f.s, member.id, now);
+  const plans = new Map(state.treatmentPlans.map((p) => [p.id, p]));
+  assert.ok(!plans.has(quiet), 'a plan nobody else voted on is removed');
+  const kept = plans.get(blocked);
+  assert.equal(kept.erasureRedacted, true);
+  assert.equal(kept.name, 'Deleted plan');
+  assert.deepEqual(kept.treatments, []);
+  assert.deepEqual(Object.keys(kept.check).sort(), ['engine', 'reasons', 'status', 'warnings']);
+  assert.equal(kept.override.votes.length, 1, 'the neighbor’s vote is unchanged');
+  assert.equal(kept.override.reason, 'Member wants it', 'the steward’s reason stays');
+  // E1: the redacted plan cannot be acted on, so its open vote is closed as withdrawn.
+  assert.equal(kept.override.status, 'withdrawn');
+  assert.equal(kept.override.closedAt, now);
+  assert.equal(plans.get(stewardPlan).override.status, 'open', 'other plans’ votes stay open');
+  const other = plans.get(stewardPlan);
+  assert.equal(other.name, 'Steward cut');
+  assert.notEqual(other.override.votes[0].memberId, memberId, 'the erased vote is pseudonymous');
+  const values = (v) =>
+    v && typeof v === 'object' ? Object.values(v).flatMap(values) : [v];
+  assert.ok(!values(state).includes(member.id), 'no record names the erased account');
+  // A steward's erasure clears their layer notes and override reasons, never the shared map.
+  const steward = eraseWorkspaceState(f.s, reviewer.id, now).state;
+  assert.equal(steward.treatmentPlans.find((p) => p.id === stewardPlan).override.reason, '');
+  const ownerErased = eraseWorkspaceState(f.s, owner.id, now).state;
+  const layers = ownerErased.woodlandLayers.at(-1);
+  assert.equal(layers.notes, '');
+  assert.equal(layers.erasureRedacted, true);
+  assert.equal(layers.layers.streams.length, 12);
+});
+
+await test('woodland erasure: a plan a steward reviewed keeps its decision, and every redacted plan is inert (E1)', async () => {
+  const { spineCoop, reviewWatershedLayers, owner, reviewer, member, NOW } =
+    await import('./woodland-spine-fixture.mjs');
+  const { UNITS } = await import('./dfm-watershed-fixture.mjs');
+  const { memberView } = await import('../lib/network.mjs');
+  const { woodlandAnalysis } = await import('../server/woodland-analysis.mjs');
+  const f = spineCoop({ consents: false, planned: false });
+  reviewWatershedLayers(f);
+  // A passing plan a steward approved, with a note that describes the member's land.
+  const approved = f.run(
+    'submit_treatment_plan',
+    { projectId: f.project, name: 'PRIVATE plan name', period: '2027', treatments: [UNITS['unit-a']] },
+    member,
+  );
+  f.run('review_treatment_plan', { id: approved, decision: 'approve', note: 'PRIVATE review note' }, reviewer);
+  // A blocked plan the co-op adopted by override vote: it is back to submitted, awaiting review.
+  const adopted = f.run(
+    'submit_treatment_plan',
+    { projectId: f.project, name: 'PRIVATE blocked name', period: '2028', treatments: [UNITS['cut-main']] },
+    member,
+  );
+  f.run('propose_plan_override', { id: adopted, reason: 'Salvage after storm damage', days: 14 }, owner);
+  for (const voter of [owner, reviewer, member])
+    f.run('vote_plan_override', { id: adopted, choice: 'approve' }, voter);
+  f.run('close_plan_override', { id: adopted }, owner);
+  assert.equal(f.s.treatmentPlans.find((p) => p.id === adopted).status, 'submitted');
+  const { state } = eraseWorkspaceState(f.s, member.id, now);
+  assert.doesNotMatch(JSON.stringify(state), /PRIVATE/);
+  const plans = new Map(state.treatmentPlans.map((p) => [p.id, p]));
+  const decision = plans.get(approved);
+  assert.equal(decision.erasureRedacted, true, 'another member’s review keeps the record');
+  assert.equal(decision.status, 'reviewed');
+  assert.equal(decision.reviewedBy, reviewer.id);
+  assert.equal(decision.reviewNote, undefined);
+  assert.deepEqual(decision.treatments, []);
+  assert.equal(plans.get(adopted).status, 'submitted');
+  assert.equal(plans.get(adopted).override.status, 'adopted', 'a closed vote stays as it closed');
+  // E1: nothing can act on a redacted plan; the steward view offers no review.
+  const view = memberView(state, reviewer.id).state.treatmentPlans;
+  assert.equal(view.find((p) => p.id === adopted).canReview, false);
+  const later = now + 1;
+  const act = (op, payload, actor) =>
+    applyCommand(state, actor, { op, payload }, later, randomUUID());
+  for (const [op, payload, actor] of [
+    ['review_treatment_plan', { id: adopted, decision: 'approve', note: 'Checked' }, reviewer],
+    ['propose_plan_override', { id: approved, reason: 'Again', days: 14 }, owner],
+    ['vote_plan_override', { id: adopted, choice: 'oppose' }, reviewer],
+  ])
+    assert.throws(
+      () => act(op, payload, actor),
+      (e) => e.status === 409 && /author deleted their account/.test(e.message),
+      op,
+    );
+  // Even an override left open on a redacted record (only a hand-edited or older state could
+  // hold one) cannot be closed into adoption.
+  const reopened = structuredClone(state);
+  const legacy = reopened.treatmentPlans.find((p) => p.id === adopted);
+  legacy.override = { ...legacy.override, status: 'open', closesAt: later - 1 };
+  assert.throws(
+    () =>
+      applyCommand(reopened, owner, { op: 'close_plan_override', payload: { id: adopted } }, later, randomUUID()),
+    (e) => e.status === 409 && /author deleted their account/.test(e.message),
+  );
+  await assert.rejects(
+    woodlandAnalysis(
+      state,
+      reviewer.id,
+      { projectId: f.project, kind: 'network', planId: adopted },
+      { enabled: true, now: NOW, runner: { run: async () => ({ status: 'ok' }) } },
+    ),
+    (e) => e.status === 409 && /author deleted their account/.test(e.message),
+  );
+});

@@ -1,5 +1,22 @@
 # Release notes
 
+## v0.10.0 — woodland corridors and the old-growth spine (deployed 4 October 2026, 22:03 UTC; woodland projects off)
+
+Everything merged after v0.9.0, plus the spine integration. Woodland projects stay off unless the operator sets `VERGE_WOODLAND_DFM=1`.
+
+- **Woodland projects** ([PR #33](https://github.com/jdhart81/verge-common/pull/33), [PR #37](https://github.com/jdhart81/verge-common/pull/37)): corridor layers reviewed by a second steward; every treatment plan checked by the open-source DFM engine and blocked if it breaks a link between core areas, with a recorded override vote; drawing, import and local/server previews.
+- **The old-growth spine** (dfm-core 0.2.0, byte-identical to the published package, including the network soundness fix from hdfm-framework #44; the corridor check's results are unchanged, under the engine name `dfm-connectivity-0.2.0`, except that four upkeep treatments are now permitted light treatments with a reason: prescribed burn, prescribed grazing, late-season mowing and brush management): optional stream and ridge/valley/saddle lines, spine settings with sources, **Draft spine corridors**, and four analyses: network robustness, the years ahead from consent and stand ages, climate routes, and the next woodlots whose consent would complete a link. Planned join years model the build-out without standing in for consent. Members other than stewards see only the woodlots they recorded, project only with their own planned years, and see the build-out as a co-op total. See [woodland projects](WOODLAND.md).
+- **Engine work off the request thread:** spine analyses, plan previews (browser and MCP) and the check on a submitted plan all run in one server worker thread with a 25-second deadline, one job per account at a time, and per-account budgets shared by the browser and agents (12 analyses and 30 previews per 10 minutes, 60 worker jobs in all). A submission is validated before any engine work and uses the worker's result only for exactly the input the command builds. Agent commands now share the browser's per-account command budget.
+- **Consent privacy in analyses:** only stewards apply a treatment plan to the outlook or build-out, so a member cannot probe where neighbours have consented.
+- **Interoperability with Dendritic Forest Management:** the check input is the Landscape Package's canonical form, so a steward's **Download check inputs** reproduces a stored plan result and its checksum with the open-source engine (for checks made from v0.10.0 on, which say so); packages from the DFM workspace import with names kept. New public page [/woodland/](https://vergecommon.com/woodland/) links to dendriticforest.com, which links back to it.
+- **Agents:** read-only MCP tool `analyze_woodland_spine` beside `check_woodland_plan`, which hosted now runs the co-op's own preview (with woodlot consents, without parcel geometry). Busy and time-out answers reach agents as written.
+- **Privacy and recovery:** account erasure now covers woodland plans, layer notes and override reasons; a plan another member reviewed or voted on keeps an inert, pseudonymous record of that decision. The rollback guard refuses writers older than v0.10.0 once woodland records exist. Reviewers write their own review notes on layers and plans.
+- **Pilot readiness** ([PR #35](https://github.com/jdhart81/verge-common/pull/35)): fail-closed readiness report, recovery and operator rehearsal kit, missing-ledger and rollback guards, truthful event and urgent-contact copy.
+- **DFM site on this server** ([PR #34](https://github.com/jdhart81/verge-common/pull/34), [PR #38](https://github.com/jdhart81/verge-common/pull/38)): additive Caddy runbook for dendriticforest.com; footers link the woodland page.
+- `/healthz` reports the version from `package.json` (now 0.10.0). The launch gate also checks `/woodland/`.
+
+Validation before deployment: see the pull request. CI runs the woodland acceptance (`tests/woodland_acceptance.py`) inside the production image with the flag on. Deployment receipt: [history/DEPLOYMENT_V0100_2026-10-04.md](history/DEPLOYMENT_V0100_2026-10-04.md).
+
 ## v0.9.0 — participation and continuing care (29 September 2026)
 
 - Individual public project, event and progress pages with social metadata, native share/copy fallback and QR codes. Shared-link source codes are explained at joining and retained privately; no tracking cookies or external analytics.

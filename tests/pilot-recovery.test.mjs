@@ -257,6 +257,9 @@ await test('existing rollback guard refuses participation and operator safety st
     { updates: [{ operatorHidden: true }] },
     { comments: [{ operatorHidden: true }] },
     { events: [{ operatorHidden: true }] },
+    { woodlandLayers: [{}] },
+    { treatmentPlans: [{}] },
+    { parcels: [{ plannedJoinYear: 2031 }] },
   ]) {
     db.prepare('UPDATE workspaces SET state_json=?').run(JSON.stringify(state));
     const before = db.prepare('SELECT * FROM workspaces').all();
