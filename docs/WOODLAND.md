@@ -31,7 +31,7 @@ The spine is the dendritic network of retained forest along a landscape's stream
    - **Project the years ahead** (`projectSpine`): at each milestone, links through committed forest and through forest at old-growth age. A woodlot counts from the UTC year its current consent was reviewed; stand ages recorded as of the stand-age year (default: the year the layers were saved) are rolled forward to the current year.
    - **Find climate routes** (`climateRoutes`): for each core, the coolest core it can reach through links that hold, flagged when short of the warming target or unknown.
    - **Find the next woodlots** (`buildOutFrontier`): woodlots without current consent whose spine touches the committed spine, the links each would complete if it alone joined, and its direction. To commit one, record its holder's pooling consent and have another steward review it. Other members see this as **See the committed spine**: the co-op total only (see Privacy).
-   Optionally apply a treatment plan to see its effect.
+   Optionally apply a treatment plan to see its effect. Other members apply plans to the network and climate routes only (see Privacy).
 4. **Plan the build-out.** A woodlot without consent can carry a **planned join year** (`plan_parcel_join`), set by whoever recorded it or a steward. It is a projection assumption only: it never counts as consent, and only a year after the current one is used.
 
 Analyses are structural. They do not establish species movement, genetic viability, old-growth condition or regulatory compliance, and projections predict no fire, storm or new road.
@@ -42,19 +42,20 @@ Analyses need active membership, the woodland flag and a same-origin request. Ne
 
 - gets an outlook projected with planned join years only for woodlots they recorded (someone else's planned year is an assumption on a record they cannot see, and a changed count would reveal it), naming only their woodlots, plus counts;
 - gets the build-out as the co-op total (share of the spine committed, woodlot count, links held), without per-woodlot rows: a woodlot's place on that list, and the links it would complete, would show where neighbours have or have not consented;
-- sees messages naming another member's woodlot reworded as "another woodlot"; core, line and unit names, which every member sees in the reviewed layers, are left alone.
+- sees messages naming another member's woodlot reworded as "another woodlot"; core, line and unit names, which every member sees in the reviewed layers, are left alone;
+- cannot apply a treatment plan to the outlook or build-out (403). Those results depend on woodlot consents, so a member could otherwise draw a unit anywhere and read, from the change in committed area, whether the land under it is committed. Network and climate results never use consents and take any plan.
 
-No parcel geometry is ever part of a result. Planned join years live on the parcel record, which only its recorder and stewards see.
+Every member does see the co-op-level progress: the share of the spine committed and which links between core areas are held through committed forest. Where a link has a single route, that shows the woodlots along it have consented; this is the intended shared measure of the spine, and finer detail stays with stewards. No parcel geometry is ever part of a result. Planned join years live on the parcel record, which only its recorder and stewards see.
 
 ### Analysis worker (WS7)
 
-The engine's network, projection, climate and build-out functions, and on a watershed the corridor check itself, take seconds and block the thread they run on. The self-hosted gateway therefore registers a worker-thread runner (`self-hosted/woodland-analysis.mjs`) when `VERGE_WOODLAND_DFM=1`, and all engine work on the server runs there: spine analyses, plan previews (browser and MCP), and the check on a submitted plan, which runs before the command and is used only if its input checksum equals the input the command builds (otherwise the command checks again itself).
+The engine's network, projection, climate and build-out functions, and on a watershed the corridor check itself, take seconds and block the thread they run on. The self-hosted gateway therefore registers a worker-thread runner (`self-hosted/woodland-analysis.mjs`) when `VERGE_WOODLAND_DFM=1`, and all engine work on the server runs there: spine analyses, plan previews (browser and MCP), and the check on a submitted plan. For a submission the server first applies the command with the check deferred, so every refusal (name, period, units, plan limit, membership, archived co-op) is answered at no engine cost; then it checks the command's exact input in the worker and applies the command with that result, which is used only if its input checksum equals the input the command builds. A mismatch (the co-op changed in between) is refused with 409, never checked on the request thread.
 
 - One job at a time, two queued at most: a full queue answers 503 at once.
 - One job per account at a time: a second concurrent request from the same account answers 429.
-- A deadline of `VERGE_WOODLAND_ANALYSIS_TIMEOUT_MS` (default and maximum 25,000 ms) from the moment a request is queued, so every answer arrives before the gateway's 30-second proxy limit. A job that reaches its deadline answers 504 and its worker is replaced; a worker that cannot start answers 503.
+- A deadline of `VERGE_WOODLAND_ANALYSIS_TIMEOUT_MS` (default 25,000 ms; clamped to 5,000–25,000) from the moment a request is queued, so every answer arrives before the gateway's 30-second proxy limit. A job that reaches its deadline answers 504 and its worker is replaced; a worker that cannot start answers 503.
 - Analysis results are cached in memory by exact input (32 entries), then reduced for each viewer.
-- Each account may run 12 analyses and 30 plan previews per 10 minutes, shared between the browser and MCP agents.
+- Each account may run 12 analyses and 30 plan previews per 10 minutes, shared between the browser and MCP agents, and at most 60 worker jobs per 10 minutes whatever asked for them (plan submissions included). Agent commands share the browser's command budget (40 a minute, 400 an hour).
 
 `vinext dev` runs engine work inline; a production build without the runner refuses it (503).
 

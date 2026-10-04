@@ -162,8 +162,19 @@ export function createGateway({
     readWorkspace: (p, id) =>
       internal(p, `/api/workspaces?id=${encodeURIComponent(id)}`),
     listWorkspaces: (p) => internal(p, '/api/workspaces'),
-    executeCommand: (p, id, input) =>
-      internal(p, '/api/workspaces', { id, ...input }),
+    // internal() skips the gateway's request limits, so agent commands draw on the same
+    // per-account command budget as the browser here.
+    executeCommand: (p, id, input) => {
+      if (
+        !auth.rateLimit(`cmd:m:${p.id}`, 40, 60000) ||
+        !auth.rateLimit(`cmd:h:${p.id}`, 400, 3600000)
+      )
+        throw Object.assign(
+          new Error('You are making changes very quickly. Wait a few minutes.'),
+          { status: 429 },
+        );
+      return internal(p, '/api/workspaces', { id, ...input });
+    },
     // Woodland engine work waits for the analysis worker (up to its 25 s deadline) inside the
     // app. internal() skips the gateway's request limits, so agents get the same per-account
     // budgets as the browser here.

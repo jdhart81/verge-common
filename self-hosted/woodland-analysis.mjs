@@ -7,9 +7,13 @@
 //     a full queue answers 503 at once instead of piling up requests;
 //   - one job per account at a time (`key`): a second concurrent request from the same account
 //     answers 429, so one account cannot hold the queue;
+//   - at most `budget.jobs` jobs per account in `budget.windowMs` (default 60 in 10 minutes),
+//     whatever asked for them (analyses, previews, plan submissions; browser or agent): a
+//     backstop behind the gateway's per-kind budgets, answering 429;
 //   - a worker that cannot start answers 503 for its job and the next job tries again;
-//   - each job has a hard deadline of `timeoutMs` from the moment it is queued, waiting time
-//     included, so every request is answered before the gateway's 30 s proxy limit. A job whose
+//   - each job has a hard deadline of `timeoutMs` (at most 25 s; the operator setting is
+//     clamped to 5–25 s by deadlineMs) from the moment it is queued, waiting time included, so
+//     every request is answered before the gateway's 30 s proxy limit. A job whose
 //     deadline is under a second away when its turn comes answers 503 without starting; a
 //     running job that reaches its deadline terminates the worker and answers 504, and the
 //     next job starts on a fresh worker;
@@ -28,16 +32,45 @@ const failure = (message, status) =>
 
 /** The gateway proxies with a 30 s limit; a job deadline must leave room inside it. */
 export const MAX_DEADLINE_MS = 25000;
+/**
+ * The smallest deadline an operator can set. A queued job starts only with a second of its
+ * deadline left, so a smaller deadline would refuse almost any job that has to wait.
+ */
+export const MIN_DEADLINE_MS = 5000;
+/** VERGE_WOODLAND_ANALYSIS_TIMEOUT_MS as a deadline: unset or invalid is the maximum. */
 export const deadlineMs = (value) =>
-  Math.min(MAX_DEADLINE_MS, Math.max(1000, Number(value) || MAX_DEADLINE_MS));
+  Math.min(
+    MAX_DEADLINE_MS,
+    Math.max(MIN_DEADLINE_MS, Number(value) || MAX_DEADLINE_MS),
+  );
+
+/** Jobs one account may start per window, across every path that uses the worker. */
+export const ACCOUNT_BUDGET = Object.freeze({ jobs: 60, windowMs: 10 * 60000 });
 
 export function createWoodlandAnalysisPool({
   timeoutMs = MAX_DEADLINE_MS,
   maxWaiting = 2,
   workerUrl = new URL('./woodland-analysis-worker.mjs', import.meta.url),
   resourceLimits = { maxOldGenerationSizeMb: 384 },
+  budget = ACCOUNT_BUDGET,
+  now = Date.now,
 } = {}) {
   const waiting = [];
+  // Start times of each account's recent jobs, for the per-account budget.
+  const recent = new Map();
+  const withinBudget = (key) => {
+    if (!key || !budget) return true;
+    const at = now();
+    const since = at - budget.windowMs;
+    if (recent.size > 1000)
+      for (const [k, times] of recent)
+        if (!times.some((t) => t > since)) recent.delete(k);
+    const times = (recent.get(key) ?? []).filter((t) => t > since);
+    const ok = times.length < budget.jobs;
+    if (ok) times.push(at);
+    recent.set(key, times);
+    return ok;
+  };
   let worker = null;
   let current = null;
   let nextId = 1;
@@ -123,7 +156,8 @@ export function createWoodlandAnalysisPool({
       settle(job, failure('Landscape analysis could not start.', 503));
     }
   }
-  const limit = deadlineMs(timeoutMs);
+  // Never past the proxy limit; the operator setting is clamped by deadlineMs() on startup.
+  const limit = Math.min(MAX_DEADLINE_MS, Math.max(1, Number(timeoutMs) || MAX_DEADLINE_MS));
   return {
     /** @param {{key?: string}} [options] key: the account, for one job per account at a time */
     run(kind, input, { key = null } = {}) {
@@ -132,13 +166,20 @@ export function createWoodlandAnalysisPool({
       if (key && (current?.key === key || waiting.some((j) => j.key === key)))
         return Promise.reject(
           failure(
-            'Your previous landscape analysis is still running. Try again when it finishes.',
+            'Your previous woodland check or analysis is still running. Try again when it finishes.',
             429,
           ),
         );
       if (waiting.length >= maxWaiting)
         return Promise.reject(
           failure('Landscape analysis is busy. Try again in a minute.', 503),
+        );
+      if (!withinBudget(key))
+        return Promise.reject(
+          failure(
+            'You have run many woodland checks and analyses. Wait a few minutes and try again.',
+            429,
+          ),
         );
       return new Promise((resolve, reject) => {
         waiting.push({
@@ -159,6 +200,7 @@ export function createWoodlandAnalysisPool({
       completed,
       timedOut,
       worker: !!worker,
+      deadlineMs: limit,
     }),
     async close() {
       closed = true;

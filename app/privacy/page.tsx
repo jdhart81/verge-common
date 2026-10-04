@@ -196,7 +196,9 @@ export default function PrivacyPage() {
           build-out toward the next woodlots only as a co-op total; their
           projections use only planned join years they recorded. They never
           see another member’s woodlot, boundary, planned join year or place in
-          the build-out order. Account deletion removes your treatment plans; a
+          the build-out order. Every member sees the share of the spine
+          committed and which links between core areas it holds, which can
+          indicate that the woodlots along a single route have consented. Account deletion removes your treatment plans; a
           plan another member reviewed or voted on keeps only its status, the
           review decision and pseudonymous votes.
         </p>

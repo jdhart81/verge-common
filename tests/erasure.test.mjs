@@ -976,6 +976,16 @@ await test('woodland erasure: a plan a steward reviewed keeps its decision, and 
       (e) => e.status === 409 && /author deleted their account/.test(e.message),
       op,
     );
+  // Even an override left open on a redacted record (only a hand-edited or older state could
+  // hold one) cannot be closed into adoption.
+  const reopened = structuredClone(state);
+  const legacy = reopened.treatmentPlans.find((p) => p.id === adopted);
+  legacy.override = { ...legacy.override, status: 'open', closesAt: later - 1 };
+  assert.throws(
+    () =>
+      applyCommand(reopened, owner, { op: 'close_plan_override', payload: { id: adopted } }, later, randomUUID()),
+    (e) => e.status === 409 && /author deleted their account/.test(e.message),
+  );
   await assert.rejects(
     woodlandAnalysis(
       state,

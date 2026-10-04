@@ -299,6 +299,10 @@ export function WoodlandSpinePanel({
       (state.parcels ?? []).find((p: Parcel) => p.id === f.properties.dfm_id),
     )
     .filter((p): p is Parcel => p !== undefined);
+  // WS8: the outlook and build-out depend on woodlot consents, so only stewards apply a plan
+  // to them; network and climate results never use consents.
+  const appliesPlan = (kind: Kind) =>
+    !!planId && (steward || kind === 'network' || kind === 'climate');
   const run = async (kind: Kind) => {
     setError('');
     setRunning(kind);
@@ -310,7 +314,7 @@ export function WoodlandSpinePanel({
           id: coopId,
           projectId,
           kind,
-          ...(planId ? { planId } : {}),
+          ...(appliesPlan(kind) ? { planId } : {}),
         }),
         signal: AbortSignal.timeout(35000),
       });
@@ -391,6 +395,13 @@ export function WoodlandSpinePanel({
               </NativeSelectOption>
             ))}
           </NativeSelect>
+          {!steward && planId && (
+            <p className="small">
+              The plan applies to the network and climate routes. Stewards
+              apply plans to the years ahead and the committed spine, which
+              depend on neighbours’ consent records.
+            </p>
+          )}
         </>
       )}
       <div className="actions mt-3">

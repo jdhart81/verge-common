@@ -1029,3 +1029,58 @@ await test('WS7: agents and the browser share one per-account budget for woodlan
     30,
   );
 });
+
+await test('agent commands draw on the same per-account command budget as the browser', async (t) => {
+  const f = await fixture(t);
+  const token = f.auth.createToken(f.alice.user.id, 'Busy agent', 'mcp:write');
+  const client = new Client({ name: 'command-budget', version: '1' });
+  await client.connect(
+    new StreamableHTTPClientTransport(new URL(`${f.url}/mcp`), {
+      fetch: nodeFetch,
+      requestInit: {
+        headers: {
+          host: new URL(origin).host,
+          authorization: `Bearer ${token}`,
+        },
+      },
+    }),
+  );
+  t.after(() => client.close());
+  const apply = () =>
+    client.callTool({
+      name: 'apply_coop_command',
+      arguments: {
+        id: aliceCoop,
+        version: 4,
+        requestId: crypto.randomUUID(),
+        command: { op: 'create_task', payload: { projectId, title: 'Survey' } },
+      },
+    });
+  // Half the minute's budget from the browser, half from the agent.
+  for (let i = 0; i < 20; i += 1) {
+    const r = await f.request('/api/workspaces', {
+      method: 'POST',
+      headers: {
+        origin,
+        cookie: cookieFor(f.alice),
+        'content-type': 'application/json',
+      },
+      body: JSON.stringify({ id: aliceCoop, op: 'create_task', payload: {} }),
+    });
+    assert.equal(r.status, 200);
+  }
+  for (let i = 0; i < 20; i += 1) assert.equal((await apply()).isError, undefined);
+  const limited = await apply();
+  assert.equal(limited.isError, true);
+  assert.match(limited.content[0].text, /changes very quickly/);
+  const browser = await f.request('/api/workspaces', {
+    method: 'POST',
+    headers: {
+      origin,
+      cookie: cookieFor(f.alice),
+      'content-type': 'application/json',
+    },
+    body: JSON.stringify({ id: aliceCoop, op: 'create_task', payload: {} }),
+  });
+  assert.equal(browser.status, 429);
+});

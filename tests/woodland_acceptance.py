@@ -119,7 +119,9 @@ assert plan['check']['inputForm'] == 'landscape-package-1.0', plan['check'].get(
 s = ok(c, 'submit_treatment_plan', {'projectId': project, 'name': 'Synthetic thinning plan', 'period': str(year + 1), 'treatments': [away]})
 plan = next(p for p in s['state']['treatmentPlans'] if p['name'] == 'Synthetic thinning plan')
 assert plan['status'] == 'submitted' and plan['check']['inputChecksum'] == quiet_preview['inputChecksum'], plan['check']
-checks.append('plan previews and submitted plans checked in the analysis worker, with matching checksums')
+code, body = command(c, 'submit_treatment_plan', {'projectId': project, 'name': '', 'period': str(year + 1), 'treatments': [cut]})
+assert code == 400 and 'plan name' in body.get('error', '').lower(), (code, body)
+checks.append('plan previews and submitted plans checked in the analysis worker, with matching checksums; refused submissions answered before any check')
 # Member privacy: C sees only C's woodlots and the build-out total; outsiders and unknown kinds
 # are refused.
 mine = analyze(c, 'frontier')
@@ -128,9 +130,15 @@ assert mine['result']['frontier'] == [] and mine['result']['laterParcels'] == []
 assert mine['result']['frontierForStewards'] is True
 assert mine['result']['committed']['parcels'] == [] and mine['result']['committed']['parcelCount'] == 1
 assert parcels['Woodlot A'] not in json.dumps(analyze(c, 'outlook'))
+# Only stewards apply a plan to consent-based results; any member may apply one to the network.
+code, body = c.call('/api/woodland-analysis', {'id': coop, 'projectId': project, 'kind': 'outlook', 'planId': plan['id']})
+assert code == 403, (code, body)
+code, body = c.call('/api/woodland-analysis', {'id': coop, 'projectId': project, 'kind': 'network', 'planId': plan['id']})
+assert code == 200 and body['analysis']['planId'] == plan['id'], (code, body)
+assert analyze(a, 'outlook')['planId'] is None
 assert analyze(d, 'frontier', 403)
 assert analyze(a, 'everything', 400)
-checks.append('member sees only their woodlots and the build-out total; outsiders and unknown analyses refused')
+checks.append('member sees only their woodlots and the build-out total, applies plans only to the network; outsiders and unknown analyses refused')
 # Cleanup: archive the fixture, then close every synthetic account.
 assert command(a, 'archive', {})[0] == 200
 for client in [a, b, c, d]:

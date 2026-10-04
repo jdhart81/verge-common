@@ -6,11 +6,15 @@
 //       and this module hands each job to it, one per account at a time. Without a runner,
 //       production refuses (503); development runs inline so `vinext dev` still works.
 //   WS8 Membership and the woodland flag are checked before any project input is read, and the
-//       result is reduced to what the viewer may see (lib/woodland-spine.mjs).
+//       result is reduced to what the viewer may see (lib/woodland-spine.mjs). Only stewards may
+//       apply a plan to the outlook or build-out: those results depend on woodlot consents, so a
+//       member could otherwise draw a unit anywhere and read from the change in committed area
+//       whether the land under it is committed. Network and climate results never use consents.
 //   WS10 Results are cached by analysis and exact input, for every viewer alike; the per-viewer
 //       reduction happens after the cache, so a cached result never crosses that boundary.
-import { membership, isSteward } from '../lib/network.mjs';
+import { membership, isSteward, applyCommand } from '../lib/network.mjs';
 import { DomainError } from '../lib/domain-error.mjs';
+import { CHECK_DEFERRED, deferredCheckInput } from '../lib/woodland.mjs';
 import {
   SPINE_ANALYSES,
   spineAnalysisInput,
@@ -69,6 +73,48 @@ export async function runEngine(
 }
 
 /**
+ * WS7 for submit_treatment_plan (lib/woodland.mjs): apply the command with the check deferred,
+ * so every refusal before the check is answered at no engine cost; then run the check on the
+ * command's exact input in the analysis worker and return the context for the real command.
+ * The context is built only from the worker's result, never from the request.
+ * @param {object} state full co-op state the command will be applied to
+ * @param {{id: string}} user authenticated account
+ * @param {object} data the command request ({op, payload, requestId, ...})
+ * @param {{runner?: {run: Function} | null, production?: boolean, now?: number}} [options]
+ * @returns {Promise<{woodlandCheck: object}>}
+ */
+export async function submitCheckContext(
+  state,
+  user,
+  data,
+  { runner = registeredRunner(), production = isProduction(), now = Date.now() } = {},
+) {
+  let input = null;
+  try {
+    applyCommand(
+      state,
+      user,
+      { op: data?.op, payload: data?.payload },
+      now,
+      data?.requestId ?? crypto.randomUUID(),
+      { woodlandCheck: CHECK_DEFERRED },
+    );
+  } catch (error) {
+    input = deferredCheckInput(error);
+    if (!input) throw error;
+  }
+  if (!input)
+    throw new DomainError('Only a treatment plan submission is checked.', 400);
+  return {
+    woodlandCheck: await runEngine('check', input, {
+      runner,
+      production,
+      key: user.id,
+    }),
+  };
+}
+
+/**
  * @param {object} state full co-op state (server side only)
  * @param {string} userId authenticated account
  * @param {{projectId: string, kind: string, planId?: string}} data request body
@@ -99,6 +145,11 @@ export async function woodlandAnalysis(state, userId, data, options) {
   )
     throw new DomainError('Choose a treatment plan.');
   const steward = isSteward(state, userId);
+  if (data.planId != null && !steward && (kind === 'outlook' || kind === 'frontier'))
+    throw new DomainError(
+      'Only stewards can apply a treatment plan to the outlook or the build-out. Apply it to the network or climate routes instead.',
+      403,
+    );
   let prepared;
   try {
     // WS8: another member's planned join years never enter a non-steward's projection.

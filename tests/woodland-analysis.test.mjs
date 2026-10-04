@@ -207,6 +207,34 @@ await test('WS7 one job per account at a time: a second concurrent request from 
   }
 });
 
+await test('WS7 each account has a job budget across every path that uses the worker', async () => {
+  let clock = 1_000_000;
+  const pool = createWoodlandAnalysisPool({
+    timeoutMs: 10000,
+    workerUrl: testWorker,
+    budget: { jobs: 2, windowMs: 60000 },
+    now: () => clock,
+  });
+  try {
+    for (let n = 1; n <= 2; n += 1)
+      assert.deepEqual((await pool.run('echo', { n }, { key: 'alice' })).echo, { n });
+    await assert.rejects(
+      pool.run('echo', {}, { key: 'alice' }),
+      (e) => e.status === 429 && /many woodland checks and analyses/.test(e.message),
+    );
+    // Other accounts, and jobs without an account, are unaffected.
+    assert.equal((await pool.run('echo', {}, { key: 'bob' })).status, 'ok');
+    assert.equal((await pool.run('echo', {})).status, 'ok');
+    // The window slides.
+    clock += 60001;
+    assert.equal((await pool.run('echo', {}, { key: 'alice' })).status, 'ok');
+  } finally {
+    await pool.close();
+  }
+  const { ACCOUNT_BUDGET } = await import('../self-hosted/woodland-analysis.mjs');
+  assert.deepEqual(ACCOUNT_BUDGET, { jobs: 60, windowMs: 600000 });
+});
+
 await test('WS7 a worker that cannot start, or a job it cannot receive, answers 503 and the pool recovers', async () => {
   // The Worker constructor throws (here: a path it refuses; in production: thread exhaustion).
   const broken = createWoodlandAnalysisPool({ timeoutMs: 2000, workerUrl: 'not-a-module-path.mjs' });
@@ -237,14 +265,48 @@ await test('WS7 a worker that cannot start, or a job it cannot receive, answers 
   }
 });
 
-await test('WS7 job deadlines stay inside the gateway proxy limit', async () => {
-  const { deadlineMs, MAX_DEADLINE_MS } = await import('../self-hosted/woodland-analysis.mjs');
+await test('WS7 job deadlines stay inside the gateway proxy limit and leave room to wait', async () => {
+  const { deadlineMs, MAX_DEADLINE_MS, MIN_DEADLINE_MS } = await import(
+    '../self-hosted/woodland-analysis.mjs'
+  );
   assert.equal(MAX_DEADLINE_MS, 25000);
+  assert.equal(MIN_DEADLINE_MS, 5000);
   assert.equal(deadlineMs(undefined), 25000);
   assert.equal(deadlineMs('60000'), 25000, 'never past the 30 s proxy abort');
-  assert.equal(deadlineMs('10'), 1000);
+  assert.equal(deadlineMs('10'), 5000, 'a queued job can still wait four seconds');
   assert.equal(deadlineMs('12000'), 12000);
   assert.equal(deadlineMs('nonsense'), 25000);
+  // A pool never exceeds the proxy limit whatever it is given.
+  for (const [given, used] of [[60000, 25000], [8000, 8000], [undefined, 25000]]) {
+    const pool = createWoodlandAnalysisPool({ timeoutMs: given, workerUrl: testWorker });
+    assert.equal(pool.stats().deadlineMs, used, String(given));
+    await pool.close();
+  }
+});
+
+await test('WS8 only stewards apply a plan to consent-dependent results', async () => {
+  clearAnalysisCache();
+  const runner = fakeRunner();
+  const options = { enabled: true, runner, now: NOW };
+  // A member could otherwise draw a unit anywhere and read, from the change in committed area,
+  // whether the land under it is committed.
+  for (const kind of ['outlook', 'frontier'])
+    await assert.rejects(
+      woodlandAnalysis(coop.s, member.id, { projectId: coop.project, kind, planId: 'any-plan' }, options),
+      (e) => status(e, 403) && /Only stewards/.test(e.message),
+      kind,
+    );
+  assert.deepEqual(runner.calls, [], 'refused before any input is built');
+  // Network and climate never use consents: a member may apply a plan there.
+  await assert.rejects(
+    woodlandAnalysis(coop.s, member.id, { projectId: coop.project, kind: 'network', planId: 'any-plan' }, options),
+    (e) => status(e, 404) && /Treatment plan not found/.test(e.message),
+  );
+  await assert.rejects(
+    woodlandAnalysis(coop.s, owner.id, { projectId: coop.project, kind: 'outlook', planId: 'any-plan' }, options),
+    (e) => status(e, 404),
+    'a steward reaches the plan lookup',
+  );
 });
 
 await test('WS7 the real worker runs the engine off the main thread with the same result', async () => {
