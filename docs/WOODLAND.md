@@ -4,7 +4,7 @@ Off by default. Set `VERGE_WOODLAND_DFM=1` on the server to enable it. With the 
 
 Agents with an `mcp:read` token can use `check_woodland_plan` (the corridor check on proposed units) and `analyze_woodland_spine` (one spine analysis); both are read-only and follow the same membership and privacy rules as the website.
 
-Woodland projects keep retained corridors connected across working woodlots as harvests are planned, and build the old-growth spine woodlot by woodlot. The engine is `@viridis/dfm-core` from the open-source [Dendritic Forest Management](https://github.com/jdhart81/hdfm-framework) repository (MIT), described at [dendriticforest.com](https://dendriticforest.com/). It is vendored as `vendor/viridis-dfm-core-0.2.0.tgz`, byte-identical to `npm pack` of `packages/dfm-core` at 0.2.0 (a test pins its SHA-256), until the package is published to npm. Its corridor check, `dfm-connectivity-0.1.0`, gives the same results as dfm-core 0.1.0.
+Woodland projects keep retained corridors connected across working woodlots as harvests are planned, and build the old-growth spine woodlot by woodlot. The engine is `@viridis/dfm-core` from the open-source [Dendritic Forest Management](https://github.com/jdhart81/hdfm-framework) repository (MIT), described at [dendriticforest.com](https://dendriticforest.com/). It is vendored as `vendor/viridis-dfm-core-0.2.0.tgz`, byte-identical to `npm pack` of `packages/dfm-core` at 0.2.0 (a test pins its SHA-256), until the package is published to npm. Its corridor check, `dfm-connectivity-0.2.0`, gives the same results as 0.1.0 for every input without the stepping-stone setting, which woodland projects do not use, apart from four upkeep treatments 0.2.0 added (below); a test checks a plan stored with 0.1.0 still reproduces. 0.2.0 also runs in prairie, savanna and flat country (stepping stones, flat-land links, remnants, exits); woodland projects offer the forest link kinds, and an upload names anything it leaves out.
 
 The public page [/woodland/](https://vergecommon.com/woodland/) explains woodland projects to visitors and says whether they are open on the service; dendriticforest.com links to it.
 
@@ -102,7 +102,9 @@ New and imported draft features have stable UUID `dfm_id` values. Core classes
 are candidates, riparian cores or reserves; the editor does not offer verified
 old growth. Crossings default to assumed passage. Treatment intensity can be
 free text; corridor permission requires one of the engine's `LIGHT_INTENSITIES`
-and a reason. Invalid geometry and missing properties are listed with the
+and a reason. Since dfm-core 0.2.0 that list also holds the upkeep that fire- and
+grazing-dependent woodland needs: prescribed burn, prescribed grazing,
+late-season mowing and brush management. Invalid geometry and missing properties are listed with the
 feature name/ID and prevent submission. Validation shares the boundary editor's
 WGS84, self-crossing, closure and 200-corner rules, with 2–200 vertices for roads
 and one coordinate for crossings. Polygon holes and antimeridian drawings are

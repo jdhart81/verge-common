@@ -10,6 +10,7 @@ import {
   ENGINE_VERSION,
   SPINE_LINK_KINDS,
   checkConnectivitySync,
+  fromLandscapePackage,
   buildOutFrontier,
   projectSpine,
   climateRoutes,
@@ -44,8 +45,10 @@ import {
 import { watershed, withAges } from './dfm-watershed-fixture.mjs';
 
 const pair = (a, b) => ({ a, b });
+// npm pack of hdfm-framework packages/dfm-core 0.2.0 (#43 with #44: any biome, and the network
+// soundness fix).
 const PUBLISHED_0_2_0_SHA256 =
-  '8086bf771c84322940fbd23c0b907dbd945ce6881e059eba9f75e7d03d67d0a5';
+  'dd5d1f41a1cb24ff49cfeb851ab0eaa13df2fa311ffb2fd5a4597046069d16f9';
 
 await test('WS1 the vendored engine is the published dfm-core 0.2.0 with the unchanged connectivity check', async () => {
   const tgz = await readFile(
@@ -65,8 +68,22 @@ await test('WS1 the vendored engine is the published dfm-core 0.2.0 with the unc
     ),
   );
   assert.equal(pkg.version, '0.2.0');
-  assert.equal(ENGINE_VERSION, 'dfm-connectivity-0.1.0');
-  assert.deepEqual([...LINK_KINDS], [...SPINE_LINK_KINDS]);
+  assert.equal(ENGINE_VERSION, 'dfm-connectivity-0.2.0');
+  // Woodland projects offer the forest link kinds; the engine also takes flat-land ones.
+  assert.deepEqual([...LINK_KINDS], ['ridge', 'valley', 'saddle']);
+  assert.ok(LINK_KINDS.every((k) => SPINE_LINK_KINDS.includes(k)));
+  // A plan checked by the 0.1.0 connectivity engine keeps its meaning: the same input gives the
+  // same result and checksum (scripts/dfm-contract-fixture.mjs before this engine).
+  const { package: stored, stored: check } = JSON.parse(
+    await readFile(new URL('./dfm-contract-0.1.0-check.json', import.meta.url)),
+  );
+  assert.equal(check.engine, 'dfm-connectivity-0.1.0');
+  const now = checkConnectivitySync(fromLandscapePackage(stored));
+  assert.equal(now.inputChecksum, check.inputChecksum);
+  for (const k of ['status', 'lostLinks', 'pinchedLinks'])
+    assert.deepEqual(now[k], check[k], k);
+  for (const k of ['committedM2', 'proposedM2'])
+    assert.ok(Math.abs(now.consent[k] - check.consent[k]) < 1e-6, k);
 });
 
 await test('WS2 a version without spine lines stores, checks and checksums as before', () => {
