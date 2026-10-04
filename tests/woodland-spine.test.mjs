@@ -44,10 +44,12 @@ import {
 import { watershed, withAges } from './dfm-watershed-fixture.mjs';
 
 const pair = (a, b) => ({ a, b });
+// npm pack of hdfm-framework packages/dfm-core at 2db6710 (#44 merged), the same bytes as its
+// web/vendor tarball.
 const PUBLISHED_0_2_0_SHA256 =
-  '8086bf771c84322940fbd23c0b907dbd945ce6881e059eba9f75e7d03d67d0a5';
+  'dd5d1f41a1cb24ff49cfeb851ab0eaa13df2fa311ffb2fd5a4597046069d16f9';
 
-await test('WS1 the vendored engine is the published dfm-core 0.2.0 with the unchanged connectivity check', async () => {
+await test('WS1 the vendored engine is dfm-core 0.2.0 as merged, and every link kind offered here is an engine kind', async () => {
   const tgz = await readFile(
     new URL('../vendor/viridis-dfm-core-0.2.0.tgz', import.meta.url),
   );
@@ -65,8 +67,10 @@ await test('WS1 the vendored engine is the published dfm-core 0.2.0 with the unc
     ),
   );
   assert.equal(pkg.version, '0.2.0');
-  assert.equal(ENGINE_VERSION, 'dfm-connectivity-0.1.0');
-  assert.deepEqual([...LINK_KINDS], [...SPINE_LINK_KINDS]);
+  assert.equal(ENGINE_VERSION, 'dfm-connectivity-0.2.0');
+  // VergeCommon offers the forest link kinds; the engine also reads flat-land kinds
+  // (swale, moraine, right-of-way, hedgerow and others) that woodland projects do not offer yet.
+  for (const kind of LINK_KINDS) assert.ok(SPINE_LINK_KINDS.includes(kind), kind);
 });
 
 await test('WS2 a version without spine lines stores, checks and checksums as before', () => {
