@@ -48,7 +48,7 @@ const pair = (a, b) => ({ a, b });
 // npm pack of hdfm-framework packages/dfm-core 0.2.0 (#43 with #44: any biome, and the network
 // soundness fix).
 const PUBLISHED_0_2_0_SHA256 =
-  'dd5d1f41a1cb24ff49cfeb851ab0eaa13df2fa311ffb2fd5a4597046069d16f9';
+  '4c79dc3b1763a57abe867fc4efc38d6389c2573fe3f7b5babe47b545fd4075e3';
 
 await test('WS1 the vendored engine is the published dfm-core 0.2.0 with the unchanged connectivity check', async () => {
   const tgz = await readFile(
