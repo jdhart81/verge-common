@@ -11,7 +11,9 @@
 | [verge-common #39](https://github.com/jdhart81/verge-common/pull/39) | Merged as `914793054eb8e1b0e86a833d30a40db5acb0e204`; the historical DFM receipt/screenshots, exact history-index row and current STATUS. The sole merge conflict was STATUS text, resolved by retaining current main's deployment/tag facts. Final PR checks passed and GitHub reported CLEAN before merge; all six main checks passed afterward. |
 | [hdfm-framework #46](https://github.com/jdhart81/hdfm-framework/pull/46) | Merged as `0f660ffeadcd8271e2cc585a1d62b222938fd73a`; refreshed dependencies and repacked dfm-core 0.2.0. Main checks passed, including vendored dfm-core drift. |
 
-The stale hdfm-framework #41 is closed, unmerged; #46 supplies the reviewed replacement. The new HDFM tarball SHA-256 is `4c79dc3b1763a57abe867fc4efc38d6389c2573fe3f7b5babe47b545fd4075e3`. It was **not re-vendored into VergeCommon**. This app candidate retains dfm-core tarball SHA-256 `dd5d1f41a1cb24ff49cfeb851ab0eaa13df2fa311ffb2fd5a4597046069d16f9`.
+The stale hdfm-framework #41 is closed, unmerged; #46 supplies the reviewed replacement. The new HDFM tarball SHA-256 is `4c79dc3b1763a57abe867fc4efc38d6389c2573fe3f7b5babe47b545fd4075e3`. It was **not re-vendored or deployed by this maintenance task**. The deployed `9147930` image retains dfm-core tarball SHA-256 `dd5d1f41a1cb24ff49cfeb851ab0eaa13df2fa311ffb2fd5a4597046069d16f9`.
+
+A separate concurrent [verge-common #46](https://github.com/jdhart81/verge-common/pull/46) merged the repack into repository main at `2026-10-05T00:42:32Z`, as `18f265f842ad62a5c834fa8a6752537bfc6784b9`, after this deployment completed. That repository change is outside this deployment: public health still identified `9147930` afterward. The documentation branch incorporates that main without modifying its application changes; this receipt continues to identify the actual live source and original tarball.
 
 ## Maintenance release evidence
 
@@ -93,7 +95,7 @@ The same check confirmed healthy VergeCommon `9147930`. Final server fingerprint
 - Existing annotated `v0.10.0` remains on `824019ce50d1ab0974369118d00493d78d9058ab`, tag object `1fee3843d3f653d43a5e8b06d48a0b5100a3988a`. The requested alternative target `aab3ba2` would replace a public tag and remains a separate owner decision; it was not executed as part of this maintenance release.
 - [verge-common #32](https://github.com/jdhart81/verge-common/pull/32) stays open on the pilot hold.
 - [hdfm-framework #24](https://github.com/jdhart81/hdfm-framework/pull/24) stays open awaiting the outside contributor's sign-off. The first-time workflow was already approved and two polite requests were already posted; no duplicate request was sent during this handoff.
-- The repacked HDFM tarball requires a separate reviewed VergeCommon source change and later release; it was not re-vendored here.
+- The repacked HDFM tarball subsequently landed on repository main through the separate VergeCommon #46. It is outside live source `9147930` and was not deployed by this maintenance task; any later image still requires its own staging and recovery checks.
 - Woodland activation waits for a confirmed woodlot group and the owner's pilot-start decision. The production flag remains off; 1 GiB container memory does not establish pilot qualification.
 - The build-tooling braces audit finding awaits an upstream fix. No forced dependency upgrade was applied.
 - Fresh external certificate observations show VergeCommon expiry `2026-12-18T12:09:56Z` and DFM expiry `2027-01-02T00:17:23Z`. The initial deployment receipt's 3 November expiry is historical, not the current certificate. Caddy handles automatic renewal.
