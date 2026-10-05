@@ -4,6 +4,8 @@ Point-in-time receipts and reviews, preserved unchanged as the audit record. The
 
 | Date | Record |
 | --- | --- |
+| 2026-10-04 | [v0.10.0 maintenance deployment](DEPLOYMENT_MAINTENANCE_2026-10-04.md) |
+| 2026-10-04 | [Final-engine and DFM-link follow-up deployment](DEPLOYMENT_FOLLOWUP_2026-10-04.md) |
 | 2026-10-04 | [v0.10.0 and dendriticforest.com deployment](DEPLOYMENT_V0100_2026-10-04.md) |
 | 2026-10-03 | [DFM public-site deployment](DEPLOYMENT_DFM_SITE_2026-10-03.md) |
 | 2026-09-29 | [v0.9.0 deployment and participation tooling](DEPLOYMENT_V090_2026-09-29.md) |
