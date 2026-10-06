@@ -181,7 +181,7 @@ The LaunchAgent was reversibly unloaded while that authorization is pending; a s
 `.github/workflows/uptime.yml` runs on GitHub's schedule, independent of the Mac:
 
 - every 15 minutes, `/healthz` must return `status: ok` (three attempts, 20 s apart);
-- nightly at 07:17 UTC, `scripts/launch-gate.mjs` must pass against the latest `v*` release tag.
+- nightly at 07:17 UTC, `scripts/launch-gate.mjs` must pass against the reviewed `.github/production-baseline.json`, bound to the exact deployed source and its immutable deployment receipt. BL-01 requires complete 40-hex SHA equality; a matching short prefix is insufficient.
 
 A failure opens one issue labelled `alert-health` or `alert-launch-gate` (later failures comment on it), and GitHub emails repository watchers. Recovery closes the issue automatically. Keep "Watching → All activity" (or at least Issues) enabled on the repository for the owner account so alerts arrive by email and on the GitHub mobile app. Run it on demand from Actions → Production monitor → Run workflow. GitHub may delay scheduled runs by several minutes under load and disables schedules after 60 days without repository activity; re-enable from the Actions tab if that happens.
 
