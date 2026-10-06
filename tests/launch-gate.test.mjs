@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { runChecks, PUBLIC_ROUTES, CONTACT } from '../scripts/launch-gate.mjs';
 
 const origin = 'https://vergecommon.test';
+const commit = 'a'.repeat(40);
 const signIn = `<form><input type="hidden" name="provider" value="google"><button>Continue with Google</button></form>`;
 const register = `<label><input type="checkbox" name="acceptTerms" value="yes" required> Terms</label>`;
 
@@ -26,7 +27,7 @@ function site(overrides = {}) {
       return new Response(
         JSON.stringify({
           status: 'ok',
-          commit: overrides.commit ?? 'abc1234def',
+          commit: overrides.commit ?? commit,
         }),
         { status: 200, headers },
       );
@@ -46,6 +47,7 @@ function site(overrides = {}) {
 const run = (fetchImpl, extra = {}) =>
   runChecks({
     origin,
+    expectCommit: commit,
     fetchImpl,
     now: Date.parse('2026-09-28T00:00:00Z'),
     tlsExpiry: '2026-12-18T00:00:00Z',
@@ -56,9 +58,9 @@ const failures = (results) =>
   results.filter((r) => r.status === 'FAIL').map((r) => `${r.gate} ${r.name}`);
 
 await test('a healthy soft-launch site passes every automated gate', async () => {
-  const results = await run(site(), { expectCommit: 'abc1234' });
+  const results = await run(site());
   assert.deepEqual(failures(results), []);
-  assert.ok(results.some((r) => r.status === 'MANUAL'));
+  assert.equal(results.filter((r) => r.status === 'MANUAL').length, 9);
 });
 
 await test('each broken invariant is reported as a failure', async () => {
@@ -101,4 +103,35 @@ await test('a missing public route fails BL-17', async () => {
       : fetchImpl(url, init),
   );
   assert.deepEqual(failures(results), ['BL-17 route /demo/']);
+});
+
+await test('BL-01 rejects absent, short, malformed and wrong expected/live revisions', async () => {
+  for (const expected of [
+    null,
+    undefined,
+    '',
+    'unknown',
+    commit.slice(0, 7),
+    123,
+    'g'.repeat(40),
+    'b'.repeat(40),
+  ]) {
+    const results = await run(site(), { expectCommit: expected });
+    assert.deepEqual(failures(results), ['BL-01 build commit']);
+    assert.equal(results.filter((r) => r.status === 'MANUAL').length, 9);
+  }
+  // A matching prefix is insufficient: altered suffixes and abbreviated
+  // health revisions must fail just as unknown/malformed revisions do.
+  for (const live of [
+    '',
+    'unknown',
+    commit.slice(0, 7),
+    commit.slice(0, 7) + 'b'.repeat(33),
+    123,
+    'g'.repeat(40),
+  ]) {
+    const results = await run(site({ commit: live }));
+    assert.deepEqual(failures(results), ['BL-01 build commit']);
+    assert.equal(results.filter((r) => r.status === 'MANUAL').length, 9);
+  }
 });

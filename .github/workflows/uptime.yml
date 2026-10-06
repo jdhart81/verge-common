@@ -1,7 +1,7 @@
 name: Production monitor
 # BL-07: outages reach the owner without depending on the Mac.
 # Every 15 minutes: /healthz must answer {"status":"ok"} over HTTPS.
-# Nightly: the full launch gate must pass against the latest release tag.
+# Nightly: the full launch gate must pass against the reviewed production-baseline.json.
 # A failure opens (or comments on) one GitHub issue labelled "production-alert",
 # which GitHub emails to repository watchers; recovery closes it.
 on:
@@ -51,8 +51,11 @@ jobs:
         continue-on-error: true
         run: |
           set -o pipefail
-          release=$(git describe --tags --abbrev=0 --match 'v*')
-          node scripts/launch-gate.mjs --origin "$ORIGIN" --expect-commit "$(git rev-parse --short "$release^{commit}")" | tee gate.txt
+          if ! expected=$(node scripts/production-baseline.mjs); then
+            echo 'FAIL   BL-01  production baseline — missing or invalid reviewed deployment record' | tee gate.txt
+            exit 1
+          fi
+          node scripts/launch-gate.mjs --origin "$ORIGIN" --expect-commit "$expected" | tee gate.txt
       - name: Update alerts
         if: always()
         env:
