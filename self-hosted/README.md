@@ -167,3 +167,28 @@ v0.10.0 adds woodland layer versions, treatment plans and planned join years to 
 ## Bounded community-pilot review
 
 [Local readiness report](../docs/PILOT_READINESS.md) · [isolated recovery/alert/operator kit](../docs/PILOT_REHEARSAL.md). Production identity, offhost archive and latest-ledger availability, independent custody and real responder/device acceptance must be qualified separately for the intended release. No new integration or access is enabled by those documents.
+
+## Reviewed production monitor baseline
+
+The nightly full launch gate reads `.github/production-baseline.json`, resolves
+its complete source SHA, and verifies the `Reviewed source` table row and
+`Completed` heading timestamp against the deployment receipt at the immutable revision recorded in the
+manifest. It refuses missing, malformed, unknown or unbound baselines. BL-01
+requires exact equality of two complete 40-hex commits; matching short prefixes
+are insufficient. The health-only runs keep their existing retry and alert
+behavior, and never close a launch-gate alert after a skipped full gate.
+
+Change this manifest through review only after a separately approved deployment
+has a completed, dated receipt committed to repository history. Record that
+receipt's immutable GitHub URL and its exact deployed `sourceCommit` and
+`qualifiedAt` timestamp. Do not copy the current main revision or live health
+into the baseline, and do not move an existing release tag. This manifest grants
+no deployment or pilot authority. All nine manual launch gates remain manual.
+
+Validate locally with `node scripts/production-baseline.mjs` and
+`node --test tests/production-baseline.test.mjs tests/launch-gate.test.mjs`.
+Pass the validated full SHA as `--expect-commit` when running the launch gate;
+an absent expectation is a BL-01 failure.
+The full production gate also exercises provider-start POST redirects; running
+it requires authorization for that existing flow. A read-only health check or
+an offline fixture does not establish full production qualification.

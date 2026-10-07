@@ -5,8 +5,8 @@
 // (BL-xx). Gates that need people (reviews, custody, pilot) are listed as
 // MANUAL so the report is complete. Exit code 1 when any check FAILS.
 //
-//   node scripts/launch-gate.mjs                       # production
-//   node scripts/launch-gate.mjs --origin http://...   # another instance
+//   node scripts/production-baseline.mjs               # reviewed production SHA
+//   node scripts/launch-gate.mjs --origin http://... --expect-commit <full-sha>
 //   node scripts/launch-gate.mjs --expect-commit <sha> # BL-01 exact match
 //   node scripts/launch-gate.mjs --json
 import tls from 'node:tls';
@@ -53,6 +53,7 @@ export const BANNED_PROMISES = [
 ];
 export const SECRET_EXPIRY_WARNING_DAYS = 14;
 const DAY = 86400000;
+const SHA = /^[a-f0-9]{40}$/;
 
 const stripTags = (html) =>
   html
@@ -105,21 +106,24 @@ export async function runChecks({
   try {
     const health = await get('/healthz');
     const body = JSON.parse(health.text);
-    const commit = String(body.commit ?? 'unknown');
+    const commit = body.commit;
     if (health.status !== 200 || body.status !== 'ok')
       record('BL-01', 'health', 'FAIL', `HTTP ${health.status} ${body.status}`);
-    else if (commit === 'unknown')
+    else if (typeof expectCommit !== 'string' || !SHA.test(expectCommit))
       record(
         'BL-01',
         'build commit',
         'FAIL',
-        'health does not report a commit',
+        'a complete 40-hex expected commit is required',
       );
-    else if (
-      expectCommit &&
-      !commit.startsWith(expectCommit.slice(0, 7)) &&
-      !expectCommit.startsWith(commit.slice(0, 7))
-    )
+    else if (typeof commit !== 'string' || !SHA.test(commit))
+      record(
+        'BL-01',
+        'build commit',
+        'FAIL',
+        'health does not report a complete 40-hex commit',
+      );
+    else if (commit !== expectCommit)
       record(
         'BL-01',
         'build commit',
