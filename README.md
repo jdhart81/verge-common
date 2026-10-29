@@ -19,7 +19,7 @@ Organize a local conservation project, document the work, and make decisions tog
 | Design or accessibility skills | Try the planner with a keyboard or narrow screen; report a reproducible barrier. |
 | Development skills | Run the project locally and choose a bounded task from [the contributor guide](CONTRIBUTING.md). |
 
-[Contribution guide](CONTRIBUTING.md) · [Roadmap](ROADMAP.md) · [Pilot checklist](docs/PILOT.md) · [Launch kit and release gates](docs/LAUNCH.md)
+[Quickstart](docs/QUICKSTART.md) · [Contribution guide](CONTRIBUTING.md) · [Roadmap](ROADMAP.md) · [Pilot checklist](docs/PILOT.md) · [Launch kit and release gates](docs/LAUNCH.md)
 
 ## Explore the project
 
@@ -104,6 +104,8 @@ npm run dev
 Open the printed local URL and use Sign in. Local data and files live under ignored `.wrangler/`. The default local identity is a development fixture, not a production account.
 
 ## Validation
+
+For exact commands with expected output, including a woodland corridor check reproduced with the open DFM engine, see the [quickstart](docs/QUICKSTART.md). To cite VergeCommon, use [CITATION.cff](CITATION.cff).
 
 ```sh
 npm test
