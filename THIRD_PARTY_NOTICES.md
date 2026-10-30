@@ -37,9 +37,11 @@ SOFTWARE.
 - @openai/sites-vite-plugin: MIT
 - @shadcn/react: MIT
 - @tailwindcss/postcss: MIT
+- @turf/* (area, buffer, difference, intersect, union and other Turf.js 7 modules used by @viridis/dfm-core): MIT
 - @types/node: MIT
 - @types/react: MIT
 - @types/react-dom: MIT
+- @viridis/dfm-core 0.2.0 (vendored package from jdhart81/hdfm-framework, Copyright (c) 2025 Justin Hart): MIT. `tests/dfm-watershed-fixture.mjs` is copied from the same repository under the same license.
 - @vitejs/plugin-react: MIT
 - @vitejs/plugin-rsc: MIT
 - class-variance-authority: Apache-2.0

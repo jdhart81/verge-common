@@ -86,6 +86,8 @@ export async function command(
   user: { id: string },
   input: { op: string; payload: Record<string, unknown>; requestId: string },
   expectedVersion: number,
+  // Server-computed inputs only (never the request body); see applyCommand.
+  context: { woodlandCheck?: unknown } = {},
 ) {
   const { row, state } = await load(id);
   if (!/^[0-9a-f-]{36}$/.test(input.requestId ?? ''))
@@ -106,7 +108,14 @@ export async function command(
       'Someone updated this co-op. Refresh before saving your change.',
       409,
     );
-  const next = applyCommand(state, user, input, Date.now(), input.requestId);
+  const next = applyCommand(
+    state,
+    user,
+    input,
+    Date.now(),
+    input.requestId,
+    context,
+  );
   const event = next.audit.at(-1)!;
   const { audit: _audit, ...data } = next;
   event.requestHash = requestHash;

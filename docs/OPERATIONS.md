@@ -1,6 +1,6 @@
 # Operating Verge Common
 
-These instructions describe the [verified launch build](history/LAUNCH_BUILD_2026-09-19.md). Confirm its deployment receipt before relying on newly added controls in production.
+Current production observations are dated in [STATUS](../STATUS.md); the [September 19 launch build](history/LAUNCH_BUILD_2026-09-19.md) is historical. For a new bounded pilot, use the [fail-closed review](PILOT_READINESS.md) and [operator rehearsal kit](PILOT_REHEARSAL.md). Requalify the intended candidate instead of reusing an old deployment receipt.
 
 ## Start a real co-op workspace
 
@@ -60,7 +60,7 @@ Each mutation checks the caller's workspace version. An atomic SQL update commit
 
 Uploads precede attachment to an evidence record. The application supports cancel/discard, replacement and retry. Unattached files older than 24 hours are cleaned at startup, hourly maintenance and during subsequent uploads; this is not a promise of deletion at the exact expiry instant. Attached assets are protected by a same-statement attachment/existence guard. A durable object-deletion queue retries failures without losing cleanup intent. File quota and active-membership checks occur atomically at metadata insertion. The additive `0001_evidence_upload_lifecycle.sql` migration preserves existing evidence.
 
-Event organizers and stewards can edit upcoming visible events or cancel an event. Public edits require a steward. Edits preserve RSVPs and cannot reduce a positive capacity below current active Going responses. Tell attendees about schedule/location changes: the app does not send email or push notifications. Calendar exports keep a stable UID and advance SEQUENCE, but participants must download and import the updated file; calendar-client import behavior varies.
+Event organizers and stewards can edit upcoming visible events or cancel an event. Public edits require a steward. Edits preserve RSVPs and cannot reduce a positive capacity below current active Going responses. Tell affected Going and Interested participants and any organizer-known attendees about schedule/location changes or cancellation through the agreed urgent-contact channel; public viewers are not known reachable attendees. v0.9.0 has private notices and optional browser reminders, off by default. Provider acceptance is not actual device display or human receipt; updates may be throttled for eight hours (weekly digest seven days). No automatic invitation email is sent. Privately record sends and acknowledgements and follow the agreed nonresponder fallback. Calendar exports keep a stable UID and advance SEQUENCE, but participants must re-download and import the updated file; downloads are not subscriptions and client behavior varies. Never promise automatic cancellation/removal. See [pilot workflow](PILOT.md).
 
 Production migration state may advance before a failed deployment finishes. Verify applied migrations before retrying. Keep the previous code version available for rollback; additive schema changes preserve the previous static pages.
 

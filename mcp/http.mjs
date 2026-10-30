@@ -78,7 +78,10 @@ export function createHttpHandler({
   readWorkspace,
   listWorkspaces,
   executeCommand,
+  analyzeWoodland,
+  previewWoodland,
   fetcher = fetch,
+  woodland = false,
 } = {}) {
   const base = serviceOrigin(origin);
   if (typeof authenticate !== 'function')
@@ -146,11 +149,14 @@ export function createHttpHandler({
       server = createServer({
         origin: base,
         fetcher,
+        woodland,
         privateAccess: {
           principal,
           readWorkspace,
           listWorkspaces,
           executeCommand,
+          analyzeWoodland,
+          previewWoodland,
         },
       });
       const transport = new StreamableHTTPServerTransport({

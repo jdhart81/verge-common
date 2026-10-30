@@ -17,6 +17,8 @@ Use **Node 24.19.0**, matching the production Dockerfile, and run commands from 
 | `PORT`              | Gateway port                                                                                          | `3100`                  |
 | `VERGE_TRUST_CADDY` | Set to `1` only when requests arrive through the private Caddy connection that overwrites `X-Real-IP` | Unset                   |
 | `VERGE_SELF_HOSTED` | Selects the Node storage build; set by `build:selfhost`                                               | Unset                   |
+| `VERGE_WOODLAND_DFM` | Set to `1` to enable Woodland (DFM) projects: the corridor check on treatment plans, the old-growth spine analyses and the `check_woodland_plan` and `analyze_woodland_spine` MCP tools. All engine work runs in one worker thread. See `docs/WOODLAND.md` | Unset (off) |
+| `VERGE_WOODLAND_ANALYSIS_TIMEOUT_MS` | Deadline for one engine job (a spine analysis, a plan preview or the check on a submitted plan), queue time included. Clamped to 5,000–25,000 so a queued job can still wait and every answer arrives inside the gateway's 30-second proxy limit | `25000` |
 
 The Dockerfile sets `/data`, `/backups`, `0.0.0.0:3000`, `https://vergecommon.com`, and trusted Caddy forwarding. Its process runs as the unprivileged `node` user. Mount durable directories writable by that user. Neither data directory belongs in source control or a container image.
 
@@ -28,7 +30,7 @@ The bundled Caddyfile redirects `www.vergecommon.com` to the canonical HTTPS dom
 
 The dedicated droplet uses Docker container `vergecommon-app` on private bridge network `vergecommon`. Its `/data` mount is `/opt/vergecommon/data` on the host; `/backups` is `/opt/vergecommon/backups`. Release source/image inputs are retained under `/opt/vergecommon/releases/<UTC>-app`. Caddy keeps its existing certificate volumes and reaches the app only through the private network. Do not publish the app's port directly on the host.
 
-The deployment includes `vergecommon-backup.service` and `vergecommon-backup.timer`, scheduled daily at **03:15 UTC**. Confirm installation and the last successful receipt on the actual host before relying on this schedule. The owner’s Mac has hourly encrypted-pull and isolated-restore tooling, but recurring production transfer remains paused pending explicit approval; see [operations](../docs/OPERATIONS_BETA.md) for its actual status, sleep/offline limits, approved paths and remaining independent key-custody requirement.
+The deployment includes `vergecommon-backup.service` and `vergecommon-backup.timer`, scheduled daily at **03:15 UTC**. Confirm installation and the last successful receipt on the actual host before relying on this schedule. The owner’s Mac has hourly encrypted-pull and isolated-restore tooling, with recurring transfer active in the dated 29 September audit (not a current freshness guarantee); see [operations](../docs/OPERATIONS_BETA.md) for its actual status, sleep/offline limits, approved paths and remaining independent key-custody requirement.
 
 ## Build and isolated acceptance
 
@@ -160,7 +162,36 @@ The checker is a rehearsal tool; the final production data switch is an explicit
 
 Browser push runs in the existing Node gateway, without a paid mail sender. Members explicitly enable it on each browser; messages contain only a generic prompt to reopen their workspace. VAPID keys are generated once on first use and stored in the private SQLite database alongside subscriptions. Back up the whole database and replay the current deletion ledger before reopening a restore. Keep provider settings and subscription keys private. The test button distinguishes browser-provider acceptance from actual display; qualify display on each participant device. Browser push availability varies, including Home Screen installation on iPhone/iPad. No reminder email is sent.
 
-v0.9.0 adds event results and care histories to workspace JSON, and additive push tables. Existing records remain readable without a destructive migration. **A pre-v0.9.0 executable does not know the new privacy/erasure rules.** Before any rollback to it, run `node self-hosted/rollback-check.mjs /absolute/live/data/directory` using v0.9.0 source. It refuses if care, attendance/result or referral records exist. Never restore an older snapshot over live data. After these features are used, retain current data and build a compatibility/forward repair carrying the v0.9.0 projection and erasure rules. Keep the immediate predecessor stopped; only one app writer may use live data.
+v0.10.0 adds woodland layer versions, treatment plans and planned join years to workspace JSON, with their privacy and erasure rules; `rollback-check.mjs` refuses an older writer once any exist. v0.9.0 adds event results and care histories to workspace JSON, and additive push tables. Existing records remain readable without a destructive migration. **A pre-v0.9.0 executable does not know the new privacy/erasure rules.** Before any rollback to it, run `node self-hosted/rollback-check.mjs /absolute/live/data/directory` using v0.9.0 source. It refuses if care, attendance/result or referral records exist. Never restore an older snapshot over live data. After these features are used, retain current data and build a compatibility/forward repair carrying the v0.9.0 projection and erasure rules. Keep the immediate predecessor stopped; only one app writer may use live data.
+
+## Bounded community-pilot review
+
+[Local readiness report](../docs/PILOT_READINESS.md) · [isolated recovery/alert/operator kit](../docs/PILOT_REHEARSAL.md). Production identity, offhost archive and latest-ledger availability, independent custody and real responder/device acceptance must be qualified separately for the intended release. No new integration or access is enabled by those documents.
+
+## Reviewed production monitor baseline
+
+The nightly full launch gate reads `.github/production-baseline.json`, resolves
+its complete source SHA, and verifies the `Reviewed source` table row and
+`Completed` heading timestamp against the deployment receipt at the immutable revision recorded in the
+manifest. It refuses missing, malformed, unknown or unbound baselines. BL-01
+requires exact equality of two complete 40-hex commits; matching short prefixes
+are insufficient. The health-only runs keep their existing retry and alert
+behavior, and never close a launch-gate alert after a skipped full gate.
+
+Change this manifest through review only after a separately approved deployment
+has a completed, dated receipt committed to repository history. Record that
+receipt's immutable GitHub URL and its exact deployed `sourceCommit` and
+`qualifiedAt` timestamp. Do not copy the current main revision or live health
+into the baseline, and do not move an existing release tag. This manifest grants
+no deployment or pilot authority. All nine manual launch gates remain manual.
+
+Validate locally with `node scripts/production-baseline.mjs` and
+`node --test tests/production-baseline.test.mjs tests/launch-gate.test.mjs`.
+Pass the validated full SHA as `--expect-commit` when running the launch gate;
+an absent expectation is a BL-01 failure.
+The full production gate also exercises provider-start POST redirects; running
+it requires authorization for that existing flow. A read-only health check or
+an offline fixture does not establish full production qualification.
 
 ## Optional email updates (unreleased)
 

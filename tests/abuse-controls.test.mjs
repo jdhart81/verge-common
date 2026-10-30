@@ -244,11 +244,18 @@ await test('M6: uploads are refused when free disk falls below the floor', async
   assert.equal(g.hits(), 0);
 });
 
-await test('BL-01: health reports the deployed build commit', async (t) => {
+await test('BL-01: health reports the deployed build commit and the package release', async (t) => {
   const g = await gateway(t, { buildCommit: 'abc1234' });
   const res = await raw(g.port, '/healthz');
   assert.equal(res.status, 200);
   assert.equal(JSON.parse(res.body).commit, 'abc1234');
+  const { version } = JSON.parse(
+    await (await import('node:fs/promises')).readFile(
+      new URL('../package.json', import.meta.url),
+      'utf8',
+    ),
+  );
+  assert.equal(JSON.parse(res.body).version, version);
 });
 
 await test('M2: repeated failures from one network do not lock the account for others', async (t) => {

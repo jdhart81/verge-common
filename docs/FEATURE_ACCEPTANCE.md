@@ -1,6 +1,6 @@
 # Launch acceptance — September 19, 2026
 
-This is a historical feature inventory, not the latest candidate verdict. See [current beta readiness](history/BETA_READINESS_2026-09-19.md) and [last deployed build](history/LAUNCH_BUILD_2026-09-19.md). See [the current beta release receipt](history/BETA_RELEASE_2026-09-19.md) for newer native account/deletion controls, support, moderation and encrypted operations evidence.
+This entire document is a historical September 19 inventory, including its then-current PR/provider/backup state, not the latest candidate verdict. Use [STATUS](../STATUS.md), [pilot audit](PILOT_AUDIT_2026-10-03.md) and [pilot readiness](PILOT_READINESS.md) for current review requirements. See [current beta readiness](history/BETA_READINESS_2026-09-19.md) and [last deployed build](history/LAUNCH_BUILD_2026-09-19.md). See [the current beta release receipt](history/BETA_RELEASE_2026-09-19.md) for newer native account/deletion controls, support, moderation and encrypted operations evidence.
 
 ## Target
 

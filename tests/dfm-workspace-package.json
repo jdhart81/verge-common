@@ -1,0 +1,278 @@
+{
+  "dfm_package": "1.0",
+  "name": "Brook woodlot",
+  "created": "2026-10-04T00:00:00.000Z",
+  "generator": "viridis-dfm-workspace",
+  "crs": "EPSG:4326",
+  "units": {
+    "length": "m",
+    "area": "m2"
+  },
+  "params": {
+    "minWidthM": 100,
+    "minWidthSource": "Co-op woodland policy, section 4",
+    "roadWidthM": 6
+  },
+  "sources": {},
+  "layers": {
+    "boundary": [
+      {
+        "type": "Feature",
+        "geometry": {
+          "type": "Polygon",
+          "coordinates": [
+            [
+              [
+                0,
+                0
+              ],
+              [
+                0.01798640727449076,
+                0
+              ],
+              [
+                0.01798640727449076,
+                0.00899320363724538
+              ],
+              [
+                0,
+                0.00899320363724538
+              ],
+              [
+                0,
+                0
+              ]
+            ]
+          ]
+        },
+        "properties": {
+          "dfm_id": "b",
+          "name": "Planning area"
+        }
+      }
+    ],
+    "parcels": [],
+    "coreAreas": [
+      {
+        "type": "Feature",
+        "geometry": {
+          "type": "Polygon",
+          "coordinates": [
+            [
+              [
+                0.000899320363724538,
+                0.002697961091173614
+              ],
+              [
+                0.003597281454898152,
+                0.002697961091173614
+              ],
+              [
+                0.003597281454898152,
+                0.006295242546071766
+              ],
+              [
+                0.000899320363724538,
+                0.006295242546071766
+              ],
+              [
+                0.000899320363724538,
+                0.002697961091173614
+              ]
+            ]
+          ]
+        },
+        "properties": {
+          "dfm_id": "core-A",
+          "core_class": "old-growth-candidate",
+          "name": "West stand"
+        }
+      },
+      {
+        "type": "Feature",
+        "geometry": {
+          "type": "Polygon",
+          "coordinates": [
+            [
+              [
+                0.014389125819592608,
+                0.002697961091173614
+              ],
+              [
+                0.01708708691076622,
+                0.002697961091173614
+              ],
+              [
+                0.01708708691076622,
+                0.006295242546071766
+              ],
+              [
+                0.014389125819592608,
+                0.006295242546071766
+              ],
+              [
+                0.014389125819592608,
+                0.002697961091173614
+              ]
+            ]
+          ]
+        },
+        "properties": {
+          "dfm_id": "core-B",
+          "core_class": "riparian-core",
+          "name": "East brook"
+        }
+      }
+    ],
+    "retained": [
+      {
+        "type": "Feature",
+        "geometry": {
+          "type": "Polygon",
+          "coordinates": [
+            [
+              [
+                0.003597281454898152,
+                0.003957009600387967
+              ],
+              [
+                0.014389125819592608,
+                0.003957009600387967
+              ],
+              [
+                0.014389125819592608,
+                0.005036194036857413
+              ],
+              [
+                0.003597281454898152,
+                0.005036194036857413
+              ],
+              [
+                0.003597281454898152,
+                0.003957009600387967
+              ]
+            ]
+          ]
+        },
+        "properties": {
+          "dfm_id": "corridor-1",
+          "name": "Brook corridor"
+        }
+      }
+    ],
+    "roads": [
+      {
+        "type": "Feature",
+        "geometry": {
+          "type": "LineString",
+          "coordinates": [
+            [
+              0.00899320363724538,
+              0
+            ],
+            [
+              0.00899320363724538,
+              0.00899320363724538
+            ]
+          ]
+        },
+        "properties": {
+          "dfm_id": "road-1",
+          "name": "Town road"
+        }
+      }
+    ],
+    "water": [],
+    "crossings": [
+      {
+        "type": "Feature",
+        "geometry": {
+          "type": "Point",
+          "coordinates": [
+            0.00899320363724538,
+            0.00449660181862269
+          ]
+        },
+        "properties": {
+          "dfm_id": "crossing-1",
+          "passage": "verified",
+          "name": "Culvert"
+        }
+      }
+    ],
+    "treatments": [
+      {
+        "type": "Feature",
+        "geometry": {
+          "type": "Polygon",
+          "coordinates": [
+            [
+              [
+                0.006295242546071766,
+                0.002697961091173614
+              ],
+              [
+                0.007194562909796304,
+                0.002697961091173614
+              ],
+              [
+                0.007194562909796304,
+                0.007194562909796304
+              ],
+              [
+                0.006295242546071766,
+                0.007194562909796304
+              ],
+              [
+                0.006295242546071766,
+                0.002697961091173614
+              ]
+            ]
+          ]
+        },
+        "properties": {
+          "dfm_id": "harvest-3",
+          "period": "2027",
+          "intensity": "clearcut",
+          "name": "Patch cut 3"
+        }
+      },
+      {
+        "type": "Feature",
+        "geometry": {
+          "type": "Polygon",
+          "coordinates": [
+            [
+              [
+                0.010791844364694455,
+                0.006744902727934035
+              ],
+              [
+                0.01348980545586807,
+                0.006744902727934035
+              ],
+              [
+                0.01348980545586807,
+                0.00854354345538311
+              ],
+              [
+                0.010791844364694455,
+                0.00854354345538311
+              ],
+              [
+                0.010791844364694455,
+                0.006744902727934035
+              ]
+            ]
+          ]
+        },
+        "properties": {
+          "dfm_id": "harvest-1",
+          "period": "2027",
+          "intensity": "shelterwood",
+          "name": "Shelterwood 1"
+        }
+      }
+    ]
+  }
+}

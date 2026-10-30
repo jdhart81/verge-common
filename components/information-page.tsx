@@ -55,6 +55,7 @@ export function InformationPage({
           <Link href="/terms/">Terms</Link>
           <Link href="/support/">Get help</Link>
           <Link href="/support-project/">Support the project</Link>
+          <Link href="/woodland/">Woodland corridors</Link>
           <a href={sourceBranch}>
             Source <ArrowUpRight size={14} aria-hidden="true" />
           </a>

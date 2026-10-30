@@ -416,6 +416,13 @@ export default function Home({
           >
             Get help
           </a>
+          <a
+            href={
+              publicPreview ? 'https://vergecommon.com/woodland/' : '/woodland/'
+            }
+          >
+            Woodland corridors
+          </a>
           <a href={sourceRepo}>
             Source
             <ArrowUpRight size={14} aria-hidden="true" />

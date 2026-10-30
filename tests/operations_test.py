@@ -120,6 +120,12 @@ class OperationsTests(unittest.TestCase):
         receipt = {'schema': 1, 'entries': 1, 'sha256': remote.ledger_digest(entries)}
         (self.root / 'ledger-receipt.json').write_text(json.dumps(receipt))
         self.assertEqual(ops.validate_ledger(self.root), receipt)
+        unavailable = self.root / 'unavailable'
+        unavailable.mkdir()
+        (unavailable / 'ledger-receipt.json').write_text(json.dumps({'schema': 1, 'entries': 0, 'sha256': remote.ledger_digest([])}))
+        with self.assertRaisesRegex(ValueError, 'unavailable'):
+            ops.validate_ledger(unavailable)
+        self.assertFalse((unavailable / 'erasure-ledger').exists(), 'Do not invent an empty unavailable ledger')
         (root / (user + '.pending')).write_bytes(raw)
         with self.assertRaises(ValueError):
             remote.ledger_entries()
@@ -283,6 +289,20 @@ class OperationsTests(unittest.TestCase):
         self.assertIn('BACKUP_MISSING', ops.remote_problem_codes(remote_state, {}))
         with self.assertRaises(ValueError):
             ops.remote_problem_codes(remote_state, {'thresholds': {'diskUsedFraction': float('nan')}})
+
+    def test_stale_backup_unavailable_metrics_and_stale_run_do_not_qualify(self):
+        stamp = datetime.fromtimestamp(1000000, timezone.utc).isoformat()
+        state = self.healthy_remote()
+        state['snapshot']['createdAt'] = stamp
+        self.assertIn('BACKUP_STALE', ops.remote_problem_codes(state, {}, now=1000000 + 31 * 3600))
+        state['capacity'] = {'available': False}
+        state['safetyQueue'] = {'available': False}
+        codes = ops.remote_problem_codes(state, {}, now=1000000 + 31 * 3600)
+        self.assertIn('CAPACITY_UNAVAILABLE', codes)
+        self.assertIn('SAFETY_QUEUE_UNAVAILABLE', codes)
+        self.assertFalse(ops.freshness(stamp, 2, now=1000000 + 2 * 3600 + 1))
+        state['snapshot'] = {}
+        self.assertIn('BACKUP_MISSING', ops.remote_problem_codes(state, {}))
 
     def test_check_only_never_reads_key_transfers_archives_or_overwrites_recovery_status(self):
         config = {'stateDirectory': str(self.root)}

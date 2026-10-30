@@ -1,0 +1,24 @@
+{
+  "passed": [
+    "Server preview rejects pending members before accessing private project inputs",
+    "M7/M8 flag-off projection renders no woodland controls and fetches no editor/engine chunks; production manifest confirms lazy engine",
+    "M2/M3/M9 steward draws typed layers and adds verified crossing entirely by keyboard",
+    "M6 no third-party requests before explicit basemap opt-in",
+    "M4/M9 map click, draggable vertices, undo/redo, deletion and invalid-save guard",
+    "M1 two independent stewards save and review drawn layers",
+    "Member GET response never includes another member parcel geometry",
+    "Server preview enforces unit, cleaned plan, UTF-8 body limits and same-origin protection without mutations",
+    "Protected non-mutating server preview returns no parcel geometry and agrees with local status/lostLinks",
+    "M8 failed local preview names responsible unit and maps loss against reviewed woodland layers",
+    "M5 over-limit draft is diagnosed and cannot be submitted; undo restores the valid plan",
+    "M9 390px mobile has no horizontal overflow",
+    "Member POST response never includes another member parcel geometry",
+    "M1/M8 authoritative server blocks drawn plan with identical server preview checksum and cause",
+    "M6 unsaved draft is not persisted across reload",
+    "No browser runtime or console errors; external requests limited to opted-in basemap"
+  ],
+  "errors": [],
+  "consoleErrors": [],
+  "externalRequests": 26,
+  "fixtureId": "ddab23a4-5aa4-4597-bfbf-d6ff12c1b358"
+}

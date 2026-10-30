@@ -67,3 +67,7 @@ xcuserdata/
 *.p12
 service-account*.json
 *.keystore
+
+# Private pilot evidence (real manifests must stay outside the checkout)
+/pilot-evidence/
+*.pilot-evidence.json

@@ -1,0 +1,32 @@
+cff-version: 1.2.0
+message: "If you use this software, please cite it using these metadata."
+title: "VergeCommon: open-source tools for community conservation cooperatives"
+type: software
+version: "0.10.0"
+authors:
+  - family-names: Hart
+    given-names: "Justin D."
+    affiliation: "Viridis LLC, Columbia Falls, Montana, USA"
+    orcid: "https://orcid.org/0009-0008-3082-2482"
+repository-code: "https://github.com/jdhart81/verge-common"
+url: "https://vergecommon.com"
+abstract: "VergeCommon helps neighbours organize a local conservation project as a cooperative: private parcel mapping and consent, field evidence and monitoring, governance votes, and reviewed records of external credit sales and payouts. Woodland projects check harvest plans against retained forest corridors with the open Dendritic Forest Management engine, and each stored check can be reproduced from its downloaded Landscape Package. The software records and reviews external facts; it does not certify ecological outcomes, issue credits or send payments."
+license: AGPL-3.0-only
+keywords:
+  - "conservation cooperatives"
+  - "community conservation"
+  - "habitat corridors"
+  - "forest management"
+  - "landscape connectivity"
+  - "payments for ecosystem services"
+  - "participatory monitoring"
+references:
+  - type: software
+    title: "Dendritic Forest Management (HDFM framework)"
+    authors:
+      - family-names: Hart
+        given-names: "Justin D."
+        orcid: "https://orcid.org/0009-0008-3082-2482"
+    repository-code: "https://github.com/jdhart81/hdfm-framework"
+    url: "https://dendriticforest.com"
+    license: MIT

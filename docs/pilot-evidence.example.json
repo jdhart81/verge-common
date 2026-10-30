@@ -1,0 +1,99 @@
+{
+  "schema": 1,
+  "environment": "staging",
+  "candidateCommit": "0000000000000000000000000000000000000000",
+  "operatingConfig": "synthetic-config-v1",
+  "scope": {
+    "providers": true,
+    "reminders": true
+  },
+  "custody": {
+    "backup": {
+      "credentialRef": "synthetic-backup-v1",
+      "custodian": "unassigned"
+    },
+    "apple": {
+      "credentialRef": "synthetic-apple-v1",
+      "custodian": "unassigned"
+    },
+    "vault": {
+      "credentialRef": "synthetic-vault-v1",
+      "custodian": "unassigned"
+    }
+  },
+  "gates": [
+    {
+      "id": "release-checks",
+      "result": "UNVERIFIED"
+    },
+    {
+      "id": "privacy-access-review",
+      "result": "UNVERIFIED"
+    },
+    {
+      "id": "provider-revocation",
+      "result": "UNVERIFIED"
+    },
+    {
+      "id": "custody-backup",
+      "result": "UNVERIFIED"
+    },
+    {
+      "id": "custody-apple",
+      "result": "UNVERIFIED"
+    },
+    {
+      "id": "custody-vault",
+      "result": "UNVERIFIED"
+    },
+    {
+      "id": "independent-archives-ledger",
+      "result": "UNVERIFIED"
+    },
+    {
+      "id": "backup-under-24h",
+      "result": "UNVERIFIED"
+    },
+    {
+      "id": "restore-under-30d",
+      "result": "UNVERIFIED"
+    },
+    {
+      "id": "operations-under-2h",
+      "result": "UNVERIFIED"
+    },
+    {
+      "id": "alert-failure-recovery",
+      "result": "UNVERIFIED"
+    },
+    {
+      "id": "mac-stale-run-coverage",
+      "result": "UNVERIFIED"
+    },
+    {
+      "id": "two-operators-report-rehearsal",
+      "result": "UNVERIFIED"
+    },
+    {
+      "id": "urgent-contact-rehearsal",
+      "result": "UNVERIFIED"
+    },
+    {
+      "id": "signin-device-accessibility",
+      "result": "UNVERIFIED"
+    },
+    {
+      "id": "reminder-device-display",
+      "result": "UNVERIFIED"
+    },
+    {
+      "id": "consenting-scope-support",
+      "result": "UNVERIFIED"
+    },
+    {
+      "id": "owner-go-no-go",
+      "result": "UNVERIFIED"
+    }
+  ],
+  "targetOrigin": "http://127.0.0.1:3100"
+}

@@ -16,3 +16,19 @@ vergecommon.com {
         header_up X-Real-IP {remote_host}
     }
 }
+
+# Dendritic Forest Management site (static container from jdhart81/hdfm-framework
+# apps/site) on the private vergecommon network. Add only after DNS for these
+# names points at this server; see docs/DFM_SITE.md.
+www.dendriticforest.com {
+    redir https://dendriticforest.com{uri} permanent
+}
+dendriticforest.com {
+    encode zstd gzip
+    header {
+        Strict-Transport-Security "max-age=31536000"
+        X-Frame-Options DENY
+        -Server
+    }
+    reverse_proxy dendriticforest-site:8080
+}
