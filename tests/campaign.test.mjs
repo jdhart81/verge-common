@@ -105,6 +105,9 @@ await test('I10 mismatched send confirmation, ambiguous args and CI writes abort
     ['--create', 'file', '--test', 'file'],
     ['--create', 'file', '--confirm', 'id'],
     ['--send', 'id', '--confirm', 'id', '--to', 'addr'],
+    ['--create', 'file', '--expect-count', '3'],
+    ['--send', 'id', '--confirm', 'id', '--expect-count', 'x'],
+    ['--send', 'id', '--confirm', 'id', '--expect-count', '07'],
     ['--bogus', 'file'],
   ])
     await assert.rejects(() => runCampaign(args, options({ client })));
@@ -145,12 +148,32 @@ await test('I10 create only drafts; send prints segment/count before send and re
   assert.equal(draft.send, undefined);
   assert.equal(events.includes('send'), false);
   events.length = 0;
+  // Without --expect-count the send stops after showing the count.
   await runCampaign(
     ['--send', 'id', '--confirm', 'id'],
     options({ client, print: (m) => events.push(m) }),
   );
   assert.match(events[1], /segment.*7/);
+  assert.match(events[2], /Nothing sent.*--expect-count 7/);
+  assert.equal(events.includes('send'), false);
+  // A count that no longer matches aborts before sending.
+  events.length = 0;
+  await assert.rejects(() =>
+    runCampaign(
+      ['--send', 'id', '--confirm', 'id', '--expect-count', '6'],
+      options({ client, print: (m) => events.push(m) }),
+    ),
+  );
+  assert.equal(events.includes('send'), false);
+  // Restating the shown count sends exactly once.
+  events.length = 0;
+  await runCampaign(
+    ['--send', 'id', '--confirm', 'id', '--expect-count', '7'],
+    options({ client, print: (m) => events.push(m) }),
+  );
+  assert.match(events[1], /segment.*7/);
   assert.equal(events[2], 'send');
+  assert.equal(events.filter((e) => e === 'send').length, 1);
   for (const change of [
     { segment_id: 'wrong' },
     { status: 'sent' },
@@ -168,7 +191,7 @@ await test('I10 create only drafts; send prints segment/count before send and re
     };
     await assert.rejects(() =>
       runCampaign(
-        ['--send', 'id', '--confirm', 'id'],
+        ['--send', 'id', '--confirm', 'id', '--expect-count', '7'],
         options({ client: bad }),
       ),
     );

@@ -130,7 +130,7 @@ export async function runCampaign(
   for (let i = 0; i < args.length; i++) {
     if (args[i].startsWith('--')) {
       if (
-        ![...modes, '--to', '--confirm'].includes(args[i]) ||
+        ![...modes, '--to', '--confirm', '--expect-count'].includes(args[i]) ||
         options.has(args[i]) ||
         !args[i + 1] ||
         args[i + 1].startsWith('--')
@@ -145,7 +145,8 @@ export async function runCampaign(
     selected.length > 1 ||
     (selected.length && file) ||
     (options.has('--to') && !options.has('--test')) ||
-    (options.has('--confirm') && !options.has('--send'))
+    (options.has('--confirm') && !options.has('--send')) ||
+    (options.has('--expect-count') && !options.has('--send'))
   )
     fail('Choose one campaign operation.');
   const mode = selected[0] || 'dry-run';
@@ -156,6 +157,11 @@ export async function runCampaign(
     (options.get('--confirm') !== value || !/^[\w-]+$/.test(value))
   )
     fail('Sending requires --send ID --confirm ID with identical IDs.');
+  if (
+    options.has('--expect-count') &&
+    !/^(0|[1-9]\d*)$/.test(options.get('--expect-count'))
+  )
+    fail('--expect-count must be a whole number.');
   if (env.CI && ['--test', '--create', '--send'].includes(mode))
     fail('Network operations are disabled in CI.');
   const provider = () => {
@@ -183,6 +189,15 @@ export async function runCampaign(
     print(
       `Recipient segment: ${draft.segment_id}; subscribed contacts: ${count}`,
     );
+    // Back-out step: nothing is sent until the operator restates the count just shown.
+    if (!options.has('--expect-count')) {
+      print(
+        `Nothing sent. To send to ${count} contacts, re-run with --expect-count ${count}.`,
+      );
+      return;
+    }
+    if (Number(options.get('--expect-count')) !== count)
+      fail('Recipient count changed or does not match --expect-count.');
     await api.sendBroadcast(value);
     print(`Broadcast submitted: ${value}`);
     return;
