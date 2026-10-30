@@ -1,5 +1,9 @@
 # Release notes
 
+## Unreleased — optional email updates
+
+Disabled by default, with a separate double opt-in form, encrypted 48-hour confirmation links and an explicit confirmation POST, Resend-only subscriber records, abuse limits and no tracking. Adds an offline-tested campaign draft/preview/lint/test/send CLI and a read-only DNS checker. See [email operator runbook](EMAIL.md) for configuration and deliberate send gates. No deployment, real email, DNS change or provider setup is part of this change.
+
 ## v0.10.0 — woodland corridors and the old-growth spine (deployed 4 October 2026, 22:03 UTC; woodland projects off)
 
 Everything merged after v0.9.0, plus the spine integration. Woodland projects stay off unless the operator sets `VERGE_WOODLAND_DFM=1`.

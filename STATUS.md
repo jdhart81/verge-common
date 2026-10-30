@@ -1,5 +1,9 @@
 # VergeCommon — current status
 
+## Unreleased — optional email updates
+
+Disabled by default, with a separate double opt-in form, encrypted 48-hour confirmation links and an explicit confirmation POST, Resend-only subscriber records, abuse limits and no tracking. Adds an offline-tested campaign draft/preview/lint/test/send CLI and a read-only DNS checker. See [email operator runbook](docs/EMAIL.md) for configuration and deliberate send gates. No deployment, real email, DNS change or provider setup is part of this change.
+
 **Last updated: 4 October 2026 EDT (v0.10.0 maintenance live; woodland projects off).** This is the single, current summary of what is live, what is verified and what is still open. Update it with every deployment or change in operating state. Dated deployment receipts and reviews are preserved unchanged in [docs/history/](docs/history/).
 
 ## v0.10.0 — woodland corridors and the old-growth spine, deployed 4 October 2026
