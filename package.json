@@ -23,7 +23,9 @@
     "start:selfhost": "node self-hosted/server.mjs",
     "backup:selfhost": "node self-hosted/backup.mjs",
     "launch-gate": "node scripts/launch-gate.mjs",
-    "pilot:readiness": "node scripts/pilot-readiness.mjs"
+    "pilot:readiness": "node scripts/pilot-readiness.mjs",
+    "campaign": "node scripts/campaign.mjs",
+    "email:dns": "node scripts/email-dns-check.mjs"
   },
   "dependencies": {
     "@base-ui/react": "1.8.0",
@@ -74,7 +76,7 @@
     "oxlint-tsgolint": "7.0.2003",
     "tailwindcss": "4.3.3",
     "typescript": "5.9.3",
-    "vite": "8.3.1",
+    "vite": "8.3.4",
     "wrangler": "4.144.0"
   },
   "type": "module",

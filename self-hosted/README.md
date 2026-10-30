@@ -192,3 +192,20 @@ an absent expectation is a BL-01 failure.
 The full production gate also exercises provider-start POST redirects; running
 it requires authorization for that existing flow. A read-only health check or
 an offline fixture does not establish full production qualification.
+
+## Optional email updates (unreleased)
+
+See [docs/EMAIL.md](../docs/EMAIL.md). Leave these unset to hide the signup route and links:
+
+```dotenv
+VERGE_UPDATES_ENABLED=
+RESEND_API_KEY=
+VERGE_UPDATES_SIGNING_SECRET=
+VERGE_UPDATES_SEGMENT_ID=
+VERGE_UPDATES_FROM=
+VERGE_UPDATES_REPLY_TO=
+VERGE_UPDATES_POSTAL_ADDRESS=
+VERGE_UPDATES_TRACKING_API_KEY=
+```
+
+The signing secret must be at least 32 bytes. Updates are implemented by the self-hosted gateway; other hosting modes do not enable this feature. Never record updates form bodies or confirmation URLs in proxy/access/APM logs. The runtime key needs full access to manage contacts and verify disabled tracking; the optional tracking key is used only by the campaign CLI. Unset `VERGE_UPDATES_ENABLED` and restart to roll back.

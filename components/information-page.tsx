@@ -1,3 +1,4 @@
+import { UpdatesLink } from '@/components/updates-link';
 import { BrandLogo } from '@/components/brand-logo';
 import Link from 'next/link';
 import { ArrowUpRight } from 'lucide-react';
@@ -49,6 +50,7 @@ export function InformationPage({
       <footer className="wrap footer information-footer">
         <span>A Viridis LLC project. Open code. Cooperative conservation.</span>
         <nav aria-label="Help and project information">
+          <UpdatesLink />
           <Link href="/privacy/">Privacy</Link>
           <Link href="/terms/">Terms</Link>
           <Link href="/support/">Get help</Link>
