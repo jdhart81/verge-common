@@ -153,6 +153,32 @@ The platform takes no percentage of credit sales. Co-op-approved stewardship and
 
 The repository contains the clean public system. Separate private research, proof candidates, production records, and private pilot source were not published as a bulk release. No formal or ecological certification is claimed.
 
+## Part of the Viridis open-source commons
+
+Planning stewardship near roads or streams? [DFM](https://github.com/jdhart81/hdfm-framework) produces retention options a co-op can review together, and [GSIP](https://github.com/global-soil-intelligence/gsip) adds soil observations. The handoff between them is manual today.
+
+This project is one of a connected set of open tools from Viridis. Each stands on its own; together they run from field evidence to checked decisions.
+
+**Conservation commons**
+
+- **VergeCommon** (this repository): community conservation co-ops with consent-based land mapping, field evidence and group decisions
+- [Dendritic Forest Management (DFM)](https://github.com/jdhart81/hdfm-framework): compare forest-retention options around roads and waterways, with traceable inputs and portable reports
+- [Global Soil Intelligence Project (GSIP)](https://github.com/global-soil-intelligence/gsip): contribute soil observations and explore open soil maps with explicit uncertainty
+
+**Verifiable science**
+
+- [Viridis Canon](https://github.com/jdhart81/viridis-canon): machine-checked Lean 4 mathematics for ecological decisions, with a DOI for every result
+- [ViridisOS](https://github.com/jdhart81/viridisos): open reference runtime for DOI-backed decision modules and recomputable results
+- [Viridis Research](https://github.com/jdhart81/viridis-research): the nightly public research record, each claim labeled by what a verifier actually checked
+- [ProofLens](https://github.com/jdhart81/prooflens): see what a Lean statement means before reading the proof
+
+**Agent tools**
+
+- [Viridis Agent Fleet](https://github.com/jdhart81/viridis-agent-fleet): open-source MCP agents with deterministic, auditable cores
+- [EnergyAI MCP](https://github.com/jdhart81/energyai-mcp): energy-planning estimates and incentive sources for AI agents
+
+Browse every project on the [Viridis profile](https://github.com/jdhart81). If this one is useful to you, a star helps other people find it.
+
 ## License
 
 Original code and original workflow templates: GNU AGPL v3.0 only. See [LICENSE](LICENSE), [NOTICE](NOTICE), and [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md). Dependency code retains its own licenses. Forks are welcome; do not imply endorsement through the Verge Common name.
