@@ -6,7 +6,7 @@
     "node": ">=22.13.0"
   },
   "scripts": {
-    "dev": "vinext dev",
+    "dev": "vinext dev --port 3000 --strictPort",
     "build": "vinext build",
     "start": "wrangler dev --config dist/server/wrangler.json --persist-to .wrangler/state",
     "lint": "oxlint",
