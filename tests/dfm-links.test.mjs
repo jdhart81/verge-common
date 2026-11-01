@@ -15,7 +15,7 @@ await test('the DFM site address is a bare https origin on dendriticforest.com',
 });
 
 await test('the public footers lead to the woodland page, which links the DFM site; the panel credits DFM', async () => {
-  for (const f of ['app/page.tsx', 'components/information-page.tsx'])
+  for (const f of ['components/home-content.tsx', 'components/information-page.tsx'])
     assert.match(await read(f), /\/woodland\//, f);
   const page = await read('app/woodland/page.tsx');
   assert.match(page, /href=\{DFM_SITE_URL\}/);

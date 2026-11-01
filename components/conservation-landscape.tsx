@@ -8,6 +8,7 @@ import {
   useSyncExternalStore,
 } from 'react';
 import './conservation-landscape.css';
+import { getHomeStrings, type HomeLocale } from '@/lib/i18n/home';
 
 const motionQuery = '(prefers-reduced-motion: reduce)';
 
@@ -219,9 +220,12 @@ function Home({ x, y }: { x: number; y: number }) {
 
 export function ConservationLandscape({
   id = 'vc-home-landscape',
+  locale = 'en',
 }: {
   id?: string;
+  locale?: HomeLocale;
 }) {
+  const t = getHomeStrings(locale);
   const figure = useRef<HTMLElement>(null);
   const reducedMotion = useSyncExternalStore(
     subscribeToMotionPreference,
@@ -243,11 +247,13 @@ export function ConservationLandscape({
   return (
     <figure
       className="vc-landscape"
+      lang={locale}
+      data-locale={locale}
       ref={figure}
       data-motion={reducedMotion ? 'static' : visible ? 'running' : 'paused'}
     >
       <div className="vc-landscape-heading">
-        <span>Small places. Shared purpose.</span>
+        <span>{t.landscapeHeading}</span>
       </div>
 
       <svg
@@ -256,15 +262,8 @@ export function ConservationLandscape({
         viewBox="0 0 600 470"
         aria-labelledby={`${id}-title ${id}-description`}
       >
-        <title id={`${id}-title`}>Neighboring land, connected by care</title>
-        <desc id={`${id}-description`}>
-          Three neighboring parcels with homes, trees and a creek connect along
-          a shared habitat path. Trees grow and wildflowers bloom along property
-          edges as birds, butterflies and a rabbit make their home in the
-          landscape. A community meeting place represents a local conservation
-          partner. A field notebook represents the care neighbors document
-          together. This is a conceptual illustration, not a map of real land.
-        </desc>
+        <title id={`${id}-title`}>{t.landscapeTitle}</title>
+        <desc id={`${id}-description`}>{t.landscapeDescription}</desc>
         <defs>
           <pattern
             id={`${id}-meadow`}
@@ -477,7 +476,7 @@ export function ConservationLandscape({
             <rect x="42" y="77" width="155" height="34" rx="17" />
             <circle cx="59" cy="94" r="3" fill="#66825b" stroke="none" />
             <text x="71" y="99">
-              Neighboring land
+              {t.landscapeNeighboringLand}
             </text>
             <path d="M115 112v17" className="vc-landscape-label-leader" />
           </g>
@@ -485,14 +484,14 @@ export function ConservationLandscape({
             <rect x="337" y="55" width="154" height="34" rx="17" />
             <circle cx="354" cy="72" r="3" fill="#365a3f" stroke="none" />
             <text x="366" y="77">
-              Connected habitat
+              {t.landscapeConnectedHabitat}
             </text>
             <path d="M424 91l15 34" className="vc-landscape-label-leader" />
           </g>
           <g className="vc-landscape-label">
             <rect x="387" y="313" width="137" height="34" rx="17" />
             <text x="455.5" y="335" textAnchor="middle">
-              Local nonprofit
+              {t.landscapeLocalNonprofit}
             </text>
           </g>
 
@@ -507,7 +506,7 @@ export function ConservationLandscape({
           </g>
           <g className="vc-landscape-note">
             <text x="129" y="428">
-              Care, recorded together.
+              {t.landscapeCareRecorded}
             </text>
             <path d="M110 414l9 10" />
           </g>
@@ -519,7 +518,7 @@ export function ConservationLandscape({
           >
             <path d="M0 17V-10M-4-3l4-9 4 9M-9 7H9" />
             <text x="0" y="-19" textAnchor="middle">
-              N
+              {t.landscapeCompassNorth}
             </text>
           </g>
         </g>
@@ -535,9 +534,9 @@ export function ConservationLandscape({
 
       <figcaption className="vc-landscape-caption">
         <span className="vc-landscape-key">
-          <span /> Land. Neighbors. A shared future.
+          <span /> {t.landscapeCaptionMain}
         </span>
-        <span>Illustration only · not real parcel boundaries</span>
+        <span>{t.landscapeCaptionDisclaimer}</span>
       </figcaption>
     </figure>
   );
