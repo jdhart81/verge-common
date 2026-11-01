@@ -1,3 +1,4 @@
+export const dynamic = 'force-dynamic';
 import type { Metadata } from 'next';
 import { InformationPage } from '@/components/information-page';
 import { SafetyReportForm } from '@/components/safety-report-form';

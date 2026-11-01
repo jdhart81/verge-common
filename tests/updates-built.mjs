@@ -16,6 +16,7 @@ const fixture = {
   VERGE_UPDATES_REPLY_TO: 'justin@vergecommon.com',
   VERGE_UPDATES_POSTAL_ADDRESS: 'Fixture postal address',
 };
+const paths = ['/', '/support-project/', '/privacy/', '/terms/', '/support/', '/report/', '/woodland/'];
 const original = Object.fromEntries(
   ['VERGE_UPDATES_ENABLED', ...updatesVariables].map((key) => [
     key,
@@ -33,7 +34,7 @@ await test('I1 built home, support and information footer hide links for every m
     for (const key of Object.keys(fixture)) {
       Object.assign(process.env, fixture);
       delete process.env[key];
-      for (const path of ['/', '/support-project/', '/privacy/']) {
+      for (const path of paths) {
         const response = await handler(new Request(`http://localhost${path}`));
         assert.equal(response.status, 200);
         assert.equal(
@@ -54,13 +55,19 @@ await test('I1 built home, support and information footer hide links for every m
 await test('I1 I11 enabled built pages show links at runtime without rendering either secret', async () => {
   try {
     Object.assign(process.env, fixture);
-    for (const path of ['/', '/support-project/', '/privacy/']) {
+    for (const path of paths) {
       const response = await handler(new Request(`http://localhost${path}`));
       const html = await response.text();
       assert.equal(response.status, 200);
       assert.ok(html.includes('href="/updates/"'));
       for (const key of ['RESEND_API_KEY', 'VERGE_UPDATES_SIGNING_SECRET'])
         assert.equal(html.includes(fixture[key]), false);
+    }
+    delete process.env.VERGE_UPDATES_ENABLED;
+    for (const path of paths) {
+      const response = await handler(new Request(`http://localhost${path}`));
+      assert.equal(response.status, 200);
+      assert.equal((await response.text()).includes('href="/updates/"'), false);
     }
   } finally {
     restore();

@@ -227,7 +227,7 @@ export function createServer({
     {
       description:
         'Read one opted-in public co-op by UUID. Does not retrieve private land, members, evidence, or financial records.',
-      inputSchema: { id: z.string().uuid() },
+      inputSchema: { id: z.uuid() },
       annotations: { ...localRead, openWorldHint: true },
     },
     guarded(({ id }) => fetchPublic(base, { id }, fetcher)),
@@ -256,7 +256,7 @@ export function createServer({
   return server;
 }
 
-const uuid = z.string().uuid();
+const uuid = z.uuid();
 const commandSchema = z.discriminatedUnion('op', [
   z
     .object({
