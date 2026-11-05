@@ -20,6 +20,7 @@ import {
   type CommunityEvent,
 } from '@/components/community-board';
 import { allocateCents } from '@/lib/allocation.mjs';
+import { coopInviteCard } from '@/lib/share-card.mjs';
 import { allocationReconciliation } from '@/lib/allocation-reconciliation.mjs';
 import { startWorkspaceRefresh } from '@/lib/workspace-refresh.mjs';
 import { conversationActions } from '@/lib/conversation-actions.mjs';
@@ -751,6 +752,23 @@ export function NetworkApp({
       if (generation === loadGeneration.current) setError((e as Error).message);
     } finally {
       setLoadingMore(false);
+    }
+  }
+  async function copyInviteCard() {
+    if (!data?.coop) return;
+    const card = coopInviteCard(data.coop, location.origin);
+    try {
+      await navigator.clipboard.write([
+        new ClipboardItem({
+          'text/html': new Blob([card.html], { type: 'text/html' }),
+          'text/plain': new Blob([card.text], { type: 'text/plain' }),
+        }),
+      ]);
+      setNotice(
+        'Invite card copied. Paste it into your site, newsletter or a town post. It shows only this public page.',
+      );
+    } catch {
+      setNotice(card.text);
     }
   }
   async function copyLink() {
@@ -2537,6 +2555,10 @@ export function NetworkApp({
                   <Button variant="outline" onClick={copyLink}>
                     <Copy />
                     Copy public link
+                  </Button>
+                  <Button variant="outline" onClick={copyInviteCard}>
+                    <Copy />
+                    Copy invite card
                   </Button>
                 </div>
                 <div className="network-columns">
