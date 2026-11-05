@@ -7,7 +7,7 @@ import { readFile } from "node:fs/promises";
 const read = (p) => readFile(new URL(`../${p}`, import.meta.url), "utf8");
 const RECEIPT = "docs/history/WOODLAND_ON_2026-11-05.md";
 
-test("STATUS.md says woodland is on and links its receipt", async () => {
+await test("STATUS.md says woodland is on and links its receipt", async () => {
   const status = await read("STATUS.md");
   assert.ok(status.includes(RECEIPT), "STATUS.md links the woodland receipt");
   assert.ok(
@@ -18,7 +18,7 @@ test("STATUS.md says woodland is on and links its receipt", async () => {
   assert.match(status, /VERGE_WOODLAND_DFM=1/);
 });
 
-test("woodland receipt records rollback and the release carry-over", async () => {
+await test("woodland receipt records rollback and the release carry-over", async () => {
   const receipt = await read(RECEIPT);
   assert.match(receipt, /914793054eb8e1b0e86a833d30a40db5acb0e204/);
   assert.match(receipt, /rollback 20261105T124321Z/);
