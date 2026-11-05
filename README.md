@@ -33,6 +33,26 @@ For the self-hosted application, use Node 24.19.0 and follow [the single-server 
 
 The original Cloudflare/Sites development path remains available through `npm run launch` with Node.js 22.13+. Its identity is a development fixture; never expose that development server publicly. In either workflow, create a co-op and follow the **Start** checklist. See [Worldwide adoption](docs/WORLDWIDE.md) for regional setup.
 
+## Part of the Viridis open commons
+
+VergeCommon is one of five open projects that build on each other. Each one is useful alone; together they carry a piece of land from a map to a verified result.
+
+| Project | What it does | Where |
+| --- | --- | --- |
+| Dendritic Forest Management (DFM) | Starts from existing roads and waterways and checks whether retained forest stays connected as harvests are planned. MIT. | [hdfm-framework](https://github.com/jdhart81/hdfm-framework) · [dendriticforest.com](https://dendriticforest.com) |
+| VergeCommon | Lets neighbours run a local conservation co-op: private mapping, parcel-by-parcel consent, evidence and shared decisions. Runs DFM inside its woodland projects. AGPL-3.0. | [verge-common](https://github.com/jdhart81/verge-common) · [vergecommon.com](https://vergecommon.com) |
+| Global Soil Intelligence Project (GSIP) | Builds an open soil spectral reference library, with phone and web capture. MIT code, ODbL data. | [gsip](https://github.com/global-soil-intelligence/gsip) |
+| ViridisOS | Turns verified results into recomputable conservation modules and certificates anyone can check. Apache-2.0. | [viridisos](https://github.com/jdhart81/viridisos) |
+| Viridis Research | The public, machine-checked research record behind the methods. CC BY 4.0. | [viridis-research](https://github.com/jdhart81/viridis-research) |
+
+How they connect: DFM finds where a corridor runs. The corridor almost always crosses property lines, so VergeCommon gives the neighbours along it a private place to organize and consent. GSIP adds soil evidence from the same ground. ViridisOS lets anyone recompute what was claimed, and Viridis Research holds the proofs those checks rest on. Viridis Conservation ([viridisconservation.com](https://viridisconservation.com)) offers paid data preparation, assessments and support for teams that want help.
+
+Built something with one of these? Add the badge and tell us in an issue, so we can link back:
+
+```markdown
+[![Part of the Viridis open commons](https://img.shields.io/badge/Viridis-open%20commons-2e7d32)](https://github.com/jdhart81/hdfm-framework#part-of-the-viridis-open-commons)
+```
+
 ## Agents and MCP
 
 The [MCP server](mcp/README.md) supports local stdio and authenticated Streamable HTTP at `/mcp` in the self-hosted runtime. Local stdio offers public discovery and hypothetical pooling/allocation drafts. Hosted tokens with `mcp:read` can also read the owner's permitted workspaces; `mcp:write` adds bounded project, member-update, task and RSVP commands. App tokens and MCP tokens are separate scopes.
