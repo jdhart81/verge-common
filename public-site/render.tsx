@@ -1,6 +1,8 @@
 import { renderToString } from 'react-dom/server';
-import Home from '../app/page';
+import { HomeContent } from '../components/home-content';
 import Demo from '../app/demo/page';
+
 export function render(planner = false) {
-  return renderToString(planner ? <Demo /> : <Home publicPreview />);
+  // Always pre-render English; the browser switches locale after hydration.
+  return renderToString(planner ? <Demo /> : <HomeContent publicPreview locale="en" />);
 }

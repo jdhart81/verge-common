@@ -152,7 +152,7 @@ await test('I1 every missing configuration disables pages, API and link predicat
     /if \(!updatesEnabled\(\)\) return null/,
   );
   for (const file of [
-    'app/page.tsx',
+    'components/home-content.tsx',
     'components/information-page.tsx',
     'app/support-project/page.tsx',
   ]) {
