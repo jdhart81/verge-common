@@ -1,0 +1,44 @@
+name: Publish to MCP Registry
+
+# Run by hand from the Actions tab. Publishes server.json to the official
+# MCP Registry as io.github.jdhart81/vergecommon, using GitHub OIDC, so no
+# personal token or sign-in is stored anywhere.
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write # Required for MCP Registry OIDC authentication
+      contents: read
+    env:
+      PUBLISHER_VERSION: "1.8.5"
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Install mcp-publisher (pinned version, checksum verified)
+        run: |
+          set -euo pipefail
+          base="https://github.com/modelcontextprotocol/registry/releases/download/v${PUBLISHER_VERSION}"
+          asset="mcp-publisher_linux_amd64.tar.gz"
+          curl -fsSL -o "$asset" "$base/$asset"
+          curl -fsSL -o checksums.txt "$base/registry_${PUBLISHER_VERSION}_checksums.txt"
+          grep " ${asset}\$" checksums.txt | sha256sum -c -
+          tar xzf "$asset" mcp-publisher
+
+      - name: Check server.json version matches package.json
+        run: |
+          set -euo pipefail
+          test "$(jq -r .version server.json)" = "$(jq -r .version package.json)"
+
+      - name: Authenticate to MCP Registry
+        run: ./mcp-publisher login github-oidc
+
+      - name: Publish server to MCP Registry
+        run: ./mcp-publisher publish
