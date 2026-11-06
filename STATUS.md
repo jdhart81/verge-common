@@ -4,7 +4,7 @@
 
 Disabled by default, with a separate double opt-in form, encrypted 48-hour confirmation links and an explicit confirmation POST, Resend-only subscriber records, abuse limits and no tracking. Adds an offline-tested campaign draft/preview/lint/test/send CLI and a read-only DNS checker. See [email operator runbook](docs/EMAIL.md) for configuration and deliberate send gates. No deployment, real email, DNS change or provider setup is part of this change.
 
-**Last updated: 5 November 2026 (v0.10.0 maintenance live; woodland projects on since 5 November).** This is the single, current summary of what is live, what is verified and what is still open. Update it with every deployment or change in operating state. Dated deployment receipts and reviews are preserved unchanged in [docs/history/](docs/history/).
+**Last updated: 6 November 2026 (v0.10.0 maintenance plus the MCP public-tools hotfix live; woodland projects on since 5 November).** This is the single, current summary of what is live, what is verified and what is still open. Update it with every deployment or change in operating state. Dated deployment receipts and reviews are preserved unchanged in [docs/history/](docs/history/).
 
 ## v0.10.0 — woodland corridors and the old-growth spine, deployed 4 October 2026
 
@@ -20,6 +20,10 @@ Disabled by default, with a separate double opt-in form, encrypted 48-hour confi
 
 Receipt: [maintenance deployment 4 October 2026](docs/history/DEPLOYMENT_MAINTENANCE_2026-10-04.md). The [final-engine follow-up](docs/history/DEPLOYMENT_FOLLOWUP_2026-10-04.md), [initial deployment](docs/history/DEPLOYMENT_V0100_2026-10-04.md) and [DFM public-site deployment 3 October 2026](docs/history/DEPLOYMENT_DFM_SITE_2026-10-03.md) remain immutable historical records. The annotated [`v0.10.0` tag](https://github.com/jdhart81/verge-common/releases/tag/v0.10.0) remains on exact `824019ce50d1ab0974369118d00493d78d9058ab`; tag object `1fee3843d3f653d43a5e8b06d48a0b5100a3988a`. It was not replaced by this maintenance release; the newer live source is recorded above. See also the [release notes](docs/RELEASE_NOTES.md) and [woodland projects](docs/WOODLAND.md).
 
+## Hosted MCP public tools — hotfix deployed 6 November 2026
+
+**Production runs `5d1a276490f50d019234f2515049b21889ad981f` since 6 November 2026 at 12:47:56 UTC**: the maintenance source `9147930` plus only the MCP public-tools change, which main records as v0.10.1. Agents can call the five public discovery and planning tools on `https://vergecommon.com/mcp` without a token, rate limited. Private tools still need a personal agent token, and a bad token is refused with 401. `VERGE_MCP_PUBLIC=0` turns anonymous access off. Every other setting, including `VERGE_WOODLAND_DFM=1`, was carried over. Receipt and rollback: [MCP public tools 6 November 2026](docs/history/MCP_PUBLIC_2026-11-06.md).
+
 ## Pilot-readiness tooling — deployed; human qualification pending
 
 The [local readiness report](docs/PILOT_READINESS.md), [audit](docs/PILOT_AUDIT_2026-10-03.md) and [operator rehearsal kit](docs/PILOT_REHEARSAL.md) describe the 3 October engineering checkpoint. That tooling is included in deployed `9147930`; owner start approval and actual pilot completion remain separate gates. Custody/recoverability, failure/recovery acknowledgement, Mac stale-run coverage, second operator, cohort/dates/support, urgent contact and real offered-device qualification remain open.
@@ -32,7 +36,7 @@ The [local readiness report](docs/PILOT_READINESS.md), [audit](docs/PILOT_AUDIT_
 | --- | --- |
 | Website and shared app | **Live public technical beta** at https://vergecommon.com — accounts, private co-ops, invitations, discussion and conversation actions, events, parcels/boundaries, evidence, governance records, operator report queue, hosted MCP. Free to use. |
 | Hosting | One dedicated DigitalOcean droplet (`601953476`), Docker container behind Caddy, SQLite + private evidence files. Separate from Viridis Conservation. |
-| Source of truth | Production runs **v0.10.0**, exact commit `914793054eb8e1b0e86a833d30a40db5acb0e204`, with `VERGE_WOODLAND_DFM=1` since 5 November 2026. [Maintenance deployment and recovery receipt](docs/history/DEPLOYMENT_MAINTENANCE_2026-10-04.md); [woodland switch receipt](docs/history/WOODLAND_ON_2026-11-05.md). |
+| Source of truth | Production runs **v0.10.0 plus the MCP public-tools hotfix**, exact commit `5d1a276490f50d019234f2515049b21889ad981f` since 6 November 2026 ([receipt](docs/history/MCP_PUBLIC_2026-11-06.md)), with `VERGE_WOODLAND_DFM=1` since 5 November 2026. [Maintenance deployment and recovery receipt](docs/history/DEPLOYMENT_MAINTENANCE_2026-10-04.md); [woodland switch receipt](docs/history/WOODLAND_ON_2026-11-05.md). |
 | Automated checks | Maintenance source: all six main checks passed, including Node tests, TypeScript, lint and builds. The exact deployed image passed three private-copy self-hosted acceptance suites and empty-data woodland acceptance. Fresh pre-deploy, pre-switch and post-deploy backups passed isolated restore; read-only live rollback guards passed. Runtime/configuration fingerprints and single-writer checks passed. |
 | Launch gate | `node scripts/launch-gate.mjs --expect-commit 914793054eb8e1b0e86a833d30a40db5acb0e204` from the owner Mac against production: **25 pass, 0 fail, 9 manual, 0 skipped**. Manual operational and owner gates remain open. |
 | Real adoption | Unproven. At 30 Sep 01:38 UTC: 2 accounts including owner tests, no active co-op or evidence files. Apple/Google records and one new registration do not establish external adoption. |

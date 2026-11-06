@@ -10,7 +10,7 @@ const bobCoop = '881f895d-441c-45a4-b84b-797ae7dd1774';
 const projectId = '07b82539-8a73-44a1-a888-2ae685c2ee9b';
 const requestId = '26685a5e-7bc8-4085-af18-07220fd6a8dd';
 
-async function fixture(t) {
+async function fixture(t, options = {}) {
   const tokens = new Map([
     [
       'alice-write',
@@ -57,6 +57,7 @@ async function fixture(t) {
       return { saved: true, version: 5, requestId: input.requestId };
     },
     fetcher: async () => Response.json({ coops: [] }),
+    ...options,
   });
   const server = createNodeServer(handle);
   await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
@@ -270,4 +271,109 @@ await test('streamed bodies are bounded without trusting content length and dupl
     req.end('{}');
   });
   assert.equal(status, 401);
+});
+
+await test('anonymous hosted callers get only the public tools, behind the limiter, and bad credentials never downgrade', async (t) => {
+  let allowed = true;
+  const limited = [];
+  const f = await fixture(t, {
+    allowAnonymous: true,
+    limitAnonymous: (req) => {
+      limited.push(req.headers.authorization);
+      return allowed;
+    },
+    woodland: true,
+  });
+  const client = new Client({ name: 'anonymous-test', version: '1' });
+  await client.connect(new StreamableHTTPClientTransport(f.endpoint));
+  t.after(() => client.close());
+  const names = (await client.listTools()).tools
+    .map((tool) => tool.name)
+    .sort();
+  assert.deepEqual(names, [
+    'example_pooling_draft',
+    'get_public_coop',
+    'list_public_coops',
+    'prepare_pooling_draft',
+    'vergecommon_capabilities',
+  ]);
+  const capability = await client.callTool({
+    name: 'vergecommon_capabilities',
+    arguments: {},
+  });
+  assert.equal(
+    capability.structuredContent.access,
+    'public_read_and_local_planning',
+  );
+  assert.match(capability.structuredContent.note, /Anonymous hosted access/);
+  const coops = await client.callTool({
+    name: 'list_public_coops',
+    arguments: {},
+  });
+  assert.notEqual(coops.isError, true);
+  const privateCall = await client.callTool({
+    name: 'get_private_workspace',
+    arguments: { id: aliceCoop },
+  });
+  assert.equal(privateCall.isError, true);
+  assert.ok(limited.length > 0);
+  assert.ok(limited.every((value) => value === undefined));
+
+  const message = { jsonrpc: '2.0', id: 1, method: 'tools/list' };
+  const anonymousPost = (headers = {}) =>
+    fetch(f.endpoint, {
+      method: 'POST',
+      headers: {
+        accept: 'application/json, text/event-stream',
+        'content-type': 'application/json',
+        ...headers,
+      },
+      body: JSON.stringify(message),
+    });
+  // Any credential that is present but bad is refused, never served anonymously.
+  for (const [headers, status] of [
+    [{ authorization: '' }, 401],
+    [{ authorization: 'Basic abc' }, 401],
+    [{ authorization: 'Bearer missing' }, 401],
+    [{ authorization: 'Bearer cookie-session' }, 401],
+    [{ authorization: 'Bearer app-only' }, 403],
+    [{ origin: 'https://evil.example' }, 403],
+    [{ 'mcp-session-id': 'another-user-session' }, 400],
+    [{ 'content-type': 'text/plain' }, 415],
+  ]) {
+    const response = await anonymousPost(headers);
+    assert.equal(response.status, status, JSON.stringify(headers));
+    await response.text();
+  }
+  // A valid token still gets the private tools on the same handler.
+  const member = await f.connect('alice-write');
+  assert.equal((await member.listTools()).tools.length, 9);
+  allowed = false;
+  const throttled = await anonymousPost();
+  assert.equal(throttled.status, 429);
+  assert.equal(throttled.headers.get('retry-after'), '60');
+  await throttled.text();
+});
+
+await test('anonymous hosted access is off by default and needs a limiter', async (t) => {
+  const f = await fixture(t);
+  const response = await fetch(f.endpoint, {
+    method: 'POST',
+    headers: {
+      accept: 'application/json, text/event-stream',
+      'content-type': 'application/json',
+    },
+    body: JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'tools/list' }),
+  });
+  assert.equal(response.status, 401);
+  await response.text();
+  assert.throws(
+    () =>
+      createHttpHandler({
+        authenticate: async () => null,
+        allowAnonymous: true,
+      }),
+    /rate limiter/,
+  );
+  assert.equal(mcpDiscovery().authentication.anonymousPublicTools, true);
 });
