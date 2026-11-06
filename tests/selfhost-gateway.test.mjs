@@ -663,13 +663,27 @@ await test('gateway MCP integrates tokens with the same backend membership and a
   await assert.rejects(bobClient.listTools());
   const discovery = await f.request('/.well-known/mcp.json');
   assert.equal((await discovery.json()).endpoint, `${origin}/mcp`);
-  const missingBearer = await f.request('/mcp', {
+  // No credential at all: registry agents get only the public tools.
+  const anonymous = await f.request('/mcp', {
     method: 'POST',
-    headers: { 'content-type': 'application/json' },
+    headers: {
+      accept: 'application/json, text/event-stream',
+      'content-type': 'application/json',
+    },
+    body: JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'tools/list' }),
+  });
+  assert.equal(anonymous.status, 200);
+  const names = (await anonymous.json()).result.tools.map((tool) => tool.name);
+  assert.ok(names.includes('list_public_coops'));
+  assert.ok(!names.includes('get_private_workspace'));
+  assert.ok(!names.includes('apply_coop_command'));
+  // A malformed credential is still refused rather than served anonymously.
+  const badBearer = await f.request('/mcp', {
+    method: 'POST',
+    headers: { 'content-type': 'application/json', authorization: 'Basic x' },
     body: '{}',
   });
-  assert.equal(missingBearer.status, 401);
-  assert.match(missingBearer.headers.get('www-authenticate'), /Bearer/);
+  assert.equal(badBearer.status, 401);
 });
 
 await test('native account lifecycle issues scoped tokens, rotates recovery, revokes devices and deletes credentials', async (t) => {
