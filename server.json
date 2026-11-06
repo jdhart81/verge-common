@@ -13,8 +13,8 @@
       "headers": [
         {
           "name": "Authorization",
-          "description": "Bearer followed by a personal agent token from your VergeCommon account",
-          "isRequired": true,
+          "description": "Optional. Bearer followed by a personal agent token from your VergeCommon account; needed only for private co-op tools. Public discovery and planning tools work without it.",
+          "isRequired": false,
           "isSecret": true
         }
       ]

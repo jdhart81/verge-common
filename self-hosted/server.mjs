@@ -206,6 +206,20 @@ export function createGateway({
       return internal(p, '/api/woodland-preview', { id, ...input }, 29000);
     },
     woodland: woodlandEnabled(),
+    // Agents from the MCP registry can try the public discovery and planning
+    // tools without an account. VERGE_MCP_PUBLIC=0 turns this off.
+    allowAnonymous: process.env.VERGE_MCP_PUBLIC !== '0',
+    limitAnonymous: (req) => {
+      const client = clientKey(
+        process.env.VERGE_TRUST_CADDY === '1'
+          ? String(req.headers['x-real-ip'] || req.socket.remoteAddress)
+          : req.socket.remoteAddress,
+      );
+      return (
+        auth.rateLimit(`mcp-anon:${client}`, 60, 60000) &&
+        auth.rateLimit('mcp-anon:global', 600, 60000)
+      );
+    },
   });
   const server = http.createServer(async (req, res) => {
     res.setHeader('X-Content-Type-Options', 'nosniff');

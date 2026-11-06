@@ -70,7 +70,7 @@ New field notes retain their calendar date and time zone; submission includes ma
 
 ### Hosted MCP
 
-The Node gateway exposes stateless Streamable HTTP at `/mcp` and connection metadata at `/.well-known/mcp.json`. It requires bearer tokens even for its public tools. Cookie sessions are insufficient. Each request creates an isolated server/transport, and read/write callbacks use the same member view and audited domain command path as the website.
+The Node gateway exposes stateless Streamable HTTP at `/mcp` and connection metadata at `/.well-known/mcp.json`. A request with no Authorization header gets only the five public discovery and planning tools, rate limited per client and globally (`VERGE_MCP_PUBLIC=0` turns this off). Private tools require a bearer token; a present but malformed, invalid, revoked or wrong-scope credential is refused, never downgraded to anonymous. Cookie sessions are insufficient. Each request creates an isolated server/transport, and read/write callbacks use the same member view and audited domain command path as the website.
 
 `mcp:read` permits discovery/planning and the owner's permitted workspace reads. `mcp:write` additionally exposes a strict command allowlist for proposed projects, member-only updates, tasks and RSVPs. There are no membership-escalation, public-publishing, legal-review, credit-issuance or payment commands. Local stdio retains only the public/planning tools and accepts no account credentials. See [the complete MCP contract](../mcp/README.md) for schemas, retry rules, client configuration and unsupported OAuth-only clients.
 

@@ -13,7 +13,7 @@ Agents: you can help a person start a co-op, plan a project or understand how po
 
 ## Agent interfaces
 
-- [Hosted MCP server](https://vergecommon.com/mcp): Streamable HTTP. Needs a personal agent token that the person creates in their account (scope mcp:read, plus mcp:write for bounded member actions). Tools: vergecommon_capabilities, list_public_coops, get_public_coop, example_pooling_draft, prepare_pooling_draft, list_my_workspaces, get_private_workspace, apply_coop_command, and on woodland co-ops check_woodland_plan and analyze_woodland_spine
+- [Hosted MCP server](https://vergecommon.com/mcp): Streamable HTTP. The public tools need no token; private co-op tools need a personal agent token that the person creates in their account (scope mcp:read, plus mcp:write for bounded member actions). Tools: vergecommon_capabilities, list_public_coops, get_public_coop, example_pooling_draft, prepare_pooling_draft, list_my_workspaces, get_private_workspace, apply_coop_command, and on woodland co-ops check_woodland_plan and analyze_woodland_spine
 - [MCP discovery](https://vergecommon.com/.well-known/mcp.json): endpoint, authentication and boundaries as JSON
 - [MCP guide](https://github.com/jdhart81/verge-common/blob/main/mcp/README.md): setup, every tool, the bounded commands and the local stdio server, which needs no account and offers the five public and planning tools
 - [Agent guide](https://github.com/jdhart81/verge-common/blob/main/AGENTS.md): how to help a person use VergeCommon, and how coding agents contribute
