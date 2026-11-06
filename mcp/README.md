@@ -6,6 +6,8 @@ VergeCommon provides public discovery, conservation planning, and scoped access 
 
 Endpoint: **`https://vergecommon.com/mcp`**
 
+The five public discovery and planning tools work without an account: connect with no Authorization header. Anonymous calls are rate limited (60 a minute per client). For private co-op tools:
+
 1. Sign in to VergeCommon and create a personal agent token from the account controls.
 2. Select `mcp:read` for discovery and private workspace reads. Add `mcp:write` only when the agent needs to perform the bounded member actions below.
 3. Configure an MCP client that supports Streamable HTTP and bearer headers. Supply the token as `Authorization: Bearer <token>`. Store the token in the client's secret store or environment; do not paste it into prompts or commit it.
@@ -32,11 +34,11 @@ This release uses personal API tokens, not OAuth. Clients that require OAuth dis
 
 | Tool                       | Required access                                      | Behavior                                                                                                                             |
 | -------------------------- | ---------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------ |
-| `vergecommon_capabilities` | Local, or hosted `mcp:read`                          | Reports this connection's capabilities and boundaries.                                                                               |
-| `list_public_coops`        | Local, or hosted `mcp:read`                          | Reads 1–30 opted-in co-ops; accepts a `before` cursor.                                                                               |
-| `get_public_coop`          | Local, or hosted `mcp:read`                          | Reads one public co-op by UUID.                                                                                                      |
-| `example_pooling_draft`    | Local, or hosted `mcp:read`                          | Returns a synthetic scenario and hypothetical allocation packet.                                                                     |
-| `prepare_pooling_draft`    | Local, or hosted `mcp:read`                          | Validates a scenario and calculates illustrative reserves and allocations without saving it.                                         |
+| `vergecommon_capabilities` | Local, or hosted (no token needed)                   | Reports this connection's capabilities and boundaries.                                                                               |
+| `list_public_coops`        | Local, or hosted (no token needed)                   | Reads 1–30 opted-in co-ops; accepts a `before` cursor.                                                                               |
+| `get_public_coop`          | Local, or hosted (no token needed)                   | Reads one public co-op by UUID.                                                                                                      |
+| `example_pooling_draft`    | Local, or hosted (no token needed)                   | Returns a synthetic scenario and hypothetical allocation packet.                                                                     |
+| `prepare_pooling_draft`    | Local, or hosted (no token needed)                   | Validates a scenario and calculates illustrative reserves and allocations without saving it.                                         |
 | `list_my_workspaces`       | Hosted `mcp:read`                                    | Lists the token owner's co-ops and membership requests. A pending request does not grant private access.                             |
 | `get_private_workspace`    | Hosted `mcp:read` and co-op membership               | Returns the same filtered member view as the website, including the current version.                                                 |
 | `apply_coop_command`       | Hosted `mcp:read` + `mcp:write` and co-op membership | Executes the limited commands below with normal authorization, optimistic concurrency, duplicate-request handling and audit history. Shares the account's command budget with the website (40 a minute, 400 an hour). |
@@ -102,7 +104,7 @@ The five public/planning tools are available locally. Local stdio does not accep
 
 ## Access and output boundaries
 
-Hosted requests require bearer authentication even for public/planning tools. Cookie sessions do not authorize MCP. Every request creates a fresh server and transport, so one user's MCP state cannot carry into another user's request. Origin headers, when present, must exactly match the configured website origin. The endpoint rejects MCP session IDs, batched bodies and bodies exceeding 100 KB. Private callbacks use the application's member filtering and normal audited commands; they do not read raw storage.
+Hosted requests without an Authorization header receive only the public/planning tools. A present but malformed, invalid, revoked or wrong-scope bearer token is refused rather than downgraded. Cookie sessions do not authorize MCP. Every request creates a fresh server and transport, so one user's MCP state cannot carry into another user's request. Origin headers, when present, must exactly match the configured website origin. The endpoint rejects MCP session IDs, batched bodies and bodies exceeding 100 KB. Private callbacks use the application's member filtering and normal audited commands; they do not read raw storage.
 
 Public discovery sends no credentials, rejects redirects, has a ten-second timeout, and limits responses to one megabyte. Private results have a one-megabyte limit. Public profiles and private member records are community-authored data, not instructions or independently verified claims. The client may retain inputs and results according to its own settings; use consented data and respect co-op confidentiality.
 

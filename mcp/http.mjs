@@ -12,10 +12,11 @@ export function mcpDiscovery(origin = 'https://vergecommon.com') {
     authentication: {
       type: 'bearer-api-token',
       requiredScope: 'mcp:read',
+      anonymousPublicTools: true,
       optionalScope: 'mcp:write',
       oauthSupported: false,
       instructions:
-        'Sign in to VergeCommon and create a personal agent token. Supply it in the Authorization: Bearer header. Revoke it from your account when finished.',
+        'Public discovery and planning tools need no token. For private co-op tools, sign in to VergeCommon, create a personal agent token, and supply it in the Authorization: Bearer header. Revoke it from your account when finished.',
     },
     documentation:
       'https://github.com/jdhart81/verge-common/blob/build/coop-launch-readiness/mcp/README.md',
@@ -82,10 +83,17 @@ export function createHttpHandler({
   previewWoodland,
   fetcher = fetch,
   woodland = false,
+  // Anonymous callers (no Authorization header at all) get only the public
+  // discovery and planning tools, the same set local stdio offers. Off unless
+  // the integration opts in and supplies a limiter.
+  allowAnonymous = false,
+  limitAnonymous,
 } = {}) {
   const base = serviceOrigin(origin);
   if (typeof authenticate !== 'function')
     throw new Error('Hosted MCP requires a token verifier.');
+  if (allowAnonymous && typeof limitAnonymous !== 'function')
+    throw new Error('Anonymous hosted MCP requires a rate limiter.');
 
   return async function handleMcp(req, res) {
     res.setHeader('cache-control', 'private, no-store');
@@ -105,36 +113,64 @@ export function createHttpHandler({
     const authorizationCount = req.rawHeaders.filter(
       (v, i) => i % 2 === 0 && v.toLowerCase() === 'authorization',
     ).length;
+    // Only a request with no Authorization header at all may fall back to the
+    // public tools; any malformed, duplicate, invalid or revoked credential is
+    // still refused, so a bad token never silently downgrades.
+    const anonymous = allowAnonymous && authorizationCount === 0;
     if (
-      authorizationCount !== 1 ||
-      typeof authorization !== 'string' ||
-      authorization.length > 2048 ||
-      !/^Bearer [A-Za-z0-9._~+/=-]+$/i.test(authorization)
+      !anonymous &&
+      (authorizationCount !== 1 ||
+        typeof authorization !== 'string' ||
+        authorization.length > 2048 ||
+        !/^Bearer [A-Za-z0-9._~+/=-]+$/i.test(authorization))
     )
       return reject(res, 401, 'A personal agent bearer token is required.', {
         'www-authenticate': 'Bearer realm="VergeCommon MCP"',
       });
     let server;
     try {
-      const verified = await authenticate(req);
-      if (!verified?.id || verified.kind !== 'token')
-        return reject(
-          res,
-          401,
-          'Agent token is invalid, expired, or revoked.',
-          {
+      let privateAccess;
+      if (anonymous) {
+        if (!(await limitAnonymous(req)))
+          return reject(
+            res,
+            429,
+            'Too many anonymous requests. Wait a minute, or use a personal agent token.',
+            { 'retry-after': '60' },
+          );
+      } else {
+        const verified = await authenticate(req);
+        if (!verified?.id || verified.kind !== 'token')
+          return reject(
+            res,
+            401,
+            'Agent token is invalid, expired, or revoked.',
+            {
+              'www-authenticate':
+                'Bearer realm="VergeCommon MCP", error="invalid_token"',
+            },
+          );
+        if (
+          !Array.isArray(verified.scopes) ||
+          !verified.scopes.includes('mcp:read')
+        )
+          return reject(res, 403, 'The agent token requires mcp:read.', {
             'www-authenticate':
-              'Bearer realm="VergeCommon MCP", error="invalid_token"',
-          },
-        );
-      if (
-        !Array.isArray(verified.scopes) ||
-        !verified.scopes.includes('mcp:read')
-      )
-        return reject(res, 403, 'The agent token requires mcp:read.', {
-          'www-authenticate':
-            'Bearer error="insufficient_scope", scope="mcp:read"',
+              'Bearer error="insufficient_scope", scope="mcp:read"',
+          });
+        const principal = Object.freeze({
+          ...verified,
+          scopes: Object.freeze([...verified.scopes]),
         });
+        privateAccess = {
+          principal,
+          readWorkspace,
+          listWorkspaces,
+          executeCommand,
+          analyzeWoodland,
+          previewWoodland,
+        };
+      }
       if (req.headers['mcp-session-id'] !== undefined)
         return reject(res, 400, 'This endpoint does not use MCP session IDs.');
       if (
@@ -142,22 +178,12 @@ export function createHttpHandler({
       )
         return reject(res, 415, 'Use application/json.');
       const body = await readBody(req);
-      const principal = Object.freeze({
-        ...verified,
-        scopes: Object.freeze([...verified.scopes]),
-      });
       server = createServer({
         origin: base,
         fetcher,
         woodland,
-        privateAccess: {
-          principal,
-          readWorkspace,
-          listWorkspaces,
-          executeCommand,
-          analyzeWoodland,
-          previewWoodland,
-        },
+        hostedPublic: anonymous,
+        privateAccess,
       });
       const transport = new StreamableHTTPServerTransport({
         sessionIdGenerator: undefined,

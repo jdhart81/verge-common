@@ -154,6 +154,7 @@ export function createServer({
   fetcher = fetch,
   privateAccess,
   woodland = false,
+  hostedPublic = false,
 } = {}) {
   const base = serviceOrigin(origin);
   const server = new McpServer({ name: 'vergecommon', version: '0.1.0' });
@@ -200,7 +201,9 @@ export function createServer({
       ],
       note: privateAccess
         ? 'Private tools act as the token owner and require current co-op membership. Write tools require mcp:write and never approve legal or financial records. Drafts are not credits, agreements, sales, or payments.'
-        : 'Local stdio does not authenticate as a co-op member. Drafts are not credits, agreements, sales, or payments.',
+        : hostedPublic
+          ? 'Anonymous hosted access: public discovery and planning tools only. Add a personal agent token (Authorization: Bearer) for private co-op tools. Drafts are not credits, agreements, sales, or payments.'
+          : 'Local stdio does not authenticate as a co-op member. Drafts are not credits, agreements, sales, or payments.',
     })),
   );
   server.registerTool(

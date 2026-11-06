@@ -37,7 +37,7 @@ The original Cloudflare/Sites development path remains available through `npm ru
 
 The [MCP server](mcp/README.md) supports local stdio and authenticated Streamable HTTP at `/mcp` in the self-hosted runtime. Local stdio offers public discovery and hypothetical pooling/allocation drafts. Hosted tokens with `mcp:read` can also read the owner's permitted workspaces; `mcp:write` adds bounded project, member-update, task and RSVP commands. App tokens and MCP tokens are separate scopes.
 
-Create a personal agent token from `/account`, store it in the client's secret settings, and revoke it when finished. The hosted endpoint requires bearer support; OAuth is not implemented. Agents cannot approve legal/financial records, escalate membership, issue credits, execute payments, or publish public updates. The live endpoint passed initialization, private-read, bounded-write and denied-financial-command acceptance checks on September 19, 2026.
+The five public discovery and planning tools work on the hosted endpoint without an account (rate limited). For private co-op tools, create a personal agent token from `/account`, store it in the client's secret settings, and revoke it when finished. Private access requires bearer support; OAuth is not implemented. Agents cannot approve legal/financial records, escalate membership, issue credits, execute payments, or publish public updates. The live endpoint passed initialization, private-read, bounded-write and denied-financial-command acceptance checks on September 19, 2026.
 
 ## What is implemented
 
