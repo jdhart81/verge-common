@@ -3,9 +3,12 @@
   "name": "io.github.jdhart81/vergecommon",
   "title": "VergeCommon",
   "description": "Start and run a neighborhood conservation co-op: public co-ops, pooling drafts, woodland checks.",
-  "repository": { "url": "https://github.com/jdhart81/verge-common", "source": "github" },
+  "repository": {
+    "url": "https://github.com/jdhart81/verge-common",
+    "source": "github"
+  },
   "websiteUrl": "https://vergecommon.com/",
-  "version": "0.10.0",
+  "version": "0.10.1",
   "remotes": [
     {
       "type": "streamable-http",
@@ -13,8 +16,8 @@
       "headers": [
         {
           "name": "Authorization",
-          "description": "Bearer followed by a personal agent token from your VergeCommon account",
-          "isRequired": true,
+          "description": "Optional. Bearer followed by a personal agent token from your VergeCommon account, for private co-op tools. Without it, the five public discovery and planning tools work, rate limited.",
+          "isRequired": false,
           "isSecret": true
         }
       ]

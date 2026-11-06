@@ -4,6 +4,12 @@
 
 Disabled by default, with a separate double opt-in form, encrypted 48-hour confirmation links and an explicit confirmation POST, Resend-only subscriber records, abuse limits and no tracking. Adds an offline-tested campaign draft/preview/lint/test/send CLI and a read-only DNS checker. See [email operator runbook](EMAIL.md) for configuration and deliberate send gates. No deployment, real email, DNS change or provider setup is part of this change.
 
+## v0.10.1 — public tools on the hosted MCP endpoint (deployed 6 November 2026, 12:47 UTC)
+
+- A request to `https://vergecommon.com/mcp` with no `Authorization` header gets the five public discovery and planning tools, the same set the local stdio server offers, rate limited to 60 a minute per client and 600 a minute in total. Private tools still need a personal agent token; a malformed, invalid or revoked token is refused, never downgraded. `VERGE_MCP_PUBLIC=0` turns anonymous access off.
+- The MCP Registry entry (`server.json`) marks the token as optional.
+- Deployed as hotfix commit `5d1a276` on top of production `9147930`. See the [receipt](history/MCP_PUBLIC_2026-11-06.md).
+
 ## v0.10.0 — woodland corridors and the old-growth spine (deployed 4 October 2026, 22:03 UTC; woodland projects off)
 
 Everything merged after v0.9.0, plus the spine integration. Woodland projects stay off unless the operator sets `VERGE_WOODLAND_DFM=1`.
