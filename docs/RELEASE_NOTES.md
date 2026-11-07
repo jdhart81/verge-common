@@ -1,5 +1,11 @@
 # Release notes
 
+## v0.11.0 — agent call counts and answer receipts (hotfix on production 5d1a276)
+
+- `/mcp` usage is counted per UTC day (requests, initialize, tools/list, calls per tool, errors, rate-limited, anonymous vs token) and served at `GET /mcp/stats` for the last 30 days. Counts only: no IPs, tokens, arguments or results are stored; distinct clients use a keyed hash with a daily in-memory salt. `VERGE_MCP_STATS=0` turns it off.
+- Every successful public tool answer carries a `source` receipt (name, url, license, version) and `check_or_start_your_own`, a vergecommon.com page. The discovery tools' old top-level `source` string is now `source.retrieved_from`.
+- Built on the running hotfix `5d1a276` with only these two changes, so nothing else merged on main ships with it.
+
 ## v0.10.0 — woodland corridors and the old-growth spine (deployed 4 October 2026, 22:03 UTC; woodland projects off)
 
 Everything merged after v0.9.0, plus the spine integration. Woodland projects stay off unless the operator sets `VERGE_WOODLAND_DFM=1`.
