@@ -30,3 +30,13 @@ Stop the new container and rename it `vergecommon-failed-mcppublic-20261106T1246
 ## Before the next release
 
 The next release from main must, like this one, carry over every setting of the running container, including `VERGE_WOODLAND_DFM=1`, and should confirm anonymous `tools/list` still returns the five public tools.
+
+## Production baseline
+
+**Completed 7 November 2026 at 02:34:46 UTC, observed live (`2026-11-07T02:34:46.865Z`).** Observed live from outside the server: `/healthz` reported status ok, version 0.10.0 and commit `5d1a276490f50d019234f2515049b21889ad981f`; anonymous `initialize` and `tools/list` on `/mcp` returned 200 with exactly the five public tools. The switch itself happened at 12:47:56 UTC on 6 November (above); this stamp is when the running build was checked and qualified as the reviewed production baseline that the launch gate (BL-01) compares against.
+
+| Item | Result |
+| --- | --- |
+| Reviewed source | `5d1a276490f50d019234f2515049b21889ad981f` |
+
+The source commit lives on branch `claude/mcp-public-tools-hotfix`. Keep that branch, or tag the commit, for as long as this is the baseline: the check resolves the commit from git.
