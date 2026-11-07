@@ -19,6 +19,8 @@ Use **Node 24.19.0**, matching the production Dockerfile, and run commands from 
 | `VERGE_SELF_HOSTED` | Selects the Node storage build; set by `build:selfhost`                                               | Unset                   |
 | `VERGE_WOODLAND_DFM` | Set to `1` to enable Woodland (DFM) projects: the corridor check on treatment plans, the old-growth spine analyses and the `check_woodland_plan` and `analyze_woodland_spine` MCP tools. All engine work runs in one worker thread. See `docs/WOODLAND.md` | Unset (off) |
 | `VERGE_WOODLAND_ANALYSIS_TIMEOUT_MS` | Deadline for one engine job (a spine analysis, a plan preview or the check on a submitted plan), queue time included. Clamped to 5,000–25,000 so a queued job can still wait and every answer arrives inside the gateway's 30-second proxy limit | `25000` |
+| `VERGE_MCP_PUBLIC` | Set to `0` to refuse `/mcp` requests that carry no token (the five public tools are otherwise open to anonymous agents, rate limited) | Unset (on) |
+| `VERGE_MCP_STATS` | Set to `0` to turn off the aggregate `/mcp` usage counts and `GET /mcp/stats`. When on, counts only are kept in `mcp-stats.json` in `VERGE_DATA_DIR` (memory only if that is not writable); see `mcp/README.md` | Unset (on) |
 
 The Dockerfile sets `/data`, `/backups`, `0.0.0.0:3000`, `https://vergecommon.com`, and trusted Caddy forwarding. Its process runs as the unprivileged `node` user. Mount durable directories writable by that user. Neither data directory belongs in source control or a container image.
 
