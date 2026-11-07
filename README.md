@@ -61,6 +61,35 @@ The [MCP server](mcp/README.md) supports local stdio and authenticated Streamabl
 
 The five public discovery and planning tools work on the hosted endpoint without an account (rate limited). For private co-op tools, create a personal agent token from `/account`, store it in the client's secret settings, and revoke it when finished. Private access requires bearer support; OAuth is not implemented. Agents cannot approve legal/financial records, escalate membership, issue credits, execute payments, or publish public updates. The live endpoint passed initialization, private-read, bounded-write and denied-financial-command acceptance checks on September 19, 2026.
 
+### Try it from your agent
+
+The five public tools need no account or token. In Claude Code:
+
+```sh
+claude mcp add --transport http vergecommon https://vergecommon.com/mcp
+```
+
+Other MCP clients that take a JSON config can add it as a remote Streamable HTTP server with no headers (field names vary by client; some call the type `streamable-http`, some need only the `url`):
+
+```json
+{
+  "mcpServers": {
+    "vergecommon": {
+      "type": "http",
+      "url": "https://vergecommon.com/mcp"
+    }
+  }
+}
+```
+
+Prompts to paste, which work without a token:
+
+1. What can VergeCommon do for me without an account, and are there any public conservation co-ops I could look at?
+2. Show me VergeCommon's example of how a conservation co-op pools its work and shares any income, and explain it in plain words.
+3. Using VergeCommon, take the example pooling draft and recalculate it with member shares of 50, 30 and 20 percent and a 30 percent ecological reserve. What would each member's illustrative share be?
+
+Limits: without a token you get only the five public tools (`vergecommon_capabilities`, `list_public_coops`, `get_public_coop`, `example_pooling_draft`, `prepare_pooling_draft`), rate limited to 60 requests a minute per client and 600 a minute in total. Private co-op tools need a personal agent token that you create on your [account page](https://vergecommon.com/account) and send as an `Authorization: Bearer` header.
+
 ## What is implemented
 
 - Visible, online browser workspaces refresh every 30 seconds without discarding mounted drafts; permission-aware review reminders include monitoring and financial records.
