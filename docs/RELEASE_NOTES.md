@@ -4,6 +4,12 @@
 
 Disabled by default, with a separate double opt-in form, encrypted 48-hour confirmation links and an explicit confirmation POST, Resend-only subscriber records, abuse limits and no tracking. Adds an offline-tested campaign draft/preview/lint/test/send CLI and a read-only DNS checker. See [email operator runbook](EMAIL.md) for configuration and deliberate send gates. No deployment, real email, DNS change or provider setup is part of this change.
 
+## v0.11.0 — agent call counts and answer receipts (built as hotfix `ca4b9fc` on production `5d1a276`)
+
+- `/mcp` usage is counted per UTC day and served at `GET /mcp/stats` (counts only; `VERGE_MCP_STATS=0` turns it off). See [PR #73](https://github.com/jdhart81/verge-common/pull/73).
+- Public tool answers carry a `source` receipt and a `check_or_start_your_own` page; the discovery tools' old `source` string is now `source.retrieved_from`. See [PR #74](https://github.com/jdhart81/verge-common/pull/74).
+- The deployed build is branch `claude/release-0.11.0-hotfix`: production plus only these two changes. Everything else merged on main (including the Unreleased entry below and PR #75's llms.txt block) ships in the next full release.
+
 ## v0.10.1 — public tools on the hosted MCP endpoint (deployed 6 November 2026, 12:47 UTC)
 
 - A request to `https://vergecommon.com/mcp` with no `Authorization` header gets the five public discovery and planning tools, the same set the local stdio server offers, rate limited to 60 a minute per client and 600 a minute in total. Private tools still need a personal agent token; a malformed, invalid or revoked token is refused, never downgraded. `VERGE_MCP_PUBLIC=0` turns anonymous access off.
