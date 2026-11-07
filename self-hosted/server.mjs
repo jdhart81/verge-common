@@ -32,6 +32,7 @@ import { accountPage } from './account.mjs';
 import { createSocialAuth } from './social-auth.mjs';
 import { createPush } from './push.mjs';
 import { createHttpHandler, mcpDiscovery } from '../mcp/http.mjs';
+import { mcpStatsFromEnv } from '../mcp/stats.mjs';
 import { woodlandEnabled } from '../lib/woodland-config.mjs';
 import {
   createWoodlandAnalysisPool,
@@ -96,6 +97,8 @@ export function createGateway({
   host = '127.0.0.1',
   freeDiskBytes = async () => Number.POSITIVE_INFINITY,
   buildCommit = process.env.VERGE_BUILD_COMMIT || 'unknown',
+  // Aggregate /mcp usage counts (mcp/stats.mjs), or null when VERGE_MCP_STATS=0.
+  mcpStats = null,
 }) {
   let activeUploads = 0;
   const base = new URL(origin);
@@ -156,8 +159,16 @@ export function createGateway({
       });
     return result;
   };
+  const networkClient = (req) =>
+    clientKey(
+      process.env.VERGE_TRUST_CADDY === '1'
+        ? String(req.headers['x-real-ip'] || req.socket.remoteAddress)
+        : req.socket.remoteAddress,
+    );
   const mcp = createHttpHandler({
     origin,
+    stats: mcpStats,
+    statsClient: networkClient,
     authenticate: (req) => auth.authenticate(req.headers),
     readWorkspace: (p, id) =>
       internal(p, `/api/workspaces?id=${encodeURIComponent(id)}`),
@@ -199,11 +210,7 @@ export function createGateway({
     // tools without an account. VERGE_MCP_PUBLIC=0 turns this off.
     allowAnonymous: process.env.VERGE_MCP_PUBLIC !== '0',
     limitAnonymous: (req) => {
-      const client = clientKey(
-        process.env.VERGE_TRUST_CADDY === '1'
-          ? String(req.headers['x-real-ip'] || req.socket.remoteAddress)
-          : req.socket.remoteAddress,
-      );
+      const client = networkClient(req);
       return (
         auth.rateLimit(`mcp-anon:${client}`, 60, 60000) &&
         auth.rateLimit('mcp-anon:global', 600, 60000)
@@ -305,6 +312,14 @@ export function createGateway({
         });
       if (url.pathname === '/.well-known/mcp.json')
         return json(200, mcpDiscovery(origin));
+      if (url.pathname === '/mcp/stats' || url.pathname === '/mcp/stats/') {
+        if (!mcpStats) return json(404, { error: 'Not found.' });
+        if (!['GET', 'HEAD'].includes(req.method)) {
+          res.setHeader('allow', 'GET, HEAD');
+          return json(405, { error: 'Use GET.' });
+        }
+        return json(200, mcpStats.snapshot());
+      }
       if (url.pathname === '/mcp') return await mcp(req, res);
       if (principal?.kind === 'token') {
         const scope =
@@ -847,9 +862,11 @@ export async function start() {
     outDir: 'dist',
     silent: true,
   });
+  const mcpStats = mcpStatsFromEnv({ dataDir });
   const { server } = createGateway({
     origin,
     upstreamPort: internal.port,
+    mcpStats,
     auth,
     safety,
     social,
@@ -877,6 +894,7 @@ export async function start() {
     clearInterval(upkeep);
     clearInterval(pushTimer);
     void analysis?.close();
+    mcpStats?.close();
     server.close();
     internal.server.close();
   };

@@ -41,6 +41,80 @@ function reject(res, status, message, headers = {}) {
   );
 }
 
+const MAX_COUNTED_RESPONSE_BYTES = 1_100_000;
+
+// Watches one request for the usage counter without touching its response:
+// res.end is passed exactly what it was given, and the body is only parsed
+// after the response has closed. Any failure here is swallowed.
+function watchRequest(stats, statsClient, req, res, anonymous) {
+  const seen = {};
+  let client;
+  const sent = [];
+  let sentBytes = 0;
+  try {
+    client = statsClient(req);
+  } catch {
+    client = undefined;
+  }
+  // Keep a copy of what was sent, up to a bound, for the outcome only.
+  const keep = (chunk) => {
+    let copy;
+    if (typeof chunk === 'string') copy = Buffer.from(chunk);
+    else if (chunk instanceof Uint8Array)
+      copy = Buffer.from(chunk.buffer, chunk.byteOffset, chunk.byteLength);
+    else return;
+    sentBytes += copy.length;
+    if (sentBytes <= MAX_COUNTED_RESPONSE_BYTES) sent.push(Buffer.from(copy));
+  };
+  try {
+    const { write, end } = res;
+    res.write = function (chunk, ...rest) {
+      try {
+        keep(chunk);
+      } catch {
+        // Copying is best effort.
+      }
+      return write.call(this, chunk, ...rest);
+    };
+    res.end = function (chunk, ...rest) {
+      try {
+        keep(chunk);
+      } catch {
+        // Copying is best effort.
+      }
+      return end.call(this, chunk, ...rest);
+    };
+  } catch {
+    // Without the body, JSON-RPC and tool errors are not counted.
+  }
+  res.once('close', () => {
+    setImmediate(() => {
+      try {
+        let error = res.statusCode >= 400 || !res.writableFinished;
+        if (!error && sent.length && sentBytes <= MAX_COUNTED_RESPONSE_BYTES) {
+          try {
+            const reply = JSON.parse(Buffer.concat(sent).toString('utf8'));
+            error = Boolean(reply?.error) || reply?.result?.isError === true;
+          } catch {
+            // Not JSON (or a stream): counted by status only.
+          }
+        }
+        stats.record({
+          client,
+          anonymous,
+          method: seen.method,
+          tool: seen.tool,
+          error,
+          rateLimited: res.statusCode === 429,
+        });
+      } catch {
+        // Counting never affects a request.
+      }
+    });
+  });
+  return seen;
+}
+
 async function readBody(req) {
   const declared = Number(req.headers['content-length'] ?? 0);
   if (
@@ -88,6 +162,11 @@ export function createHttpHandler({
   // the integration opts in and supplies a limiter.
   allowAnonymous = false,
   limitAnonymous,
+  // Optional usage counter (mcp/stats.mjs). It sees only the JSON-RPC method,
+  // the tool name, the outcome, whether a credential was sent, and the client
+  // key from statsClient, which it hashes and never stores.
+  stats = null,
+  statsClient = (req) => req.socket?.remoteAddress,
 } = {}) {
   const base = serviceOrigin(origin);
   if (typeof authenticate !== 'function')
@@ -96,6 +175,21 @@ export function createHttpHandler({
     throw new Error('Anonymous hosted MCP requires a rate limiter.');
 
   return async function handleMcp(req, res) {
+    let seen = {};
+    if (stats)
+      try {
+        seen = watchRequest(
+          stats,
+          statsClient,
+          req,
+          res,
+          !req.rawHeaders.some(
+            (v, i) => i % 2 === 0 && v.toLowerCase() === 'authorization',
+          ),
+        );
+      } catch {
+        seen = {};
+      }
     res.setHeader('cache-control', 'private, no-store');
     res.setHeader('x-content-type-options', 'nosniff');
     if (req.headers.origin !== undefined && req.headers.origin !== base)
@@ -178,6 +272,9 @@ export function createHttpHandler({
       )
         return reject(res, 415, 'Use application/json.');
       const body = await readBody(req);
+      if (typeof body.method === 'string') seen.method = body.method;
+      if (body.method === 'tools/call' && typeof body.params?.name === 'string')
+        seen.tool = body.params.name;
       server = createServer({
         origin: base,
         fetcher,
