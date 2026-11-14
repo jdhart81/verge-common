@@ -137,6 +137,19 @@ Landscape Package** exports the current draft with `toLandscapePackage`,
 including authorized parcel references and parameters; an export may contain an incomplete
 draft, so check its problems before sharing or importing it elsewhere.
 
+**Download Land Package** (on a draft) and **Download as Land Package** (on a
+checked plan, for stewards) write the same content as a
+[Land Package](https://viridisconservation.com/ecosystem/land-package), the open
+file format the other Viridis tools read. The conversion runs in the browser with
+the vendored open-source converter (`lib/land-package.mjs`, from
+[viridisconservation/land-package](https://github.com/viridisconservation/land-package));
+nothing is sent to a server. The file converts back to the identical Landscape
+Package. It declares its own privacy: a package with woodlot parcels is marked as
+personal data, with consent `covered` only when every parcel is covered, so a
+reader must treat it as not shareable. Because VergeCommon's Landscape Packages
+record no data sources, each layer carries the source `unrecorded` and a warning.
+Keep the file within the co-op, as with any parcel record.
+
 The draft meter displays compact UTF-8 JSON bytes against 90,000 for layers or
 40,000 for treatment units, plus the complete request envelope against the strict
 100,000-byte ceiling. It also shows 400 features per corridor layer and 50 units
