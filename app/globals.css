@@ -367,11 +367,25 @@ p {
 }
 .footer {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
   gap: 25px;
   padding-top: 35px;
   padding-bottom: 35px;
+}
+.footer .related-projects {
+  display: flex;
+  flex-basis: 100%;
+  flex-wrap: wrap;
+  gap: 6px 18px;
+  align-items: center;
+  font-size: 13px;
+}
+.footer .related-projects a {
+  display: inline-flex;
+  gap: 4px;
+  align-items: center;
 }
 .footer > span {
   font-size: 14px;

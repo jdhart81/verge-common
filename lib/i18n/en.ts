@@ -123,6 +123,8 @@ export const en = {
   terms: 'Terms',
   getHelp: 'Get help',
   woodlandCorridors: 'Woodland corridors',
+  relatedProjects: 'Related open projects',
+  viridisServices: 'Land plans from Viridis (separate service)',
   source: 'Source',
   getUpdates: 'Get updates',
 

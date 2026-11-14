@@ -12,6 +12,7 @@ import {
   Plus,
 } from 'lucide-react';
 import { ConservationLandscape } from '@/components/conservation-landscape';
+import { RelatedProjects } from '@/components/related-projects';
 import '../app/home.css';
 import { getHomeStrings, type HomeLocale } from '@/lib/i18n/home';
 
@@ -381,6 +382,10 @@ export function HomeContent({
             <ArrowUpRight size={14} aria-hidden="true" />
           </a>
         </div>
+        <RelatedProjects
+          label={t.relatedProjects}
+          servicesLabel={t.viridisServices}
+        />
       </footer>
     </div>
   );
