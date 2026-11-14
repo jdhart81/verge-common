@@ -3,6 +3,7 @@ import { BrandLogo } from '@/components/brand-logo';
 import Link from 'next/link';
 import { ArrowUpRight } from 'lucide-react';
 import type { ReactNode } from 'react';
+import { RelatedProjects } from './related-projects';
 import './information-page.css';
 
 export const sourceBranch = 'https://github.com/jdhart81/verge-common';
@@ -60,6 +61,7 @@ export function InformationPage({
             Source <ArrowUpRight size={14} aria-hidden="true" />
           </a>
         </nav>
+        <RelatedProjects />
       </footer>
     </div>
   );
