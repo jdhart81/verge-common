@@ -96,8 +96,11 @@ export type WoodlandState = {
 
 const ha = (m2?: number) => `${((m2 ?? 0) / 10000).toFixed(2)} ha`;
 function downloadJson(value: unknown, filename: string) {
+  downloadText(JSON.stringify(value, null, 2) + '\n', filename);
+}
+function downloadText(text: string, filename: string) {
   const url = URL.createObjectURL(
-    new Blob([JSON.stringify(value, null, 2) + '\n'], {
+    new Blob([text], {
       type: 'application/json',
     }),
   );
@@ -457,10 +460,40 @@ export function WoodlandPanel({
                   >
                     Download check inputs
                   </Button>
+                  <Button
+                    variant="outline"
+                    onClick={() =>
+                      run(async () => {
+                        const { toLandscapePackage } =
+                          await import('@viridis/dfm-core');
+                        const { dumps, fromDfm } =
+                          await import('@/lib/land-package.mjs');
+                        const landPackage = await fromDfm(
+                          toLandscapePackage(
+                            planCheckInput(
+                              state.woodlandLayers ?? [],
+                              p,
+                              reference,
+                            ),
+                            { name: p.name, generator: 'VergeCommon' },
+                          ),
+                        );
+                        downloadText(
+                          dumps(landPackage),
+                          `woodland-plan-${p.id.slice(0, 8)}.land-package.json`,
+                        );
+                      })
+                    }
+                  >
+                    Download as Land Package
+                  </Button>
                   <span className="small">
                     A Landscape Package that reproduces this result and its
                     checksum with the open-source engine, while the co-op’s
-                    woodlot consents are unchanged.
+                    woodlot consents are unchanged. The Land Package holds
+                    the same content in the open format other Viridis tools
+                    read. It is marked as personal data because it contains
+                    woodlot boundaries; keep it within your co-op.
                   </span>
                 </div>
               )}

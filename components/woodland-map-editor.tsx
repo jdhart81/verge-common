@@ -1079,6 +1079,39 @@ export function WoodlandMapEditor({
           >
             Download Landscape Package
           </Button>
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() =>
+              void attempt(async () => {
+                const { toLandscapePackage } =
+                  await import('@viridis/dfm-core');
+                const { dumps, fromDfm } =
+                  await import('@/lib/land-package.mjs');
+                const landPackage = await fromDfm(
+                  toLandscapePackage(
+                    {
+                      ...draft.layers,
+                      treatments: draft.treatments,
+                      parcels,
+                      params: draft.params,
+                    },
+                    { name: name || 'Woodland draft', generator: 'VergeCommon' },
+                  ),
+                );
+                const url = URL.createObjectURL(
+                  new Blob([dumps(landPackage)], { type: 'application/json' }),
+                );
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = 'woodland-draft.land-package.json';
+                a.click();
+                setTimeout(() => URL.revokeObjectURL(url), 1000);
+              })
+            }
+          >
+            Download Land Package
+          </Button>
           {mode === 'layers' && (
             <Button
               type="button"
