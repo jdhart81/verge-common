@@ -143,8 +143,9 @@ checked plan, for stewards) write the same content as a
 file format the other Viridis tools read. The conversion runs in the browser with
 the vendored open-source converter (`lib/land-package.mjs`, from
 [viridisconservation/land-package](https://github.com/viridisconservation/land-package));
-nothing is sent to a server. The file converts back to the identical Landscape
-Package. It declares its own privacy: a package with woodlot parcels is marked as
+nothing is sent to a server. The file converts back to a Landscape Package with
+the same content (the written file sorts its keys, so key order can differ). It
+declares its own privacy: a package with woodlot parcels is marked as
 personal data, with consent `covered` only when every parcel is covered, so a
 reader must treat it as not shareable. Because VergeCommon's Landscape Packages
 record no data sources, each layer carries the source `unrecorded` and a warning.
