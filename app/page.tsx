@@ -11,6 +11,7 @@ import {
   Plus,
 } from 'lucide-react';
 import { ConservationLandscape } from '@/components/conservation-landscape';
+import { RelatedProjects } from '@/components/related-projects';
 import './home.css';
 
 const repo = 'https://github.com/jdhart81/verge-common';
@@ -425,6 +426,7 @@ export default function Home({
             <ArrowUpRight size={14} aria-hidden="true" />
           </a>
         </div>
+        <RelatedProjects />
       </footer>
     </div>
   );
