@@ -8,6 +8,7 @@ import {
   layers as fixtureLayers,
   params,
 } from './woodland-editor-fixture.mjs';
+import * as landPackage from '../lib/land-package.mjs';
 const { chromium } = await import(
   process.env.VERGE_PLAYWRIGHT_MODULE || 'playwright'
 );
@@ -18,7 +19,10 @@ assert.ok(
 );
 const out = resolve('outputs/woodland-editor-review');
 await mkdir(out, { recursive: true });
-const browser = await chromium.launch({ headless: true, channel: 'chrome' });
+const browser = await chromium.launch({
+  headless: true,
+  channel: process.env.VERGE_BROWSER_CHANNEL || 'chrome',
+});
 const contexts = await Promise.all(
   Array.from({ length: 3 }, () =>
     browser.newContext({ viewport: { width: 1440, height: 1100 } }),
@@ -328,6 +332,29 @@ try {
   );
   assert.equal(pkg.layers.crossings[0].properties.passage, 'verified');
   assert.match(pkg.layers.crossings[0].properties.dfm_id, /^[0-9a-f-]{36}$/);
+  // The same draft as a Land Package: valid, private when it holds parcels, and lossless.
+  const lpDraftDl = steward.waitForEvent('download');
+  await editor
+    .getByRole('button', { name: 'Download Land Package', exact: true })
+    .click();
+  const lpDraftFile = await lpDraftDl;
+  assert.equal(
+    lpDraftFile.suggestedFilename(),
+    'woodland-draft.land-package.json',
+  );
+  const lpDraft = JSON.parse(await readFile(await lpDraftFile.path(), 'utf8'));
+  assert.deepEqual((await landPackage.validate(lpDraft)).errors, []);
+  assert.equal(lpDraft.generator.tool, 'VergeCommon');
+  assert.equal(lpDraft.privacy.personal_data, pkg.layers.parcels.length > 0);
+  assert.equal(landPackage.shareable(lpDraft), pkg.layers.parcels.length === 0);
+  // Each download stamps its own time; everything else is identical.
+  assert.deepEqual(
+    { ...(await landPackage.toDfm(lpDraft)), created: '' },
+    { ...pkg, created: '' },
+  );
+  mark(
+    'LPX the draft downloads as a valid Land Package that converts back unchanged',
+  );
   mark(
     'M2/M3/M9 steward draws typed layers and adds verified crossing entirely by keyboard',
   );
@@ -622,6 +649,45 @@ try {
   );
   mark(
     'M1/M8 authoritative server blocks drawn plan with identical server preview checksum and cause',
+  );
+  // A steward downloads the checked plan's inputs both ways; the two files hold the same content.
+  await steward.reload();
+  await steward
+    .getByRole('tab', { name: 'Woodland corridors', exact: true })
+    .click();
+  const inputsDl = steward.waitForEvent('download');
+  await steward
+    .getByRole('button', { name: 'Download check inputs', exact: true })
+    .last()
+    .click();
+  const checkInputs = JSON.parse(
+    await readFile(await (await inputsDl).path(), 'utf8'),
+  );
+  const lpPlanDl = steward.waitForEvent('download');
+  await steward
+    .getByRole('button', { name: 'Download as Land Package', exact: true })
+    .last()
+    .click();
+  const lpPlanFile = await lpPlanDl;
+  assert.match(
+    lpPlanFile.suggestedFilename(),
+    /^woodland-plan-[0-9a-f]{8}\.land-package\.json$/,
+  );
+  const lpPlan = JSON.parse(await readFile(await lpPlanFile.path(), 'utf8'));
+  assert.deepEqual((await landPackage.validate(lpPlan)).errors, []);
+  assert.deepEqual(
+    { ...(await landPackage.toDfm(lpPlan)), created: '' },
+    { ...checkInputs, created: '' },
+  );
+  assert.ok(checkInputs.layers.parcels.length > 0);
+  assert.equal(lpPlan.privacy.personal_data, true);
+  assert.equal(landPackage.shareable(lpPlan), false);
+  await steward
+    .getByText('It is marked as personal data because it contains')
+    .last()
+    .waitFor();
+  mark(
+    'LPX a steward downloads a checked plan as a private Land Package identical in content to its check inputs',
   );
   await member.reload();
   await member
