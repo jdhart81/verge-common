@@ -1,5 +1,9 @@
 # VergeCommon — current status
 
+## Unreleased — woodland downloads as a Land Package
+
+On `main`, not deployed. A woodland draft and a checked plan can be downloaded as a [Land Package](https://viridisconservation.com/ecosystem/land-package), the open exchange format read by the Viridis Ecological OS decision workspace. The conversion runs in the browser with the vendored open-source converter (`lib/land-package.mjs`, pinned by hash in `tests/land-package.test.mjs`) and sends nothing to a server. The file converts back to the identical Landscape Package and is marked as personal data whenever it holds woodlot parcels. No server, database, MCP or permission change. See [docs/WOODLAND.md](docs/WOODLAND.md).
+
 ## Unreleased — optional email updates
 
 Disabled by default, with a separate double opt-in form, encrypted 48-hour confirmation links and an explicit confirmation POST, Resend-only subscriber records, abuse limits and no tracking. Adds an offline-tested campaign draft/preview/lint/test/send CLI and a read-only DNS checker. See [email operator runbook](docs/EMAIL.md) for configuration and deliberate send gates. No deployment, real email, DNS change or provider setup is part of this change.
