@@ -4,6 +4,7 @@ Point-in-time receipts and reviews, preserved unchanged as the audit record. The
 
 | Date | Record |
 | --- | --- |
+| 2026-11-14 | [Woodland downloads as a Land Package](RELEASE_LAND_PACKAGE_2026-11-14.md) |
 | 2026-11-14 | [Related open projects in the public footers; dendriticforest.com site update](RELEASE_ECOSYSTEM_LINKS_2026-11-14.md) |
 | 2026-10-04 | [v0.10.0 maintenance deployment](DEPLOYMENT_MAINTENANCE_2026-10-04.md) |
 | 2026-10-04 | [Final-engine and DFM-link follow-up deployment](DEPLOYMENT_FOLLOWUP_2026-10-04.md) |
