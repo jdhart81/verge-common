@@ -1,8 +1,9 @@
 'use client';
-// Recreation along the old-growth corridor (lib/woodland-recreation.mjs, RC1-RC9). Natural
-// corridor is the default; this panel lists the uses a co-op has proposed or adopted and lets
-// members propose a route, agree for their own woodlots, vote and end a use. Every rule is
-// enforced by the co-op's commands on the server; this component only displays and sends.
+// What shapes the old-growth corridor besides harvests (lib/woodland-recreation.mjs): shared
+// uses the co-op decides on (RC1-RC9) and facts it records (CF1-CF6: rights-of-way, blowdown).
+// Natural corridor is the default. Members propose a route, agree for their own woodlots, vote
+// and end a use; stewards record and review facts. Every rule is enforced by the co-op's
+// commands on the server; this component only displays and sends.
 import { useId, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -16,6 +17,8 @@ import {
   RECREATION_KIND_LABELS,
   RECREATION_AUDIENCES,
   RECREATION_LIMITS,
+  FACT_KINDS,
+  BLOWDOWN_SEVERITIES,
 } from '@/lib/woodland-recreation.mjs';
 
 type Save = (op: string, payload: Record<string, unknown>) => Promise<boolean>;
@@ -30,13 +33,25 @@ export type CorridorUse = {
   projectId: string;
   name: string;
   kind: string;
-  audience: string;
+  /** 'fact' for a right-of-way or blowdown; absent for a use the co-op decides on. */
+  basis?: string;
+  audience?: string;
+  source?: string;
+  eventYear?: number;
+  severity?: string;
+  reviewNote?: string;
+  canReview?: boolean;
   description?: string;
   features: UseFeature[];
   status: string;
   holds: boolean;
   clearedM2: number;
-  check: { status: string; lostLinks?: Pair[]; pinchedLinks?: Pair[]; reasons?: string[] };
+  check: {
+    status: string;
+    lostLinks?: Pair[];
+    pinchedLinks?: Pair[];
+    reasons?: string[];
+  } | null;
   woodlots: { parcelId: string; agreedAt?: number }[];
   woodlotCount: number;
   agreedCount: number;
@@ -63,6 +78,13 @@ const STATUS: Record<string, string> = {
   declined: 'Declined by a woodlot holder',
   withdrawn: 'Withdrawn',
   ended: 'Ended; natural corridor again',
+  submitted: 'Recorded; waiting for another steward to review',
+  reviewed: 'In effect',
+  rejected: 'Rejected in review',
+};
+const SEVERITY: Record<string, string> = {
+  gaps: 'Gaps under a standing canopy',
+  'stand-replacing': 'Stand-replacing',
 };
 const IN_PROGRESS = ['awaiting_agreement', 'agreed', 'voting'];
 const AUDIENCE: Record<string, string> = {
@@ -118,6 +140,16 @@ export function WoodlandRecreationPanel({
   const [width, setWidth] = useState('0');
   const [route, setRoute] = useState<UseFeature[] | null>(null);
   const [attested, setAttested] = useState<Record<string, boolean>>({});
+  const [notes, setNotes] = useState<Record<string, string>>({});
+  const [fact, setFact] = useState({
+    kind: FACT_KINDS[0] as string,
+    name: '',
+    source: '',
+    year: String(new Date().getUTCFullYear()),
+    severity: BLOWDOWN_SEVERITIES[0] as string,
+    width: '0',
+  });
+  const [factRoute, setFactRoute] = useState<UseFeature[] | null>(null);
   const run = async (fn: () => Promise<unknown>) => {
     setError('');
     try {
@@ -128,15 +160,16 @@ export function WoodlandRecreationPanel({
   };
   const list = uses.filter((u) => u.projectId === projectId).slice().reverse();
   const adopted = list.filter((u) => u.status === 'adopted');
+  const facts = list.filter((u) => u.status === 'reviewed');
   const pairs = (links?: Pair[]) =>
     (links ?? []).map((l) => `${l.a} – ${l.b}`).join('; ');
   return (
     <section
       className="mt-6"
-      aria-label="Recreation along the corridor"
+      aria-label="Uses and facts along the corridor"
       data-woodland-recreation
     >
-      <h3>Recreation along the corridor</h3>
+      <h3>Uses and facts along the corridor</h3>
       <p className="small">
         By default the corridor is natural and ages toward old growth. The
         co-op can adopt a shared use on a mapped stretch, such as a walking
@@ -150,6 +183,17 @@ export function WoodlandRecreationPanel({
         {adopted.length
           ? `${adopted.length} adopted ${adopted.length === 1 ? 'use' : 'uses'}: ${adopted.map((u) => u.name).join(', ')}. The rest of the corridor is natural.`
           : 'No recreation use is adopted: the whole corridor is natural.'}
+        {facts.length
+          ? ` Recorded on the ground: ${facts.map((u) => u.name).join(', ')}.`
+          : ''}
+      </p>
+      <p className="small">
+        Stewards also record what the corridor has to live with. A
+        right-of-way (a power line, a road or access easement) is checked and
+        recorded even when it breaks a link, so the map shows the ground as
+        it is. A blowdown stays corridor: fallen trees are part of old growth,
+        leaving them is the default, and salvage is a treatment plan that
+        meets the corridor check. Another steward reviews each record.
       </p>
       <p className="small">
         This records the co-op’s decision and the holders’ agreement. It does
@@ -176,16 +220,20 @@ export function WoodlandRecreationPanel({
               {RECREATION_KIND_LABELS[
                 u.kind as keyof typeof RECREATION_KIND_LABELS
               ] ?? u.kind}{' '}
-              · for {AUDIENCE[u.audience] ?? u.audience} ·{' '}
-              {STATUS[u.status] ?? u.status}
+              {u.basis === 'fact'
+                ? ` · ${u.kind === 'blowdown' ? `${u.eventYear}, ${SEVERITY[u.severity ?? ''] ?? u.severity}` : 'recorded fact'} · source: ${u.source}`
+                : ` · for ${AUDIENCE[u.audience ?? ''] ?? u.audience}`}{' '}
+              · {STATUS[u.status] ?? u.status}
             </p>
             {u.description && <p>{u.description}</p>}
             <p className="small">
-              {u.holds
-                ? `The corridor holds: every link between core areas keeps the minimum width with ${u.clearedM2} m² of corridor cleared.`
-                : u.check.status === 'incomplete'
-                  ? `The corridor check could not be completed: ${(u.check.reasons ?? []).join(' ')}`
-                  : `The corridor does not hold. Links lost: ${pairs(u.check.lostLinks) || 'none'}. Links pinched below the minimum width: ${pairs(u.check.pinchedLinks) || 'none'}. Route it along the corridor’s edge, or record a tread under standing trees, and propose it again.`}
+              {!u.check
+                ? 'Still corridor: fallen trees are habitat, so no check or projection changes. If the stand came down, record its stand ages again in the layers.'
+                : u.holds
+                  ? `The corridor holds: every link between core areas keeps the minimum width with ${u.clearedM2} m² of corridor cleared.`
+                  : u.check.status === 'incomplete'
+                    ? `The corridor check could not be completed: ${(u.check.reasons ?? []).join(' ')}`
+                    : `The corridor does not hold. Links lost: ${pairs(u.check.lostLinks) || 'none'}. Links pinched below the minimum width: ${pairs(u.check.pinchedLinks) || 'none'}. ${u.basis === 'fact' ? 'It is recorded as it is; a link elsewhere, such as a saddle or ridge link, would give these core areas another route.' : 'Route it along the corridor’s edge, or record a tread under standing trees, and propose it again.'}`}
             </p>
             <p className="small">
               {u.features.length} mapped{' '}
@@ -197,9 +245,13 @@ export function WoodlandRecreationPanel({
                     : 'cleared area',
                 )
                 .join('; ')}
-              . Holders agreed: {u.agreedCount} of {u.woodlotCount}.
+              .{' '}
+              {u.basis === 'fact'
+                ? `Crosses ${u.woodlotCount} recorded ${u.woodlotCount === 1 ? 'woodlot' : 'woodlots'}.`
+                : `Holders agreed: ${u.agreedCount} of ${u.woodlotCount}.`}
+              {u.reviewNote ? ` Review note: ${u.reviewNote}` : ''}
             </p>
-            {u.woodlots.length > 0 && (
+            {u.basis !== 'fact' && u.woodlots.length > 0 && (
               <ul className="small">
                 {u.woodlots.map((w) => (
                   <li key={w.parcelId}>
@@ -300,6 +352,38 @@ export function WoodlandRecreationPanel({
                       </Button>
                     </span>
                   ))}
+              {u.canReview && (
+                <span className="block">
+                  <Input
+                    aria-label={`Review note for ${u.name}`}
+                    maxLength={1500}
+                    placeholder="Review note"
+                    value={notes[u.id] ?? ''}
+                    onChange={(e) =>
+                      setNotes((n) => ({ ...n, [u.id]: e.target.value }))
+                    }
+                  />
+                  {['approve', 'reject'].map((decision) => (
+                    <Button
+                      key={decision}
+                      type="button"
+                      variant={decision === 'approve' ? 'default' : 'outline'}
+                      disabled={disabled || !notes[u.id]?.trim()}
+                      onClick={() =>
+                        void run(() =>
+                          mutate('review_corridor_fact', {
+                            id: u.id,
+                            decision,
+                            note: notes[u.id],
+                          }),
+                        )
+                      }
+                    >
+                      {decision === 'approve' ? 'Confirm this record' : 'Reject'}
+                    </Button>
+                  ))}
+                </span>
+              )}
               {steward && u.status === 'agreed' && (
                 <Button
                   type="button"
@@ -340,6 +424,7 @@ export function WoodlandRecreationPanel({
                 </Button>
               )}
               {(u.canEnd ||
+                (u.status === 'submitted' && steward) ||
                 (IN_PROGRESS.includes(u.status) && (u.mine || steward))) && (
                 <Button
                   type="button"
@@ -351,7 +436,11 @@ export function WoodlandRecreationPanel({
                 >
                   {u.status === 'adopted'
                     ? 'End this use: return to natural corridor'
-                    : 'Withdraw this proposal'}
+                    : u.status === 'reviewed'
+                      ? 'It no longer exists: end this record'
+                      : u.basis === 'fact'
+                        ? 'Withdraw this record'
+                        : 'Withdraw this proposal'}
                 </Button>
               )}
             </div>
@@ -486,6 +575,161 @@ export function WoodlandRecreationPanel({
           </form>
         )}
       </details>
+      {steward && layersReviewed && (
+        <details className="mt-4" data-record-corridor-fact>
+          <summary>Record a right-of-way or a blowdown (stewards)</summary>
+          <form
+            className="action-form"
+            onSubmit={(e) => {
+              e.preventDefault();
+              void run(async () => {
+                if (!factRoute) throw new Error('Upload the map first.');
+                if (
+                  await mutate('record_corridor_fact', {
+                    projectId,
+                    kind: fact.kind,
+                    name: fact.name,
+                    source: fact.source,
+                    features: factRoute,
+                    ...(fact.kind === 'blowdown'
+                      ? { eventYear: Number(fact.year), severity: fact.severity }
+                      : {}),
+                  })
+                ) {
+                  setFact((f) => ({ ...f, name: '', source: '' }));
+                  setFactRoute(null);
+                }
+              });
+            }}
+          >
+            <ControlLabel htmlFor={`${id}-fact-kind`}>What it is</ControlLabel>
+            <NativeSelect
+              className="w-full"
+              id={`${id}-fact-kind`}
+              value={fact.kind}
+              onChange={(e) => {
+                setFact((f) => ({ ...f, kind: e.target.value }));
+                setFactRoute(null);
+              }}
+            >
+              {FACT_KINDS.map((k: string) => (
+                <NativeSelectOption key={k} value={k}>
+                  {RECREATION_KIND_LABELS[
+                    k as keyof typeof RECREATION_KIND_LABELS
+                  ] ?? k}
+                </NativeSelectOption>
+              ))}
+            </NativeSelect>
+            <ControlLabel htmlFor={`${id}-fact-name`}>Name</ControlLabel>
+            <Input
+              id={`${id}-fact-name`}
+              maxLength={120}
+              value={fact.name}
+              onChange={(e) => setFact((f) => ({ ...f, name: e.target.value }))}
+            />
+            <ControlLabel htmlFor={`${id}-fact-source`}>
+              Source, such as a deed, a utility map or a field visit
+            </ControlLabel>
+            <Input
+              id={`${id}-fact-source`}
+              maxLength={300}
+              value={fact.source}
+              onChange={(e) =>
+                setFact((f) => ({ ...f, source: e.target.value }))
+              }
+            />
+            {fact.kind === 'blowdown' ? (
+              <>
+                <ControlLabel htmlFor={`${id}-fact-year`}>
+                  Year it happened
+                </ControlLabel>
+                <Input
+                  id={`${id}-fact-year`}
+                  type="number"
+                  value={fact.year}
+                  onChange={(e) =>
+                    setFact((f) => ({ ...f, year: e.target.value }))
+                  }
+                />
+                <ControlLabel htmlFor={`${id}-fact-severity`}>
+                  How much came down
+                </ControlLabel>
+                <NativeSelect
+                  className="w-full"
+                  id={`${id}-fact-severity`}
+                  value={fact.severity}
+                  onChange={(e) =>
+                    setFact((f) => ({ ...f, severity: e.target.value }))
+                  }
+                >
+                  {BLOWDOWN_SEVERITIES.map((v: string) => (
+                    <NativeSelectOption key={v} value={v}>
+                      {SEVERITY[v] ?? v}
+                    </NativeSelectOption>
+                  ))}
+                </NativeSelect>
+              </>
+            ) : (
+              <>
+                <ControlLabel htmlFor={`${id}-fact-width`}>
+                  Width kept clear of trees along lines, in metres
+                </ControlLabel>
+                <Input
+                  id={`${id}-fact-width`}
+                  type="number"
+                  min={0}
+                  max={RECREATION_LIMITS.maxClearedWidthM}
+                  step="0.5"
+                  value={fact.width}
+                  onChange={(e) => {
+                    setFact((f) => ({ ...f, width: e.target.value }));
+                    setFactRoute(null);
+                  }}
+                />
+              </>
+            )}
+            <ControlLabel htmlFor={`${id}-fact-route`}>
+              Map (GeoJSON):{' '}
+              {fact.kind === 'blowdown'
+                ? 'polygons of the blowdown'
+                : 'lines along the right-of-way, or polygons of cleared ground'}
+            </ControlLabel>
+            <Input
+              id={`${id}-fact-route`}
+              type="file"
+              accept=".json,.geojson,application/json,application/geo+json"
+              onChange={(e) => {
+                const file = e.target.files?.[0];
+                void run(async () => {
+                  setFactRoute(null);
+                  if (!file) return;
+                  if (file.size > 60000)
+                    throw new Error('The map file must be under 60000 bytes.');
+                  setFactRoute(
+                    readRoute(
+                      JSON.parse(await file.text()),
+                      Number(fact.width) || 0,
+                    ),
+                  );
+                });
+              }}
+            />
+            <div className="actions">
+              <Button
+                type="submit"
+                disabled={
+                  disabled ||
+                  !factRoute ||
+                  !fact.name.trim() ||
+                  !fact.source.trim()
+                }
+              >
+                Record for another steward to review
+              </Button>
+            </div>
+          </form>
+        </details>
+      )}
     </section>
   );
 }

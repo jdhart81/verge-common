@@ -429,7 +429,10 @@ export function eraseWorkspaceState(
   const othersActedOnUse = (u) =>
     rows(u, 'woodlots').some(
       (w) => w.agreedAt && !deletedParcelIds.has(w.parcelId),
-    ) || rows(u.vote ?? {}, 'votes').some((v) => !memberIds.has(v.memberId));
+    ) ||
+    rows(u.vote ?? {}, 'votes').some((v) => !memberIds.has(v.memberId)) ||
+    // A fact another steward reviewed is a shared record of the land, like a layers version.
+    (u.reviewedBy && u.reviewedBy !== userId);
   if (s.corridorUses) {
     s.corridorUses = s.corridorUses
       .filter((u) => !authored(u, userId) || othersActedOnUse(u))

@@ -97,9 +97,22 @@ By default the corridor is natural and ages toward old growth. A co-op can adopt
 
 **What it does not establish.** A recorded use is the co-op's decision and the holders' agreement. It is not a right of way or an easement, does not open land to the public, and says nothing about liability, insurance, accessibility, trail safety, wetlands or any permit. The cleared width is as recorded; nobody measures it. The check is the same structural one as for harvests: it does not show that wildlife tolerates a trail.
 
-**Limits.** 20 uses in progress or adopted per project, 20 features and 20 KB per use, lines of up to 500 points, cleared widths up to 30 m. Routes are uploaded, not drawn: the map editor does not draw or display recreation routes yet, so members review a route by downloading it. Agents cannot propose, agree to or vote on a use.
+**Limits.** 20 uses in progress or adopted per project, 20 features and 20 KB per use, lines of up to 500 points, cleared widths up to 30 m. Routes are uploaded, not drawn: the map editor does not draw or display recreation routes yet, so members review a route by downloading it. Agents cannot propose, agree to or vote on a use, or record a fact.
 
 `tests/woodland-recreation.test.mjs` covers RC1 to RC9 on the watershed co-op.
+
+## Rights-of-way and blowdown
+
+A corridor is shaped by three kinds of record: **treatments** a member plans (above), **uses** the co-op decides on (recreation) and **facts** it has to live with. Facts are CF1 to CF6 in `lib/woodland-recreation.mjs`, and they share the same section of the Woodland tab.
+
+- **Recorded, not decided (CF1).** A steward records a right-of-way that exists on the land (a power line, a road or access easement) or a blowdown that has happened, with its source: a deed, a utility map, a field visit. It takes effect only after another steward reviews it. Nobody votes on a fact, and no holder is asked to agree to it.
+- **Never blocked (CF2).** A right-of-way is checked against the corridor so the co-op sees which links it breaks or pinches, and it is recorded either way, because the map must show the ground as it is. Where a line breaks a link, a new loop such as a saddle or ridge link gives those core areas another route. On the test watershed a 20 m clearing straight across the main corridor breaks no link, because a saddle link already goes around it; the same clearing down the corridor's middle breaks four.
+- **Cleared ground stops counting (CF3).** A reviewed right-of-way's cleared ground, at the width kept clear, is excluded from habitat in every later plan check and spine analysis, exactly like an adopted use.
+- **Blowdown stays corridor (CF4).** Fallen trees are part of an old-growth corridor, and leaving them is the default. Recording a blowdown changes no check and no projection. Salvage is a treatment plan and meets the corridor check like any harvest, with the same override vote. A stand-replacing blowdown does reset the stand's age, which the software cannot map for the co-op: every spine analysis carries a warning until a steward saves layers whose stand ages were recorded in or after the year of the blowdown. Gaps under a standing canopy do not warn.
+- **Ending (CF5).** A steward ends a fact when it no longer holds, such as a line removed or an easement released. A woodlot leaving the co-op does not end a fact.
+- **Privacy and limits (CF6).** As for a use: every member sees the fact, its source and what it does to the corridor; which woodlots it crosses is shown to stewards and their holders. Facts share the 20-record limit per project. A project with no reviewed fact and no adopted use is unchanged.
+
+A recorded right-of-way is the co-op's note of what is on the ground. It does not establish that an easement exists, who holds it or what it allows. `tests/woodland-corridor-facts.test.mjs` covers CF1 to CF6.
 
 ## What the check establishes
 
