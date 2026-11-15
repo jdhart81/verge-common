@@ -112,6 +112,30 @@ A corridor is shaped by three kinds of record: **treatments** a member plans (ab
 - **Ending (CF5).** A steward ends a fact when it no longer holds, such as a line removed or an easement released. A woodlot leaving the co-op does not end a fact.
 - **Privacy and limits (CF6).** As for a use: every member sees the fact, its source and what it does to the corridor; which woodlots it crosses is shown to stewards and their holders. Facts share the 20-record limit per project. A project with no reviewed fact and no adopted use is unchanged.
 
+## Edge bands: agroforestry beside the corridor
+
+The corridor itself is native forest evolving toward old growth, and it is never farmed. Where a field meets it, the woodlot's holder can plant an **edge band** of native tree crops, in the tradition of J. Russell Smith's *Tree Crops: A Permanent Agriculture* (1929): trees as the crop on ground that should not be plowed. The rules are AG1 to AG7 in `lib/woodland-recreation.mjs`.
+
+| Kind | What it is |
+| --- | --- |
+| Tree-crop edge | Nut and fruit trees along the corridor's field side |
+| Alley cropping | Tree rows with crops or hay between |
+| Silvopasture | Trees with managed grazing, fenced out of the corridor |
+| Windbreak or hedgerow | A linear planting from field edges toward the corridor |
+| Planted riparian buffer | A planted buffer on a field's stream side |
+
+- **Beside the corridor, never in it (AG1).** A band is drawn as one or more areas and may not overlap retained forest or a core area; the corridor check measures the overlap and the proposal is refused if there is any. No forest is converted to make a band.
+- **A buffer, never corridor (AG2).** A band changes no check and no projection. It counts toward neither the corridor's minimum width, committed forest nor old-growth age.
+- **Native tree crops only (AG3).** Every species is recorded native, with the source of that status. A band that lists an introduced species is refused. The software does not identify species or check a flora.
+- **The holder decides (AG4).** A band lies only on woodlots its proposer recorded. A steward reviews the map and the species; there is no co-op vote, because no shared corridor ground changes.
+- **It can grow into corridor (AG5).** When a band has matured and its holder consents, a steward adds the stand to the retained layers through the ordinary layers review, recording it as planted. It then counts by its recorded age; a one- or two-species plantation never counts as old growth. This is the path from field, to tree-crop edge, to native forest.
+- **Ending (AG6).** The holder or a steward removes a band. Withdrawing its woodlot, or deleting its holder's account, removes it.
+- **Privacy (AG7).** A band is on one holder's land. Its map, name and species are shown to stewards and its holder; other members see that a band exists, its kind and its area.
+
+**Forest farming** (understorey crops under the standing native canopy) is inside the forest, so it is not a band: it is a kind of use, proposed with nothing cleared, agreed by the crossed holders and voted on by the co-op.
+
+A band records what a holder says they planted. It is not a planting plan, a grazing plan or advice on what will grow. `tests/woodland-edge-bands.test.mjs` covers AG1 to AG4, AG6 and AG7.
+
 A recorded right-of-way is the co-op's note of what is on the ground. It does not establish that an easement exists, who holds it or what it allows. `tests/woodland-corridor-facts.test.mjs` covers CF1 to CF6.
 
 ## What the check establishes
