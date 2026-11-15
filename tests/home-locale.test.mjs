@@ -70,3 +70,32 @@ void test('hosted and static entry points keep existing URLs and English-first h
   assert.match(staticRenderer, /publicPreview locale="en"/);
   assert.match(staticClient, /window\.location\.pathname === '\/demo\/'/);
 });
+
+void test('the corridor story has a caption per scene, a pause control and a still final state', async () => {
+  const read = (path) => readFile(new URL(`../${path}`, import.meta.url), 'utf8');
+  const landscape = await read('components/conservation-landscape.tsx');
+  const css = await read('components/conservation-landscape.css');
+  const en = await read('lib/i18n/en.ts');
+  // Six scenes, each with its caption, plus a summary read once by screen readers.
+  for (const key of ['Valley', 'Plan', 'Join', 'Age', 'Edge', 'Next'])
+    assert.ok(landscape.includes(`t.landscapeStory${key}`), key);
+  assert.match(landscape, /vc-landscape-story-summary[\s\S]*t\.landscapeStorySummary/);
+  assert.match(landscape, /aria-hidden="true"\s+className=\{`vc-landscape-story-caption /);
+  for (let scene = 1; scene <= 6; scene++)
+    assert.ok(css.includes(`@keyframes vc-story-caption-${scene}`), `caption ${scene}`);
+  // The loop runs longer than five seconds, so it can be paused; without motion it is still.
+  assert.match(landscape, /aria-pressed=\{userPaused\}/);
+  assert.match(landscape, /userPaused \? t\.landscapePlay : t\.landscapePause/);
+  assert.match(landscape, /\{!reducedMotion && \(/);
+  assert.match(css, /\[data-motion='paused'\] \[class\*='vc-landscape-'\]\s*\{\s*animation-play-state: paused/);
+  assert.match(css, /prefers-reduced-motion: reduce[\s\S]*animation: none !important/);
+  // Every story animation is switched off in the static view, which shows the final state.
+  const storyRules = [...css.matchAll(/([^{}]*)\{\s*animation: vc-story-/g)].map((m) => m[1]);
+  assert.ok(storyRules.length >= 15, `${storyRules.length} story animations`);
+  for (const selector of storyRules)
+    assert.ok(selector.includes(":not([data-motion='static'])"), selector);
+  // The junction scene is the aim, not a feature on offer, and nothing claims a real place.
+  assert.match(en, /landscapeStoryNext: 'The aim: /);
+  assert.match(en, /landscapeCaptionDisclaimer: 'Illustration only/);
+  assert.doesNotMatch(en.match(/landscapeStory\w+: '[^']*'/g).join(' '), /certif|guarantee|carbon credit/i);
+});

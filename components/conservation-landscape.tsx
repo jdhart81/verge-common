@@ -12,6 +12,32 @@ import { getHomeStrings, type HomeLocale } from '@/lib/i18n/home';
 
 const motionQuery = '(prefers-reduced-motion: reduce)';
 
+// Geometry of the corridor story (viewBox 600 by 470). The spine follows the creek, cut into
+// the stretches that join one at a time, with a branch along the shared habitat path and one
+// along the lower fields.
+const STORY = {
+  creekA: 'M505-30C450 36 536 73 480 130',
+  creekRest: 'S482 213 540 249S556 347 515 378S517 452 565 499',
+  branchNorth:
+    'M115 241C147 222 193 226 222 245S278 282 298 253S305 208 344 201S400 223 445 193L497 197',
+  branchSouth: 'M186 375C240 402 300 416 360 394S470 372 515 378',
+  segments: [
+    'M505-30C450 36 536 73 480 130C424 187 482 213 540 249',
+    'M115 241C147 222 193 226 222 245S278 282 298 253S305 208 344 201S400 223 445 193L497 197',
+    'M540 249C598 285 556 347 515 378C474 409 517 452 565 499',
+    'M186 375C240 402 300 416 360 394S470 372 515 378',
+  ],
+  band: [
+    [232, 365],
+    [258, 374],
+    [286, 379],
+    [314, 378],
+    [341, 371],
+  ],
+  exit: 'M540 249C552 243 562 234 574 228',
+  neighbour: 'M640 196C618 204 596 216 574 228',
+} as const;
+
 function subscribeToMotionPreference(notify: () => void) {
   const query = window.matchMedia(motionQuery);
   query.addEventListener('change', notify);
@@ -233,6 +259,8 @@ export function ConservationLandscape({
     () => true,
   );
   const [visible, setVisible] = useState(true);
+  // The loop runs longer than five seconds, so a visitor can stop it.
+  const [userPaused, setUserPaused] = useState(false);
 
   useEffect(() => {
     if (!figure.current || !('IntersectionObserver' in window)) return;
@@ -250,10 +278,26 @@ export function ConservationLandscape({
       lang={locale}
       data-locale={locale}
       ref={figure}
-      data-motion={reducedMotion ? 'static' : visible ? 'running' : 'paused'}
+      data-motion={
+        reducedMotion
+          ? 'static'
+          : visible && !userPaused
+            ? 'running'
+            : 'paused'
+      }
     >
       <div className="vc-landscape-heading">
         <span>{t.landscapeHeading}</span>
+        {!reducedMotion && (
+          <button
+            type="button"
+            className="vc-landscape-toggle"
+            aria-pressed={userPaused}
+            onClick={() => setUserPaused((paused) => !paused)}
+          >
+            {userPaused ? t.landscapePlay : t.landscapePause}
+          </button>
+        )}
       </div>
 
       <svg
@@ -350,6 +394,33 @@ export function ConservationLandscape({
             />
           </g>
 
+          {/* The corridor story, under the trees and hedges: the planned spine along the creek
+              and two branches, the stretches that turn solid as owners join, and the aged
+              canopy. Without motion every part shows in its final state. */}
+          <g className="vc-landscape-story-spine" aria-hidden="true">
+            <path
+              d={`${STORY.creekA}${STORY.creekRest}`}
+              className="vc-landscape-story-plan"
+            />
+            <path d={STORY.branchNorth} className="vc-landscape-story-plan" />
+            <path d={STORY.branchSouth} className="vc-landscape-story-plan" />
+            {STORY.segments.map((d, i) => (
+              <path
+                key={d}
+                d={d}
+                pathLength={1}
+                className={`vc-landscape-story-segment vc-landscape-story-segment-${i + 1}`}
+              />
+            ))}
+            {STORY.segments.map((d) => (
+              <path
+                key={d}
+                d={d}
+                className="vc-landscape-story-aged"
+              />
+            ))}
+          </g>
+
           <path
             d="M82 409C78 366 107 330 153 315S246 301 277 338S360 360 405 326S421 281 462 269"
             className="vc-landscape-footpath"
@@ -429,6 +500,45 @@ export function ConservationLandscape({
           <Tree x={337} y={91} size={0.66} phase={-22} />
           <Tree x={401} y={245} size={0.65} phase={-7} />
           <Tree x={387} y={355} size={0.82} phase={-12} />
+
+          {/* Beside the corridor: a tree-crop band on a field, a trail along the edge, and the
+              neighbouring co-op's corridor arriving at the valley's edge. */}
+          <g className="vc-landscape-story-edge" aria-hidden="true">
+            <path
+              d={STORY.branchNorth}
+              transform="translate(3 -13)"
+              className="vc-landscape-story-trail"
+            />
+            <g className="vc-landscape-story-band">
+              {STORY.band.map(([x, y]) => (
+                <circle key={`${x}-${y}`} cx={x} cy={y} r="4.6" />
+              ))}
+            </g>
+          </g>
+          <g className="vc-landscape-story-next" aria-hidden="true">
+            <path
+              d={STORY.exit}
+              pathLength={1}
+              className="vc-landscape-story-segment vc-landscape-story-exit"
+            />
+            <path
+              d={STORY.neighbour}
+              pathLength={1}
+              className="vc-landscape-story-segment vc-landscape-story-neighbour"
+            />
+            <circle
+              cx="574"
+              cy="228"
+              r="9"
+              className="vc-landscape-story-junction"
+            />
+            <g className="vc-landscape-label vc-landscape-story-next-label">
+              <rect x="462" y="170" width="130" height="30" rx="15" />
+              <text x="527" y="190" textAnchor="middle">
+                {t.landscapeNextCoop}
+              </text>
+            </g>
+          </g>
 
           <Rabbit />
           <Butterfly x={164} y={245} phase={-2} />
@@ -531,6 +641,29 @@ export function ConservationLandscape({
           className="vc-landscape-frame"
         />
       </svg>
+
+      {/* One caption per scene. Screen readers get the summary once, not a changing line. */}
+      <p className="vc-landscape-story-captions">
+        <span className="vc-landscape-story-summary">
+          {t.landscapeStorySummary}
+        </span>
+        {[
+          t.landscapeStoryValley,
+          t.landscapeStoryPlan,
+          t.landscapeStoryJoin,
+          t.landscapeStoryAge,
+          t.landscapeStoryEdge,
+          t.landscapeStoryNext,
+        ].map((caption, i) => (
+          <span
+            key={caption}
+            aria-hidden="true"
+            className={`vc-landscape-story-caption vc-landscape-story-caption-${i + 1}`}
+          >
+            {caption}
+          </span>
+        ))}
+      </p>
 
       <figcaption className="vc-landscape-caption">
         <span className="vc-landscape-key">
