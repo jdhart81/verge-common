@@ -11,6 +11,9 @@ import {
   CORE_CHOICES,
   PASSAGE_CHOICES,
   LINK_KINDS,
+  STAND_ORIGINS,
+  PLANTING_INTENSITY,
+  MAX_SPECIES,
   emptyLayers,
   newFeature,
   editorFeature,
@@ -59,18 +62,32 @@ export type WoodlandParams = {
   coreTempSource?: string;
   climateWarmingC?: number;
   climateSource?: string;
+  // Native old growth (dfm-core 0.3.0): a minimum native share for old-growth age, and the
+  // native-only planting policy for corridors and cores.
+  nativeShareMin?: number;
+  nativeShareSource?: string;
+  nativeStatusSource?: string;
 };
 type NumberParam =
   | 'connectorWidthM'
   | 'ageAsOfYear'
   | 'oldGrowthAgeYears'
-  | 'climateWarmingC';
+  | 'climateWarmingC'
+  | 'nativeShareMin';
 type TextParam =
   | 'spineWidthSource'
   | 'connectorWidthSource'
   | 'oldGrowthAgeSource'
   | 'coreTempSource'
-  | 'climateSource';
+  | 'climateSource'
+  | 'nativeShareSource'
+  | 'nativeStatusSource';
+type Species = { name: string; native: boolean };
+const STAND_ORIGIN_LABELS: Record<string, string> = {
+  natural: 'Naturally regenerating',
+  planted: 'Planted or seeded, not a plantation',
+  plantation: 'Plantation: one or two species, even-aged, regularly spaced',
+};
 export type MapFeature = Omit<WoodlandFeature, 'geometry'> & {
   geometry: Geometry | { type: 'MultiPolygon'; coordinates: number[][][][] };
 };
@@ -237,6 +254,14 @@ export function WoodlandMapEditor({
         properties: { ...feature.properties, [key]: value },
       });
   };
+  // Optional records are removed, not stored blank, so a feature without them is unchanged.
+  const optionalText = (key: string, value: string) =>
+    property(key, value.trim() ? value : undefined);
+  const speciesList: Species[] = Array.isArray(feature?.properties.species)
+    ? (feature.properties.species as Species[])
+    : [];
+  const setSpecies = (next: Species[]) =>
+    property('species', next.length ? next : undefined);
   const add = (point: number[]) => {
     if (!feature || disabled) return;
     update(withPoints(feature, [...points, point]) as WoodlandFeature);
@@ -549,6 +574,54 @@ export function WoodlandMapEditor({
                 onChange={(e) => textParam('climateSource', e.target.value)}
               />
             </details>
+            <details className="mt-3" data-native-settings>
+              <summary>Native old growth (optional)</summary>
+              <p className="small">
+                The spine’s aim is old growth of the place’s own species. A
+                plantation never counts at old-growth age, whatever its age.
+                These settings add two rules, each with its source. They change
+                the old-growth projection and what may be planted in a corridor,
+                never whether a link holds today.
+              </p>
+              {label(
+                'native-min',
+                'Minimum native share for old-growth age (0 to 1)',
+              )}
+              <Input
+                id={`${prefix}-native-min`}
+                type="number"
+                min={0}
+                max={1}
+                step="0.05"
+                value={draft.params.nativeShareMin ?? ''}
+                onChange={(e) => numberParam('nativeShareMin', e.target.value)}
+              />
+              {label('native-min-source', 'Minimum native share source')}
+              <Input
+                id={`${prefix}-native-min-source`}
+                maxLength={300}
+                value={draft.params.nativeShareSource ?? ''}
+                onChange={(e) => textParam('nativeShareSource', e.target.value)}
+              />
+              {label(
+                'native-status-source',
+                'Native-status source for corridor planting',
+              )}
+              <Input
+                id={`${prefix}-native-status-source`}
+                maxLength={300}
+                placeholder="Such as a state flora or the USDA PLANTS database"
+                value={draft.params.nativeStatusSource ?? ''}
+                onChange={(e) =>
+                  textParam('nativeStatusSource', e.target.value)
+                }
+              />
+              <p className="small">
+                Once a native-status source is recorded, every restoration
+                planting inside a corridor or core must list its species, and is
+                permitted only when every species is native.
+              </p>
+            </details>
           </>
         )}
         {mode === 'plan' && (
@@ -779,6 +852,89 @@ export function WoodlandMapEditor({
                     />
                   </>
                 )}
+                {(layer === 'retained' || layer === 'coreAreas') && (
+                  <details className="mt-2" data-native-records>
+                    <summary>Origin and native species (optional)</summary>
+                    <p className="small">
+                      Recorded as stated, each with its source. A plantation
+                      never counts at old-growth age; a stand never plowed or
+                      clear-cut counts in every year. Age and origin are
+                      reported, never condition.
+                    </p>
+                    {label('stand-origin', 'How the stand was established')}
+                    <NativeSelect
+                      className="w-full"
+                      id={`${prefix}-stand-origin`}
+                      value={propertyText(feature.properties.stand_origin)}
+                      onChange={(e) =>
+                        property('stand_origin', e.target.value || undefined)
+                      }
+                    >
+                      <NativeSelectOption value="">
+                        Not recorded
+                      </NativeSelectOption>
+                      {STAND_ORIGINS.map((v: string) => (
+                        <NativeSelectOption key={v} value={v}>
+                          {STAND_ORIGIN_LABELS[v] ?? v}
+                        </NativeSelectOption>
+                      ))}
+                    </NativeSelect>
+                    {label('origin-source', 'Stand origin source')}
+                    <Input
+                      id={`${prefix}-origin-source`}
+                      maxLength={300}
+                      value={propertyText(feature.properties.origin_source)}
+                      onChange={(e) =>
+                        optionalText('origin_source', e.target.value)
+                      }
+                    />
+                    <label className="block mt-2">
+                      <input
+                        type="checkbox"
+                        checked={feature.properties.remnant === true}
+                        onChange={(e) =>
+                          property(
+                            'remnant',
+                            e.target.checked ? true : undefined,
+                          )
+                        }
+                      />{' '}
+                      Never plowed or clear-cut (remnant)
+                    </label>
+                    {label('remnant-source', 'Remnant source')}
+                    <Input
+                      id={`${prefix}-remnant-source`}
+                      maxLength={300}
+                      value={propertyText(feature.properties.remnant_source)}
+                      onChange={(e) =>
+                        optionalText('remnant_source', e.target.value)
+                      }
+                    />
+                    {label('native-share', 'Share in native species (0 to 1)')}
+                    <Input
+                      id={`${prefix}-native-share`}
+                      type="number"
+                      min={0}
+                      max={1}
+                      step="0.05"
+                      value={propertyText(feature.properties.native_share)}
+                      onChange={(e) =>
+                        property('native_share', optionalNumber(e.target.value))
+                      }
+                    />
+                    {label('composition-source', 'Native share source')}
+                    <Input
+                      id={`${prefix}-composition-source`}
+                      maxLength={300}
+                      value={propertyText(
+                        feature.properties.composition_source,
+                      )}
+                      onChange={(e) =>
+                        optionalText('composition_source', e.target.value)
+                      }
+                    />
+                  </details>
+                )}
                 {layer === 'coreAreas' && (
                   <>
                     {label('temp', 'Mean temperature °C (optional)')}
@@ -799,7 +955,8 @@ export function WoodlandMapEditor({
                     {propertyText(feature.properties.origin)},{' '}
                     {propertyText(feature.properties.width_m)} m:{' '}
                     {propertyText(feature.properties.width_source)}). Drafting
-                    again replaces it and keeps its name and stand age.
+                    again replaces it and keeps its name, stand age, origin and
+                    native-species records.
                   </p>
                 )}
                 {layer === 'treatments' && (
@@ -854,6 +1011,104 @@ export function WoodlandMapEditor({
                       value={propertyText(feature.properties.reason)}
                       onChange={(e) => property('reason', e.target.value)}
                     />
+                    {!!feature.properties.corridor_permitted &&
+                      feature.properties.intensity === PLANTING_INTENSITY && (
+                        <fieldset
+                          className="mt-2 min-w-0"
+                          data-planting-species
+                        >
+                          <legend>Species planted</legend>
+                          <p className="small">
+                            {draft.params.nativeStatusSource
+                              ? `This co-op permits only native planting inside corridors and cores (${draft.params.nativeStatusSource}). List every species.`
+                              : 'Planting inside a corridor or core is permitted only with native species. List each species, with where its native status comes from.'}{' '}
+                            A planting that lists an introduced species is
+                            checked like a harvest.
+                          </p>
+                          {speciesList.map((sp, i) => (
+                            <div key={i} className="flex flex-wrap gap-2 mt-2">
+                              <Input
+                                aria-label={`Species ${i + 1} name`}
+                                className="min-w-0 flex-1"
+                                maxLength={300}
+                                value={sp.name}
+                                onChange={(e) =>
+                                  setSpecies(
+                                    speciesList.map((v, j) =>
+                                      j === i
+                                        ? { ...v, name: e.target.value }
+                                        : v,
+                                    ),
+                                  )
+                                }
+                              />
+                              <label>
+                                <input
+                                  type="checkbox"
+                                  checked={sp.native === true}
+                                  onChange={(e) =>
+                                    setSpecies(
+                                      speciesList.map((v, j) =>
+                                        j === i
+                                          ? { ...v, native: e.target.checked }
+                                          : v,
+                                      ),
+                                    )
+                                  }
+                                />{' '}
+                                Native here
+                              </label>
+                              <Button
+                                type="button"
+                                variant="outline"
+                                aria-label={`Remove species ${i + 1}`}
+                                onClick={() =>
+                                  setSpecies(
+                                    speciesList.filter((_, j) => j !== i),
+                                  )
+                                }
+                              >
+                                Remove
+                              </Button>
+                            </div>
+                          ))}
+                          <Button
+                            type="button"
+                            variant="outline"
+                            className="mt-2"
+                            disabled={speciesList.length >= MAX_SPECIES}
+                            onClick={() =>
+                              setSpecies([
+                                ...speciesList,
+                                { name: '', native: false },
+                              ])
+                            }
+                          >
+                            Add species
+                          </Button>
+                          {label(
+                            'native-status',
+                            'Native-status source for this planting',
+                          )}
+                          <Input
+                            id={`${prefix}-native-status`}
+                            maxLength={300}
+                            placeholder={
+                              draft.params.nativeStatusSource ||
+                              'Such as a state flora'
+                            }
+                            value={propertyText(
+                              feature.properties.native_status_source,
+                            )}
+                            onChange={(e) =>
+                              optionalText(
+                                'native_status_source',
+                                e.target.value,
+                              )
+                            }
+                          />
+                        </fieldset>
+                      )}
                   </>
                 )}
                 {label('vertex', 'Select vertex')}
@@ -1196,8 +1451,9 @@ export function WoodlandMapEditor({
           </strong>
           {spineNote.status === 'ok' && (
             <p>
-              Check each drafted corridor against the ground, record stand
-              ages, then submit the layers for another steward to review.
+              Check each drafted corridor against the ground, record stand ages
+              and how each stand was established, then submit the layers for
+              another steward to review.
             </p>
           )}
           {spineNote.reasons.length > 0 && (

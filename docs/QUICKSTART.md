@@ -15,7 +15,7 @@ npm run typecheck
 npm run lint
 ```
 
-Expected: `npm test` ends with `# fail 0` (388 tests). Clone without `--depth`: one test resolves the reviewed production baseline from git history and fails in a shallow clone. `typecheck` and `lint` print no errors.
+Expected: `npm test` ends with `# fail 0` (480 tests). Clone without `--depth`: one test resolves the reviewed production baseline from git history and fails in a shallow clone. `typecheck` and `lint` print no errors.
 
 ## 2. Worked example: reproduce a woodland corridor check with the open engine
 
@@ -29,7 +29,7 @@ Expected output:
 
 ```
 Plan: Synthetic winter harvest, one consented 100 ha woodlot, two units
-ok   engine                 dfm-connectivity-0.2.0
+ok   engine                 dfm-connectivity-0.3.0
 ok   input checksum         sha256:af1aae770551cf36ebd9ed3309991108ba0cd6d7ae9fef303e52ca702baba21b
 ok   status                 fail
 ok   lost links             core-A-core-B (harvest-3)

@@ -25,7 +25,7 @@ const lost = (links) =>
     .join('; ');
 
 const expected = [
-  ['engine', 'dfm-connectivity-0.2.0', stored.engine, result.engine],
+  ['engine', 'dfm-connectivity-0.3.0', stored.engine, result.engine],
   [
     'input checksum',
     'sha256:af1aae770551cf36ebd9ed3309991108ba0cd6d7ae9fef303e52ca702baba21b',

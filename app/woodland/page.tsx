@@ -13,7 +13,7 @@ export const dynamic = 'force-dynamic';
 export const metadata: Metadata = {
   title: 'Woodland corridors · VergeCommon',
   description:
-    'Woodland projects check every harvest plan against the corridors that keep a working landscape connected, with the open-source Dendritic Forest Management engine.',
+    'Map the old-growth corridor that runs through your woods, then plan harvests that keep it connected while it ages toward old growth, with the open-source Dendritic Forest Management engine.',
 };
 
 const dfm = (path = '') => new URL(path, DFM_SITE_URL).href;
@@ -24,7 +24,7 @@ export default function WoodlandPage() {
   return (
     <InformationPage
       title="Work the woods. Keep them connected."
-      intro="Woodland projects check every harvest plan against the retained corridors that link a co-op’s old-growth candidates, riparian cores and reserves, before anyone starts a saw."
+      intro="Map the old-growth corridor that runs through your woods, then plan harvests that keep it connected while it ages toward old growth."
     >
       <aside className="notice" data-woodland-open={open ? 'yes' : 'no'}>
         {open
@@ -35,23 +35,31 @@ export default function WoodlandPage() {
         <h2>What a woodland project does</h2>
         <ul>
           <li>
+            The old-growth spine comes first. It follows streams, valleys and
+            ridges and links a co-op’s old-growth candidates, riparian cores and
+            reserves. The engine drafts its corridors from mapped stream and
+            ridge lines, shows where one disturbance would still cut a link,
+            projects which links run through forest at old-growth age as stand
+            ages and consent accrue, finds routes toward cooler ground, and
+            names the woodlots whose owners’ consent would complete the next
+            link.
+          </li>
+          <li>
+            Old growth here means the place’s own species. A plantation, or a
+            stand recorded as mostly introduced species, is never projected as
+            old growth, and planting inside a corridor is permitted only with
+            native species.
+          </li>
+          <li>
             Stewards map core areas, retained corridors, roads, open water and
             road crossings, with a minimum corridor width and where it comes
             from. Another steward reviews them before they are used.
           </li>
           <li>
-            The old-growth spine follows streams, valleys and ridges. The
-            engine drafts its corridors from mapped stream and ridge lines,
-            shows where one disturbance would still cut a link, projects which
-            links run through forest at old-growth age as stand ages and
-            consent accrue, finds routes toward cooler ground, and names the
-            woodlots whose owners’ consent would complete the next link.
-          </li>
-          <li>
             Every member’s harvest or treatment plan is checked against the
-            reviewed corridors. A plan that breaks a link is blocked; members
-            can let it proceed only by a recorded vote, and another steward
-            still reviews it.
+            reviewed corridors before anyone starts a saw. A plan that breaks a
+            link is blocked; members can let it proceed only by a recorded vote,
+            and another steward still reviews it.
           </li>
         </ul>
       </section>
@@ -62,9 +70,10 @@ export default function WoodlandPage() {
           the minimum width links the same core areas after a plan as before.
           It does not establish that wildlife moves through a corridor, that
           populations stay genetically viable, that a stand is old growth or
-          that a plan meets any regulation. Projections assume no fire, storm
-          or new road. Calling a stand old growth takes field evidence reviewed
-          by someone other than the person who mapped it.
+          that a plan meets any regulation. Projections assume no fire, storm or
+          new road. Stand age and origin are reported as recorded, never
+          condition. Calling a stand old growth takes field evidence reviewed by
+          someone other than the person who mapped it.
         </p>
       </section>
       {open ? (

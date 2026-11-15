@@ -143,13 +143,12 @@ await test('WS12 an upload says what it leaves out, so nothing in a package is d
   ];
   newer.params.gapCrossingM = 40;
   newer.params.gapCrossingSource = 'Synthetic dispersal study';
-  newer.layers.retained[0].properties.remnant = true;
-  newer.layers.retained[0].properties.remnant_source = 'Synthetic survey';
+  newer.layers.retained[0].properties.width_estimated = true;
   const notes = importNotes(newer, 'layers');
   assert.equal(notes.length, 3);
   assert.match(notes[0], /the exits layer, which VergeCommon does not use yet/);
   assert.match(notes[1], /^Settings VergeCommon does not use yet: gapCrossingM, gapCrossingSource\./);
-  assert.match(notes[2], /^Feature properties VergeCommon does not keep: remnant, remnant_source\./);
+  assert.match(notes[2], /^Feature properties VergeCommon does not keep: width_estimated\./);
   // What VergeCommon writes, it reads back with nothing to report; plain GeoJSON is not a package.
   const own = toLandscapePackage({ ...fromLandscapePackage(workspacePackage), boundary: [], treatments: [] });
   assert.deepEqual(importNotes(own, 'layers'), []);
