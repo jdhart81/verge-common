@@ -1,8 +1,8 @@
 # Release notes
 
-## Unreleased — recreation along the corridor
+## Unreleased — uses and facts along the corridor
 
-On `main`, not deployed. By default the corridor is natural and ages toward old growth. A woodland co-op can now adopt a shared recreation use on a mapped stretch: a walking trail, a bike trail, disc golf or another use.
+Not deployed. By default the corridor is natural and ages toward old growth. A woodland co-op can now adopt a shared recreation use on a mapped stretch: a walking trail, a bike trail, disc golf or another use.
 
 - A member uploads the route: trail lines with the width cleared of trees, and polygons of cleared ground.
 - **The corridor comes first.** The corridor check runs with the cleared ground removed. A use that loses or pinches a link is blocked, with no override vote.
@@ -10,7 +10,9 @@ On `main`, not deployed. By default the corridor is natural and ages toward old 
 - **The co-op votes.** Frozen electorate, two-thirds quorum, approval from a majority of all members.
 - **An adopted use counts everywhere.** Its cleared ground is excluded from habitat in later harvest-plan checks and spine analyses, so it never counts toward old growth.
 - **It can always end.** A steward or any crossed holder ends it; withdrawing a woodlot or deleting an account ends the uses that cross it.
-- Projects with no adopted use store, check and project exactly as before. The rollback guard refuses older writers once a use exists. Routes are uploaded as GeoJSON; the map editor does not draw them yet. See the [woodland guide](WOODLAND.md#recreation-along-the-corridor).
+- **Rights-of-way and blowdown are recorded as facts.** A steward records one with its source and another steward reviews it; nobody votes. A right-of-way is checked and recorded even when it breaks a link, and its cleared ground stops counting as forest. A blowdown stays corridor: leaving fallen trees is the default, salvage is a treatment plan, and a stand-replacing blowdown warns in every analysis until stand ages are recorded again.
+- New kinds of use: ski or snowshoe trail, snowmobile or ATV trail, maple sugaring lines.
+- Projects with no adopted use and no reviewed fact store, check and project exactly as before. The rollback guard refuses older writers once a use exists. Routes are uploaded as GeoJSON; the map editor does not draw them yet. See the [woodland guide](WOODLAND.md#recreation-along-the-corridor).
 
 ## v0.11.0 — native old growth (dfm-core 0.3.0; deployed 15 November 2026, 15:11 UTC, as release branch `12e0fec` on production `7541560`)
 
