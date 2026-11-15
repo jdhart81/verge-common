@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import {
   WoodlandMapEditor,
   type WoodlandLayers,
+  type WoodlandFeature,
   type WoodlandParams,
 } from './woodland-map-editor';
 import { consentParcels, planCheckInput } from '@/lib/woodland-input.mjs';
@@ -408,6 +409,8 @@ export function WoodlandPanel({
           (state.parcels ?? []).map((p) => [p.id, p.name || 'Woodlot']),
         )}
         layersReviewed={!!current?.layers}
+        layers={(current?.layers ?? undefined) as WoodlandLayers | undefined}
+        ownParcels={reference as unknown as WoodlandFeature[]}
         steward={steward}
         memberId={memberId}
         disabled={disabled}

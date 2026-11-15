@@ -20,6 +20,8 @@ type Props = {
   treatments: WoodlandFeature[];
   parcels: WoodlandFeature[];
   loss: MapFeature[];
+  /** Routes and areas of corridor uses and facts, and a shape being drawn (optional). */
+  routes?: WoodlandFeature[];
   onAdd: (point: Point) => void;
   onMove: (index: number, point: Point) => void;
   onSelect: (index: number) => void;
@@ -93,6 +95,7 @@ export function WoodlandMap(props: Props) {
             ['connectors', '#6b4aa0', [8, 2, 1, 2]],
             ['treatments', '#a63aa6', [1, 2]],
             ['parcels', '#555555', [2, 4]],
+            ['routes', '#c2410c', [1, 0]],
             ['loss', '#df2424', [5, 2]],
           ];
           for (const [layer, color, dash] of styles) {
@@ -121,7 +124,12 @@ export function WoodlandMap(props: Props) {
               ],
               paint: {
                 'line-color': color,
-                'line-width': layer === 'loss' ? 4 : layer === 'streams' ? 3 : 2,
+                'line-width':
+                  layer === 'loss' || layer === 'routes'
+                    ? 4
+                    : layer === 'streams'
+                      ? 3
+                      : 2,
                 'line-dasharray': dash,
               },
             });
@@ -235,6 +243,7 @@ export function WoodlandMap(props: Props) {
     props.treatments,
     props.parcels,
     props.loss,
+    props.routes,
     props.drawing,
     props.disabled,
     ready,
@@ -305,6 +314,7 @@ function allPoints(props: Props): Point[] {
     ...Object.values(props.layers).flat(),
     ...props.treatments,
     ...props.parcels,
+    ...(props.routes ?? []),
   ]
     .flatMap((f) => featurePoints(f))
     .concat(props.points)
@@ -316,6 +326,7 @@ function mapFeatures(props: Props) {
     treatments: props.treatments,
     parcels: props.parcels,
     loss: props.loss,
+    routes: props.routes ?? [],
   }).flatMap(([layer, list]) =>
     list.flatMap((f) => {
       let geometry = f.geometry;
