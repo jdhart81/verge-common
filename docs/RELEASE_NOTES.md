@@ -1,5 +1,15 @@
 # Release notes
 
+## v0.11.0 — native old growth (dfm-core 0.3.0; release branch on production 7541560)
+
+The old-growth corridor is now the lead of woodland projects, and the engine behind it moves to dfm-core 0.3.0. Woodland projects stay off unless the operator sets `VERGE_WOODLAND_DFM=1`. No deployment is part of this change.
+
+- **Engine:** `vendor/viridis-dfm-core-0.3.0.tgz` replaces the 0.2.0 tarball; it is the `npm pack` of hdfm-framework `packages/dfm-core` 0.3.0, and a test pins its SHA-256. Engine names in new results are `dfm-connectivity-0.3.0`, `dfm-spine-0.3.0` and `dfm-outlook-0.3.0`.
+- **A plantation is never projected as old growth.** Retained corridors and core areas can record how the stand was established (naturally regenerating, planted, or plantation), whether it was never plowed or clear-cut, and its share in native species, each with its source. A plantation never counts at old-growth age whatever its age; a remnant counts in every year; with a minimum native share, a stand of mostly introduced species does not count. The outlook shows how much committed forest is plantation or below the native share.
+- **A corridor is never replanted with introduced species.** A corridor-permitted restoration planting can list its species; it stays permitted only when every species is native and a native-status source is recorded. Once the layers record a native-status source, every corridor planting must list its species. Otherwise the check treats the planting like a harvest and names it.
+- **Nothing stored changes meaning.** Layers, settings and units without the new records are stored as before and give the results 0.2.0 gave, apart from the engine names; a test compares every spine analysis and the corridor check with results recorded under 0.2.0. Remnant status, which uploads used to leave out, is now kept.
+- **Words:** the README, the [woodland page](https://vergecommon.com/woodland/) and the [woodland guide](WOODLAND.md) lead with the old-growth corridor. The caveat is unchanged: structural connectivity only; not a claim about species movement, genetics, regulatory compliance or old-growth condition. Age is reported, never condition.
+
 ## v0.11.0 — agent call counts and answer receipts (hotfix on production 5d1a276)
 
 - `/mcp` usage is counted per UTC day (requests, initialize, tools/list, calls per tool, errors, rate-limited, anonymous vs token) and served at `GET /mcp/stats` for the last 30 days. Counts only: no IPs, tokens, arguments or results are stored; distinct clients use a keyed hash with a daily in-memory salt. `VERGE_MCP_STATS=0` turns it off.

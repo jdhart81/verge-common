@@ -33,6 +33,10 @@ For the self-hosted application, use Node 24.19.0 and follow [the single-server 
 
 The original Cloudflare/Sites development path remains available through `npm run launch` with Node.js 22.13+. Its identity is a development fixture; never expose that development server publicly. In either workflow, create a co-op and follow the **Start** checklist. See [Worldwide adoption](docs/WORLDWIDE.md) for regional setup.
 
+## Woodland projects: the old-growth corridor
+
+Map the old-growth corridor that runs through your woods, then plan harvests that keep it connected while it ages toward old growth. The corridor is the old-growth spine: retained forest along streams, valleys and ridges, mapped whole and built woodlot by woodlot as owners consent. A plantation or a stand of introduced species is never projected as old growth, and a corridor is never replanted with introduced species. Structural connectivity only; not a claim about species movement, genetics, regulatory compliance or old-growth condition. Age is reported, never condition. See the [woodland guide](docs/WOODLAND.md) and [vergecommon.com/woodland](https://vergecommon.com/woodland/).
+
 ## Agents and MCP
 
 The [MCP server](mcp/README.md) supports local stdio and authenticated Streamable HTTP at `/mcp` in the self-hosted runtime. Local stdio offers public discovery and hypothetical pooling/allocation drafts. Hosted tokens with `mcp:read` can also read the owner's permitted workspaces; `mcp:write` adds bounded project, member-update, task and RSVP commands. App tokens and MCP tokens are separate scopes.

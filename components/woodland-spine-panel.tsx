@@ -1,7 +1,10 @@
 'use client';
-// Old-growth spine analyses for a woodland project (dfm-core 0.2.0). Each analysis runs on the
+// Old-growth spine analyses for a woodland project (dfm-core 0.3.0). Each analysis runs on the
 // co-op server, in its analysis worker, against the current reviewed layers and the co-op's
 // consent records; this component only displays what the server returns for this viewer.
+// Native old growth (NO1-NO4 in lib/woodland-spine.mjs): the panel says what the reviewed layers
+// record about stand origin and native species, and the outlook shows committed forest that is
+// plantation or below the native share, which never counts at old-growth age.
 import { useId, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -62,6 +65,10 @@ type OutlookResult = Base & {
     committedM2: number;
     oldGrowthAgeLinks: Pair[] | null;
     oldGrowthAgeM2: number | null;
+    /** Committed forest outside cores recorded as plantation; present when origin is recorded. */
+    plantationM2?: number;
+    /** Committed forest outside cores below the minimum native share; present when one is set. */
+    belowNativeShareM2?: number;
   }[];
   assumptions?: string[];
 };
@@ -283,6 +290,15 @@ export function WoodlandSpinePanel({
   const drafted = (layers.retained ?? []).filter(
     (f) => f.properties?.spine === true,
   ).length;
+  // NO1, NO2: what the reviewed layers record about how stands were established.
+  const stands = [...(layers.retained ?? []), ...(layers.coreAreas ?? [])];
+  const plantations = stands.filter(
+    (f) => f.properties?.stand_origin === 'plantation',
+  ).length;
+  const remnants = stands.filter((f) => f.properties?.remnant === true).length;
+  const noOrigin = stands.filter(
+    (f) => f.properties?.stand_origin == null && f.properties?.remnant !== true,
+  ).length;
   // A plan redacted by account erasure has no units to apply (E1).
   const plans = (state.treatmentPlans ?? []).filter(
     (p) => p.projectId === projectId && !p.erasureRedacted,
@@ -358,13 +374,15 @@ export function WoodlandSpinePanel({
     >
       <h3>Old-growth spine</h3>
       <p className="small">
-        The spine is the branching network of retained forest along streams,
-        valleys and ridges. It is mapped whole, then built woodlot by woodlot
-        as owners consent, and it ages toward old growth while the woods
-        around it are worked. These analyses use the reviewed layers and the
-        co-op’s consent records, run on the co-op server and take a few
-        seconds. They are structural only: they do not establish species
-        movement, genetics or old-growth condition.
+        The old-growth corridor that runs through your woods: the branching
+        network of retained forest along streams, valleys and ridges. It is
+        mapped whole, then built woodlot by woodlot as owners consent, and it
+        ages toward old growth of the place’s own species while the woods around
+        it are worked. These analyses use the reviewed layers and the co-op’s
+        consent records, run on the co-op server and take a few seconds. They
+        are structural only: they do not establish species movement, genetics,
+        regulatory compliance or old-growth condition. Age and origin are
+        reported as recorded, never condition.
       </p>
       <p className="small">
         Reviewed spine: {layers.streams?.length ?? 0} streams,{' '}
@@ -373,6 +391,18 @@ export function WoodlandSpinePanel({
         {current.params.oldGrowthAgeYears != null
           ? ` Old-growth age ${text(current.params.oldGrowthAgeYears)} years (${text(current.params.oldGrowthAgeSource)}).`
           : ' No old-growth age threshold is recorded.'}
+      </p>
+      <p className="small" data-native-summary>
+        Native old growth: {remnants} never plowed or clear-cut, {plantations}{' '}
+        recorded as plantation, which never{' '}
+        {plantations === 1 ? 'counts' : 'count'} at old-growth age; {noOrigin}{' '}
+        of {stands.length} corridors and core areas record no origin.
+        {current.params.nativeShareMin != null
+          ? ` Old-growth age needs a native share of at least ${text(current.params.nativeShareMin)} (${text(current.params.nativeShareSource)}).`
+          : ' No minimum native share is recorded.'}
+        {current.params.nativeStatusSource
+          ? ` Only native species may be planted inside corridors and cores (${text(current.params.nativeStatusSource)}).`
+          : ' No native-status source is recorded, so a corridor planting is held to native species only when it lists them.'}
       </p>
       {plans.length > 0 && (
         <>
@@ -524,53 +554,67 @@ export function WoodlandSpinePanel({
             {context(outlook)} · stand ages rolled forward{' '}
             {outlook.ageShiftYears} year(s) from {outlook.ageAsOfYear}
           </p>
-          {outlook.result.milestones && (
-            <>
-              <Table
-                label="Projected links by year"
-                nowrap={[0, 1, 2, 3, 4]}
-                head={[
-                  'Year',
-                  'Links through committed forest',
-                  'Links at old-growth age',
-                  'Committed forest',
-                  'At old-growth age',
-                  'Woodlots committed',
-                ]}
-                rows={outlook.result.milestones.map((m) => [
-                  m.year,
-                  `${m.committedLinks.length} of ${totalPairs}`,
-                  m.oldGrowthAgeLinks == null
-                    ? 'no threshold'
-                    : `${m.oldGrowthAgeLinks.length} of ${totalPairs}`,
-                  ha(m.committedM2),
-                  ha(m.oldGrowthAgeM2),
-                  outlook.viewer === 'steward'
-                    ? names(m.committedParcels) || 'none'
-                    : `${m.committedParcelCount ?? m.committedParcels.length}${
-                        m.committedParcels.length
-                          ? ` (yours: ${names(m.committedParcels)})`
-                          : ''
-                      }`,
-                ])}
-              />
-              <details>
-                <summary>Which links, by year</summary>
-                <ul>
-                  {outlook.result.milestones.map((m) => (
-                    <li key={m.year}>
-                      {m.year}: through committed forest{' '}
-                      {pairs(m.committedLinks)}
-                      {m.oldGrowthAgeLinks
-                        ? `; at old-growth age ${pairs(m.oldGrowthAgeLinks)}`
-                        : ''}
-                      .
-                    </li>
-                  ))}
-                </ul>
-              </details>
-            </>
-          )}
+          {outlook.result.milestones &&
+            (() => {
+              // Shown only when recorded, as the engine reports them (O5).
+              const origin = outlook.result.milestones.some(
+                (m) => m.plantationM2 != null,
+              );
+              const share = outlook.result.milestones.some(
+                (m) => m.belowNativeShareM2 != null,
+              );
+              return (
+                <>
+                  <Table
+                    label="Projected links by year"
+                    nowrap={[0, 1, 2, 3, 4]}
+                    head={[
+                      'Year',
+                      'Links through committed forest',
+                      'Links at old-growth age',
+                      'Committed forest',
+                      'At old-growth age',
+                      ...(origin ? ['Plantation, never old growth'] : []),
+                      ...(share ? ['Below the native share'] : []),
+                      'Woodlots committed',
+                    ]}
+                    rows={outlook.result.milestones.map((m) => [
+                      m.year,
+                      `${m.committedLinks.length} of ${totalPairs}`,
+                      m.oldGrowthAgeLinks == null
+                        ? 'no threshold'
+                        : `${m.oldGrowthAgeLinks.length} of ${totalPairs}`,
+                      ha(m.committedM2),
+                      ha(m.oldGrowthAgeM2),
+                      ...(origin ? [ha(m.plantationM2)] : []),
+                      ...(share ? [ha(m.belowNativeShareM2)] : []),
+                      outlook.viewer === 'steward'
+                        ? names(m.committedParcels) || 'none'
+                        : `${m.committedParcelCount ?? m.committedParcels.length}${
+                            m.committedParcels.length
+                              ? ` (yours: ${names(m.committedParcels)})`
+                              : ''
+                          }`,
+                    ])}
+                  />
+                  <details>
+                    <summary>Which links, by year</summary>
+                    <ul>
+                      {outlook.result.milestones.map((m) => (
+                        <li key={m.year}>
+                          {m.year}: through committed forest{' '}
+                          {pairs(m.committedLinks)}
+                          {m.oldGrowthAgeLinks
+                            ? `; at old-growth age ${pairs(m.oldGrowthAgeLinks)}`
+                            : ''}
+                          .
+                        </li>
+                      ))}
+                    </ul>
+                  </details>
+                </>
+              );
+            })()}
           {!!outlook.result.assumptions?.length && (
             <details>
               <summary>Assumptions</summary>
