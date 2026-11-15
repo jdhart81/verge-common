@@ -297,20 +297,24 @@
 }
 
 /* The corridor story. These rules are the final state, shown by the server and without
-   motion: the spine solid and aged, the edge band and trail in place, the next co-op met. */
-.vc-landscape-toggle {
-  border: 1px solid #b9c4ab;
-  border-radius: 999px;
-  background: #fbf8ef;
-  color: #294a34;
-  font: inherit;
-  padding: 0.2rem 0.7rem;
-  cursor: pointer;
+   motion: every plot joined at its node, the corridor solid through all three woodlots, the
+   woods grown old, a trail and tree crops beside them, and the next co-op met. */
+.vc-landscape-story-woodlot {
+  fill: #b7cf99;
+  opacity: 0.6;
 }
 
-.vc-landscape-toggle:focus-visible {
-  outline: 2px solid #294a34;
-  outline-offset: 2px;
+.vc-landscape-story-woodlot-aged {
+  fill: #33603d;
+  opacity: 0.5;
+}
+
+.vc-landscape-story-old-tree {
+  fill: #3f6e49;
+  stroke: #264a30;
+  stroke-width: 1.2;
+  transform-box: fill-box;
+  transform-origin: center;
 }
 
 .vc-landscape-story-plan {
@@ -325,27 +329,63 @@
 .vc-landscape-story-segment {
   fill: none;
   stroke: #9fbe84;
-  stroke-width: 22;
+  stroke-width: 20;
   stroke-linecap: round;
   stroke-linejoin: round;
   stroke-dasharray: 1;
   stroke-dashoffset: 0;
-  opacity: 0.5;
+  opacity: 0.55;
 }
 
 .vc-landscape-story-aged {
   fill: none;
   stroke: #2f5d3a;
-  stroke-width: 22;
+  stroke-width: 20;
   stroke-linecap: round;
   stroke-linejoin: round;
   opacity: 0.3;
 }
 
+.vc-landscape-story-plot {
+  fill: none;
+  stroke: #2f5d3a;
+  stroke-width: 2.6;
+  stroke-linejoin: round;
+  opacity: 0.75;
+}
+
+.vc-landscape-story-link {
+  fill: none;
+  stroke: #2f5d3a;
+  stroke-width: 2.6;
+  stroke-linecap: round;
+}
+
+.vc-landscape-story-joined {
+  fill: #2f5d3a;
+  stroke: #fbf8ef;
+  stroke-width: 2;
+}
+
+.vc-landscape-story-check,
+.vc-landscape-story-vote path {
+  fill: none;
+  stroke: #fbf8ef;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.vc-landscape-story-vote rect {
+  fill: #a5612c;
+  stroke: #fbf8ef;
+  stroke-width: 1.5;
+}
+
 .vc-landscape-story-trail {
   fill: none;
   stroke: #a5612c;
-  stroke-width: 1.8;
+  stroke-width: 2;
   stroke-dasharray: 2 5;
   stroke-linecap: round;
 }
@@ -398,61 +438,77 @@
 }
 
 .vc-landscape:not([data-motion='static']) .vc-landscape-story-plan {
-  animation: vc-story-plan 36s linear infinite both;
+  animation: vc-story-plan 40s linear infinite both;
 }
 .vc-landscape:not([data-motion='static']) .vc-landscape-story-segment-1 {
-  animation: vc-story-join-1 36s linear infinite both;
+  animation: vc-story-stretch-1 40s linear infinite both;
 }
 .vc-landscape:not([data-motion='static']) .vc-landscape-story-segment-2 {
-  animation: vc-story-join-2 36s linear infinite both;
+  animation: vc-story-stretch-2 40s linear infinite both;
 }
 .vc-landscape:not([data-motion='static']) .vc-landscape-story-segment-3 {
-  animation: vc-story-join-3 36s linear infinite both;
+  animation: vc-story-stretch-3 40s linear infinite both;
 }
 .vc-landscape:not([data-motion='static']) .vc-landscape-story-segment-4 {
-  animation: vc-story-join-4 36s linear infinite both;
+  animation: vc-story-stretch-4 40s linear infinite both;
 }
-.vc-landscape:not([data-motion='static']) .vc-landscape-story-aged {
-  animation: vc-story-age 36s linear infinite both;
+.vc-landscape:not([data-motion='static']) .vc-landscape-story-join-1 {
+  animation: vc-story-join-1 40s linear infinite both;
+}
+.vc-landscape:not([data-motion='static']) .vc-landscape-story-join-2 {
+  animation: vc-story-join-2 40s linear infinite both;
+}
+.vc-landscape:not([data-motion='static']) .vc-landscape-story-join-3 {
+  animation: vc-story-join-3 40s linear infinite both;
 }
 .vc-landscape:not([data-motion='static']) .vc-landscape-story-edge {
-  animation: vc-story-edge 36s linear infinite both;
+  animation: vc-story-edge 40s linear infinite both;
+}
+.vc-landscape:not([data-motion='static']) .vc-landscape-story-aged {
+  animation: vc-story-age 40s linear infinite both;
+}
+.vc-landscape:not([data-motion='static']) .vc-landscape-story-woodlot-aged {
+  animation: vc-story-woodlot-age 40s linear infinite both;
+}
+.vc-landscape:not([data-motion='static']) .vc-landscape-story-old-tree {
+  animation: vc-story-grow 40s linear infinite both;
 }
 .vc-landscape:not([data-motion='static']) .vc-landscape-story-exit,
 .vc-landscape:not([data-motion='static']) .vc-landscape-story-neighbour {
-  animation: vc-story-meet 36s linear infinite both;
+  animation: vc-story-meet 40s linear infinite both;
 }
 .vc-landscape:not([data-motion='static']) .vc-landscape-story-junction,
 .vc-landscape:not([data-motion='static']) .vc-landscape-story-next-label {
-  animation: vc-story-junction 36s linear infinite both;
+  animation: vc-story-junction 40s linear infinite both;
 }
 .vc-landscape:not([data-motion='static']) .vc-landscape-story-caption-1 {
-  animation: vc-story-caption-1 36s linear infinite both;
+  animation: vc-story-caption-1 40s linear infinite both;
 }
 .vc-landscape:not([data-motion='static']) .vc-landscape-story-caption-2 {
-  animation: vc-story-caption-2 36s linear infinite both;
+  animation: vc-story-caption-2 40s linear infinite both;
 }
 .vc-landscape:not([data-motion='static']) .vc-landscape-story-caption-3 {
-  animation: vc-story-caption-3 36s linear infinite both;
+  animation: vc-story-caption-3 40s linear infinite both;
 }
 .vc-landscape:not([data-motion='static']) .vc-landscape-story-caption-4 {
-  animation: vc-story-caption-4 36s linear infinite both;
+  animation: vc-story-caption-4 40s linear infinite both;
 }
 .vc-landscape:not([data-motion='static']) .vc-landscape-story-caption-5 {
-  animation: vc-story-caption-5 36s linear infinite both;
+  animation: vc-story-caption-5 40s linear infinite both;
 }
 .vc-landscape:not([data-motion='static']) .vc-landscape-story-caption-6 {
-  animation: vc-story-caption-6 36s linear infinite both;
+  animation: vc-story-caption-6 40s linear infinite both;
 }
 
-/* One 36-second loop: valley 0-14%, plan 14-30%, joining 30-52%, aging 52-66%, the edge
-   66-80%, the next co-op 80-96%, then everything fades for the next pass. */
+/* One 40-second loop: three separate woodlots 0-12%, the corridor planned 12-24%, each owner
+   joining 24-50%, the vote and the field edge 50-62%, the woods growing old 62-82%, the next
+   co-op 82-96%, then everything fades for the next pass. */
 @keyframes vc-story-plan {
   0%,
-  14% {
+  12% {
     opacity: 0;
   }
-  20%,
+  17%,
   96% {
     opacity: 0.55;
   }
@@ -460,89 +516,76 @@
     opacity: 0;
   }
 }
-@keyframes vc-story-join-1 {
+@keyframes vc-story-stretch-1 {
   0%,
-  30% {
+  27% {
     stroke-dashoffset: 1;
-    opacity: 0.5;
+    opacity: 0.55;
   }
-  35%,
+  32%,
   96% {
     stroke-dashoffset: 0;
-    opacity: 0.5;
+    opacity: 0.55;
   }
   100% {
     stroke-dashoffset: 0;
     opacity: 0;
   }
 }
-@keyframes vc-story-join-2 {
+@keyframes vc-story-stretch-2 {
   0%,
-  35% {
+  34% {
     stroke-dashoffset: 1;
-    opacity: 0.5;
+    opacity: 0.55;
   }
-  40%,
+  39%,
   96% {
     stroke-dashoffset: 0;
-    opacity: 0.5;
+    opacity: 0.55;
   }
   100% {
     stroke-dashoffset: 0;
     opacity: 0;
   }
 }
-@keyframes vc-story-join-3 {
+@keyframes vc-story-stretch-3 {
   0%,
-  40% {
+  41% {
     stroke-dashoffset: 1;
-    opacity: 0.5;
+    opacity: 0.55;
   }
-  45%,
+  46%,
   96% {
     stroke-dashoffset: 0;
-    opacity: 0.5;
+    opacity: 0.55;
   }
   100% {
     stroke-dashoffset: 0;
     opacity: 0;
   }
 }
-@keyframes vc-story-join-4 {
+@keyframes vc-story-stretch-4 {
   0%,
-  45% {
+  46% {
     stroke-dashoffset: 1;
-    opacity: 0.5;
+    opacity: 0.55;
   }
   50%,
   96% {
     stroke-dashoffset: 0;
-    opacity: 0.5;
+    opacity: 0.55;
   }
   100% {
     stroke-dashoffset: 0;
     opacity: 0;
   }
 }
-@keyframes vc-story-age {
+@keyframes vc-story-join-1 {
   0%,
-  52% {
+  24% {
     opacity: 0;
   }
-  64%,
-  96% {
-    opacity: 0.3;
-  }
-  100% {
-    opacity: 0;
-  }
-}
-@keyframes vc-story-edge {
-  0%,
-  66% {
-    opacity: 0;
-  }
-  72%,
+  27%,
   96% {
     opacity: 1;
   }
@@ -550,16 +593,97 @@
     opacity: 0;
   }
 }
-@keyframes vc-story-meet {
+@keyframes vc-story-join-2 {
   0%,
-  80% {
-    stroke-dashoffset: 1;
+  31% {
+    opacity: 0;
+  }
+  34%,
+  96% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+@keyframes vc-story-join-3 {
+  0%,
+  38% {
+    opacity: 0;
+  }
+  41%,
+  96% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+@keyframes vc-story-edge {
+  0%,
+  50% {
+    opacity: 0;
+  }
+  54%,
+  96% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+@keyframes vc-story-age {
+  0%,
+  62% {
+    opacity: 0;
+  }
+  78%,
+  96% {
+    opacity: 0.3;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+@keyframes vc-story-woodlot-age {
+  0%,
+  62% {
+    opacity: 0;
+  }
+  78%,
+  96% {
     opacity: 0.5;
   }
-  86%,
+  100% {
+    opacity: 0;
+  }
+}
+@keyframes vc-story-grow {
+  0%,
+  62% {
+    opacity: 0;
+    transform: scale(0.3);
+  }
+  80%,
+  96% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(1);
+  }
+}
+@keyframes vc-story-meet {
+  0%,
+  82% {
+    stroke-dashoffset: 1;
+    opacity: 0.55;
+  }
+  88%,
   96% {
     stroke-dashoffset: 0;
-    opacity: 0.5;
+    opacity: 0.55;
   }
   100% {
     stroke-dashoffset: 0;
@@ -568,10 +692,10 @@
 }
 @keyframes vc-story-junction {
   0%,
-  85% {
+  87% {
     opacity: 0;
   }
-  89%,
+  90%,
   96% {
     opacity: 1;
   }
@@ -581,79 +705,80 @@
 }
 @keyframes vc-story-caption-1 {
   0%,
-  12% {
+  10% {
     opacity: 1;
   }
-  14%,
+  12%,
   100% {
     opacity: 0;
   }
 }
 @keyframes vc-story-caption-2 {
   0%,
-  14% {
+  12% {
     opacity: 0;
   }
-  16%,
-  28% {
+  14%,
+  22% {
     opacity: 1;
   }
-  30%,
+  24%,
   100% {
     opacity: 0;
   }
 }
 @keyframes vc-story-caption-3 {
   0%,
-  30% {
+  24% {
     opacity: 0;
   }
-  32%,
-  50% {
+  26%,
+  48% {
     opacity: 1;
   }
-  52%,
+  50%,
   100% {
     opacity: 0;
   }
 }
 @keyframes vc-story-caption-4 {
   0%,
-  52% {
+  50% {
     opacity: 0;
   }
-  54%,
-  64% {
+  52%,
+  60% {
     opacity: 1;
   }
-  66%,
+  62%,
   100% {
     opacity: 0;
   }
 }
 @keyframes vc-story-caption-5 {
   0%,
-  66% {
+  62% {
     opacity: 0;
   }
-  68%,
-  78% {
+  64%,
+  80% {
     opacity: 1;
   }
-  80%,
+  82%,
   100% {
     opacity: 0;
   }
 }
 @keyframes vc-story-caption-6 {
   0%,
-  80% {
+  82% {
     opacity: 0;
   }
-  82%,
+  84%,
   96% {
     opacity: 1;
   }
+  98%,
   100% {
     opacity: 0;
   }

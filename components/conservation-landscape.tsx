@@ -15,41 +15,87 @@ const motionQuery = '(prefers-reduced-motion: reduce)';
 // only; on main these come from the home translations (lib/i18n), which ship with the next
 // full release.
 const t = {
-  landscapeStoryValley: 'A valley of separate woodlots and fields.',
-  landscapeStoryPlan: 'Map the old-growth corridor along the streams and ridges.',
-  landscapeStoryJoin: 'It is built woodlot by woodlot, as each owner joins.',
-  landscapeStoryAge: 'Left natural, it ages toward old growth.',
+  landscapeStoryValley:
+    'Three neighbors. Three separate woodlots behind their homes.',
+  landscapeStoryPlan:
+    'They start a co-op and map one corridor through all three.',
+  landscapeStoryJoin: 'Each owner agrees for their own plot, and it connects.',
+  landscapeStoryAge: 'Left alone, the woodlots behind the houses grow old.',
   landscapeStoryEdge:
-    'Beside it: tree crops on an owner’s field, and a trail the co-op votes for.',
-  landscapeStoryNext: 'The aim: each co-op’s corridor meets the next.',
+    'A shared trail goes to a co-op vote. Tree crops on a field are the owner’s call.',
+  landscapeStoryNext: 'The aim: the corridor meets the next co-op’s.',
   landscapeStorySummary:
-    'Map the corridor, build it woodlot by woodlot, let it age toward old growth and, in time, meet the next co-op’s.',
+    'Neighbors start a co-op and map one corridor through their woodlots. Each owner agrees for their own plot, shared choices go to a vote, the woods grow old and, in time, the corridor meets the next co-op’s.',
   landscapeNextCoop: 'Next co-op',
-  landscapePause: 'Pause the animation',
-  landscapePlay: 'Play the animation',
 } as const;
 
-// Geometry of the corridor story (viewBox 600 by 470). The spine follows the creek, cut into
-// the stretches that join one at a time, with a branch along the shared habitat path and one
-// along the lower fields.
+// Geometry of the corridor story (viewBox 600 by 470). Each of the three plots has a woodlot
+// behind its house. The corridor runs through all three along the shared habitat path, one
+// stretch per plot, then follows the creek. Each plot connects at its own node.
 const STORY = {
-  creekA: 'M505-30C450 36 536 73 480 130',
-  creekRest: 'S482 213 540 249S556 347 515 378S517 452 565 499',
-  branchNorth:
-    'M115 241C147 222 193 226 222 245S278 282 298 253S305 208 344 201S400 223 445 193L497 197',
-  branchSouth: 'M186 375C240 402 300 416 360 394S470 372 515 378',
-  segments: [
-    'M505-30C450 36 536 73 480 130C424 187 482 213 540 249',
-    'M115 241C147 222 193 226 222 245S278 282 298 253S305 208 344 201S400 223 445 193L497 197',
-    'M540 249C598 285 556 347 515 378C474 409 517 452 565 499',
-    'M186 375C240 402 300 416 360 394S470 372 515 378',
+  creek:
+    'M505-30C450 36 536 73 480 130S482 213 540 249S556 347 515 378S517 452 565 499',
+  path: 'M115 241C147 222 193 226 222 245S278 282 298 253S305 208 344 201S400 223 445 193L497 197',
+  plots: [
+    {
+      outline: 'M72 164L165 112L270 152L251 258L172 284L64 253Z',
+      woodlot:
+        'M172 150C200 138 244 152 252 186C258 214 250 246 226 252C200 258 172 250 162 224C154 198 154 162 172 150Z',
+      stretch: 'M115 241C147 222 193 226 222 245C240 257 256 266 272 268',
+      link: 'M117 233L134 212',
+      node: [116, 241],
+      vote: [162, 170],
+      oldTrees: [
+        [188, 172, 11],
+        [216, 170, 9],
+        [232, 198, 11],
+        [196, 206, 10],
+        [214, 232, 9],
+        [178, 228, 8],
+      ],
+    },
+    {
+      outline: 'M172 284L251 258L394 272L426 364L314 409L186 375L134 328Z',
+      woodlot:
+        'M176 318C196 296 236 282 262 276C276 292 276 326 264 350C250 374 218 384 196 372C174 360 166 334 176 318Z',
+      stretch: 'M272 268C284 270 292 262 298 253C318 224 305 208 344 201',
+      link: 'M277 274L297 295',
+      node: [272, 268],
+      vote: [330, 296],
+      oldTrees: [
+        [200, 316, 10],
+        [228, 304, 9],
+        [250, 322, 11],
+        [196, 346, 9],
+        [226, 344, 11],
+        [246, 356, 8],
+      ],
+    },
+    {
+      outline: 'M270 152L333 108L441 133L474 220L394 272L251 258Z',
+      woodlot:
+        'M296 150C316 126 360 122 378 146C388 164 384 196 364 208C342 220 308 216 296 196C286 180 284 164 296 150Z',
+      stretch: 'M344 201C383 194 400 223 445 193L497 197',
+      link: 'M436 190L416 184',
+      node: [442, 195],
+      vote: [432, 144],
+      oldTrees: [
+        [314, 152, 10],
+        [340, 142, 9],
+        [362, 156, 11],
+        [322, 182, 10],
+        [350, 188, 11],
+        [370, 184, 8],
+      ],
+    },
   ],
   band: [
-    [232, 365],
-    [258, 374],
-    [286, 379],
-    [314, 378],
-    [341, 371],
+    [86, 184],
+    [100, 190],
+    [84, 200],
+    [98, 206],
+    [82, 216],
+    [96, 222],
   ],
   exit: 'M540 249C552 243 562 234 574 228',
   neighbour: 'M640 196C618 204 596 216 574 228',
@@ -273,8 +319,6 @@ export function ConservationLandscape({
     () => true,
   );
   const [visible, setVisible] = useState(true);
-  // The loop runs longer than five seconds, so a visitor can stop it.
-  const [userPaused, setUserPaused] = useState(false);
 
   useEffect(() => {
     if (!figure.current || !('IntersectionObserver' in window)) return;
@@ -290,26 +334,10 @@ export function ConservationLandscape({
     <figure
       className="vc-landscape"
       ref={figure}
-      data-motion={
-        reducedMotion
-          ? 'static'
-          : visible && !userPaused
-            ? 'running'
-            : 'paused'
-      }
+      data-motion={reducedMotion ? 'static' : visible ? 'running' : 'paused'}
     >
       <div className="vc-landscape-heading">
         <span>Small places. Shared purpose.</span>
-        {!reducedMotion && (
-          <button
-            type="button"
-            className="vc-landscape-toggle"
-            aria-pressed={userPaused}
-            onClick={() => setUserPaused((paused) => !paused)}
-          >
-            {userPaused ? t.landscapePlay : t.landscapePause}
-          </button>
-        )}
       </div>
 
       <svg
@@ -413,31 +441,56 @@ export function ConservationLandscape({
             />
           </g>
 
-          {/* The corridor story, under the trees and hedges: the planned spine along the creek
-              and two branches, the stretches that turn solid as owners join, and the aged
-              canopy. Without motion every part shows in its final state. */}
+          {/* The corridor story, under the trees and hedges: the woodlot behind each house, the
+              planned corridor through all three, the stretch that turns solid as each owner
+              agrees, and the canopy that deepens as the woods grow old. Without motion every
+              part shows in its final state. */}
           <g className="vc-landscape-story-spine" aria-hidden="true">
-            <path
-              d={`${STORY.creekA}${STORY.creekRest}`}
-              className="vc-landscape-story-plan"
-            />
-            <path d={STORY.branchNorth} className="vc-landscape-story-plan" />
-            <path d={STORY.branchSouth} className="vc-landscape-story-plan" />
-            {STORY.segments.map((d, i) => (
+            {STORY.plots.map((plot) => (
               <path
-                key={d}
-                d={d}
+                key={plot.woodlot}
+                d={plot.woodlot}
+                className="vc-landscape-story-woodlot"
+              />
+            ))}
+            <path d={STORY.creek} className="vc-landscape-story-plan" />
+            <path d={STORY.path} className="vc-landscape-story-plan" />
+            {STORY.plots.map((plot, i) => (
+              <path
+                key={plot.stretch}
+                d={plot.stretch}
                 pathLength={1}
                 className={`vc-landscape-story-segment vc-landscape-story-segment-${i + 1}`}
               />
             ))}
-            {STORY.segments.map((d) => (
+            <path
+              d={STORY.creek}
+              pathLength={1}
+              className="vc-landscape-story-segment vc-landscape-story-segment-4"
+            />
+            {[...STORY.plots.map((plot) => plot.stretch), STORY.creek].map(
+              (d) => (
+                <path key={d} d={d} className="vc-landscape-story-aged" />
+              ),
+            )}
+            {STORY.plots.map((plot) => (
               <path
-                key={d}
-                d={d}
-                className="vc-landscape-story-aged"
+                key={plot.woodlot}
+                d={plot.woodlot}
+                className="vc-landscape-story-woodlot-aged"
               />
             ))}
+            {STORY.plots.flatMap((plot) =>
+              plot.oldTrees.map(([x, y, r]) => (
+                <circle
+                  key={`${x}-${y}`}
+                  cx={x}
+                  cy={y}
+                  r={r}
+                  className="vc-landscape-story-old-tree"
+                />
+              )),
+            )}
           </g>
 
           <path
@@ -520,14 +573,22 @@ export function ConservationLandscape({
           <Tree x={401} y={245} size={0.65} phase={-7} />
           <Tree x={387} y={355} size={0.82} phase={-12} />
 
-          {/* Beside the corridor: a tree-crop band on a field, a trail along the edge, and the
-              neighbouring co-op's corridor arriving at the valley's edge. */}
           <g className="vc-landscape-story-edge" aria-hidden="true">
             <path
-              d={STORY.branchNorth}
+              d={STORY.path}
               transform="translate(3 -13)"
               className="vc-landscape-story-trail"
             />
+            {STORY.plots.map((plot) => (
+              <g
+                key={plot.outline}
+                transform={`translate(${plot.vote[0]} ${plot.vote[1]})`}
+                className="vc-landscape-story-vote"
+              >
+                <rect x="-8" y="-9" width="16" height="18" rx="2.5" />
+                <path d="M-4 0l3 3 5-6" />
+              </g>
+            ))}
             <g className="vc-landscape-story-band">
               {STORY.band.map(([x, y]) => (
                 <circle key={`${x}-${y}`} cx={x} cy={y} r="4.6" />
@@ -588,6 +649,28 @@ export function ConservationLandscape({
               r="2.5"
               className="vc-landscape-node-core"
             />
+          </g>
+
+          {/* How the co-op works: each owner agrees for their own plot, which lights up and
+              connects at its node; shared choices such as a trail are voted on by every member;
+              tree crops on a field are the owner's own call. */}
+          <g className="vc-landscape-story-joins" aria-hidden="true">
+            {STORY.plots.map((plot, i) => (
+              <g
+                key={plot.outline}
+                className={`vc-landscape-story-join vc-landscape-story-join-${i + 1}`}
+              >
+                <path d={plot.outline} className="vc-landscape-story-plot" />
+                <path d={plot.link} className="vc-landscape-story-link" />
+                <g transform={`translate(${plot.node[0]} ${plot.node[1]})`}>
+                  <circle r="9.5" className="vc-landscape-story-joined" />
+                  <path
+                    d="M-4 0l3 3 5-6"
+                    className="vc-landscape-story-check"
+                  />
+                </g>
+              </g>
+            ))}
           </g>
 
           <path
@@ -670,8 +753,8 @@ export function ConservationLandscape({
           t.landscapeStoryValley,
           t.landscapeStoryPlan,
           t.landscapeStoryJoin,
-          t.landscapeStoryAge,
           t.landscapeStoryEdge,
+          t.landscapeStoryAge,
           t.landscapeStoryNext,
         ].map((caption, i) => (
           <span
