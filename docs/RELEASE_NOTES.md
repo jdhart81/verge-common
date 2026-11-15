@@ -1,5 +1,16 @@
 # Release notes
 
+## v0.11.0 — uses, facts and edge bands along the corridor; the corridor story (release branch on production 12e0fec)
+
+Production `12e0fec` plus only these changes from `main` (#90, #91, #92). Woodland projects stay behind `VERGE_WOODLAND_DFM`.
+
+- **Natural corridor is the default.** A co-op can adopt a shared recreation use on a mapped stretch (walking, bike, ski or motorized trail, disc golf, sugaring lines, forest farming). It needs a corridor that still holds with the ground cleared, the agreement of every holder whose woodlot it crosses, and a co-op vote. No override.
+- **Facts are recorded, not decided.** A steward records a right-of-way or a blowdown with its source and another steward reviews it. A right-of-way is recorded even when it breaks a link, and its cleared ground stops counting as forest. A blowdown stays corridor.
+- **Agroforestry beside the corridor.** A woodlot's holder can plant an edge band of native tree crops on their own field. A band may not overlap retained forest and never counts as corridor or old growth. The corridor itself is never farmed.
+- **Corridor map.** The Woodland tab shows uses, facts and bands over the reviewed layers, and members draw routes and areas there.
+- **Opening page.** The landscape tells the corridor story in six captioned scenes, with a pause control and a still view for reduced motion. English only on this branch; the Hindi captions ship with the Hindi home page.
+- Projects with no adopted use, reviewed fact or band store, check and project exactly as before. `PRIVACY.md` describes the new records. Details: [woodland guide](WOODLAND.md#recreation-along-the-corridor).
+
 ## v0.11.0 — native old growth (dfm-core 0.3.0; release branch on production 7541560)
 
 The old-growth corridor is now the lead of woodland projects, and the engine behind it moves to dfm-core 0.3.0. Woodland projects stay off unless the operator sets `VERGE_WOODLAND_DFM=1`. No deployment is part of this change.
