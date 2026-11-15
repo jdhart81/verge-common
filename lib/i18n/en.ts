@@ -139,6 +139,17 @@ export const en = {
   landscapeCompassNorth: 'N',
   landscapeCaptionMain: 'Land. Neighbors. A shared future.',
   landscapeCaptionDisclaimer: 'Illustration only · not real parcel boundaries',
+  // The corridor story: one caption per scene of the loop, and a summary shown without motion.
+  landscapeStoryValley: 'A valley of separate woodlots and fields.',
+  landscapeStoryPlan: 'Map the old-growth corridor along the streams and ridges.',
+  landscapeStoryJoin: 'It is built woodlot by woodlot, as each owner joins.',
+  landscapeStoryAge: 'Left natural, it ages toward old growth.',
+  landscapeStoryEdge: 'Beside it: tree crops on an owner’s field, and a trail the co-op votes for.',
+  landscapeStoryNext: 'The aim: each co-op’s corridor meets the next.',
+  landscapeStorySummary: 'Map the corridor, build it woodlot by woodlot, let it age toward old growth and, in time, meet the next co-op’s.',
+  landscapeNextCoop: 'Next co-op',
+  landscapePause: 'Pause the animation',
+  landscapePlay: 'Play the animation',
 } as const;
 
 // Values in other language dictionaries must be strings for the same keys.

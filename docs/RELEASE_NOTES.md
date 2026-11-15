@@ -1,5 +1,9 @@
 # Release notes
 
+## Unreleased — the corridor story on the opening page
+
+Not deployed. The opening page's landscape now tells the corridor story in one 36-second loop, with a caption for each scene: a valley of separate woodlots, the old-growth corridor mapped along streams and ridges, built woodlot by woodlot as owners join, aging toward old growth, tree crops and a trail beside it, and, as the aim, meeting the next co-op's corridor. SVG and CSS only, in English and Hindi. A visitor can pause it; with reduced motion it shows the finished scene and one summary line. It is still labelled an illustration.
+
 ## Unreleased — uses and facts along the corridor
 
 Not deployed. By default the corridor is natural and ages toward old growth. A woodland co-op can now adopt a shared recreation use on a mapped stretch: a walking trail, a bike trail, disc golf or another use.
