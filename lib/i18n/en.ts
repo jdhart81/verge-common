@@ -140,16 +140,14 @@ export const en = {
   landscapeCaptionMain: 'Land. Neighbors. A shared future.',
   landscapeCaptionDisclaimer: 'Illustration only · not real parcel boundaries',
   // The corridor story: one caption per scene of the loop, and a summary shown without motion.
-  landscapeStoryValley: 'A valley of separate woodlots and fields.',
-  landscapeStoryPlan: 'Map the old-growth corridor along the streams and ridges.',
-  landscapeStoryJoin: 'It is built woodlot by woodlot, as each owner joins.',
-  landscapeStoryAge: 'Left natural, it ages toward old growth.',
-  landscapeStoryEdge: 'Beside it: tree crops on an owner’s field, and a trail the co-op votes for.',
-  landscapeStoryNext: 'The aim: each co-op’s corridor meets the next.',
-  landscapeStorySummary: 'Map the corridor, build it woodlot by woodlot, let it age toward old growth and, in time, meet the next co-op’s.',
+  landscapeStoryValley: 'Three neighbors. Three separate woodlots behind their homes.',
+  landscapeStoryPlan: 'They start a co-op and map one corridor through all three.',
+  landscapeStoryJoin: 'Each owner agrees for their own plot, and it connects.',
+  landscapeStoryAge: 'Left alone, the woodlots behind the houses grow old.',
+  landscapeStoryEdge: 'A shared trail goes to a co-op vote. Tree crops on a field are the owner’s call.',
+  landscapeStoryNext: 'The aim: the corridor meets the next co-op’s.',
+  landscapeStorySummary: 'Neighbors start a co-op and map one corridor through their woodlots. Each owner agrees for their own plot, shared choices go to a vote, the woods grow old and, in time, the corridor meets the next co-op’s.',
   landscapeNextCoop: 'Next co-op',
-  landscapePause: 'Pause the animation',
-  landscapePlay: 'Play the animation',
 } as const;
 
 // Values in other language dictionaries must be strings for the same keys.

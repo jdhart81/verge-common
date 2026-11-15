@@ -36,27 +36,38 @@ void test('equal preferences preserve the first supported language', () => {
 });
 
 void test('the Hindi dictionary has every English key and home content uses only defined keys', async () => {
-  const read = (path) => readFile(new URL(`../${path}`, import.meta.url), 'utf8');
+  const read = (path) =>
+    readFile(new URL(`../${path}`, import.meta.url), 'utf8');
   const enSource = await read('lib/i18n/en.ts');
   const hiSource = await read('lib/i18n/hi.ts');
   const homeSource = await read('components/home-content.tsx');
   const landscapeSource = await read('components/conservation-landscape.tsx');
-  const getKeys = (source) => [...source.matchAll(/^  (\w+):/gm)].map((match) => match[1]);
+  const getKeys = (source) =>
+    [...source.matchAll(/^  (\w+):/gm)].map((match) => match[1]);
   const enKeys = getKeys(enSource);
   const hiKeys = getKeys(hiSource);
-  assert.ok(enKeys.length > 90, 'homepage and landscape translation keys must be present');
-  assert.equal(new Set(enKeys).size, enKeys.length, 'no duplicate English keys');
+  assert.ok(
+    enKeys.length > 90,
+    'homepage and landscape translation keys must be present',
+  );
+  assert.equal(
+    new Set(enKeys).size,
+    enKeys.length,
+    'no duplicate English keys',
+  );
   assert.equal(new Set(hiKeys).size, hiKeys.length, 'no duplicate Hindi keys');
   assert.deepEqual(hiKeys, enKeys, 'same keys in the same order');
-  const usedKeys = [homeSource, landscapeSource]
-    .flatMap((source) => [...source.matchAll(/\bt\.(\w+)/g)].map((match) => match[1]));
+  const usedKeys = [homeSource, landscapeSource].flatMap((source) =>
+    [...source.matchAll(/\bt\.(\w+)/g)].map((match) => match[1]),
+  );
   for (const key of usedKeys) {
     assert.ok(enKeys.includes(key), `missing translated key: ${key}`);
   }
 });
 
 void test('hosted and static entry points keep existing URLs and English-first hydration', async () => {
-  const read = (path) => readFile(new URL(`../${path}`, import.meta.url), 'utf8');
+  const read = (path) =>
+    readFile(new URL(`../${path}`, import.meta.url), 'utf8');
   const home = await read('components/home-content.tsx');
   const route = await read('app/page.tsx');
   const staticClient = await read('public-site/main.tsx');
@@ -64,38 +75,94 @@ void test('hosted and static entry points keep existing URLs and English-first h
   assert.match(home, /returnTo=%2Fworkspace%2F/);
   assert.match(home, /href=\{startLink\}/);
   assert.match(home, /<UpdatesLink label=\{t\.getUpdates\}/);
-  assert.match(route, /resolveHomeLocale\(requestHeaders\.get\('accept-language'\)\)/);
+  assert.match(
+    route,
+    /resolveHomeLocale\(requestHeaders\.get\('accept-language'\)\)/,
+  );
   assert.match(staticClient, /useSyncExternalStore\(/);
-  assert.match(staticClient, /getServerLocale\(\): HomeLocale \{\s*return 'en';/);
+  assert.match(
+    staticClient,
+    /getServerLocale\(\): HomeLocale \{\s*return 'en';/,
+  );
   assert.match(staticRenderer, /publicPreview locale="en"/);
   assert.match(staticClient, /window\.location\.pathname === '\/demo\/'/);
 });
 
-void test('the corridor story has a caption per scene, a pause control and a still final state', async () => {
-  const read = (path) => readFile(new URL(`../${path}`, import.meta.url), 'utf8');
+void test('the corridor story shows how a co-op works, loops without a control and has a still final state', async () => {
+  const read = (path) =>
+    readFile(new URL(`../${path}`, import.meta.url), 'utf8');
   const landscape = await read('components/conservation-landscape.tsx');
   const css = await read('components/conservation-landscape.css');
   const en = await read('lib/i18n/en.ts');
   // Six scenes, each with its caption, plus a summary read once by screen readers.
   for (const key of ['Valley', 'Plan', 'Join', 'Age', 'Edge', 'Next'])
     assert.ok(landscape.includes(`t.landscapeStory${key}`), key);
-  assert.match(landscape, /vc-landscape-story-summary[\s\S]*t\.landscapeStorySummary/);
-  assert.match(landscape, /aria-hidden="true"\s+className=\{`vc-landscape-story-caption /);
+  assert.match(
+    landscape,
+    /vc-landscape-story-summary[\s\S]*t\.landscapeStorySummary/,
+  );
+  assert.match(
+    landscape,
+    /aria-hidden="true"\s+className=\{`vc-landscape-story-caption /,
+  );
   for (let scene = 1; scene <= 6; scene++)
-    assert.ok(css.includes(`@keyframes vc-story-caption-${scene}`), `caption ${scene}`);
-  // The loop runs longer than five seconds, so it can be paused; without motion it is still.
-  assert.match(landscape, /aria-pressed=\{userPaused\}/);
-  assert.match(landscape, /userPaused \? t\.landscapePlay : t\.landscapePause/);
-  assert.match(landscape, /\{!reducedMotion && \(/);
-  assert.match(css, /\[data-motion='paused'\] \[class\*='vc-landscape-'\]\s*\{\s*animation-play-state: paused/);
-  assert.match(css, /prefers-reduced-motion: reduce[\s\S]*animation: none !important/);
+    assert.ok(
+      css.includes(`@keyframes vc-story-caption-${scene}`),
+      `caption ${scene}`,
+    );
+  // The loop simply runs: no control, paused only off screen; without motion it is still.
+  assert.doesNotMatch(
+    landscape,
+    /<button|userPaused|landscapePause|landscapePlay/,
+  );
+  assert.doesNotMatch(en, /landscapePause|landscapePlay/);
+  assert.match(
+    landscape,
+    /data-motion=\{reducedMotion \? 'static' : visible \? 'running' : 'paused'\}/,
+  );
+  assert.match(
+    css,
+    /\[data-motion='paused'\] \[class\*='vc-landscape-'\]\s*\{\s*animation-play-state: paused/,
+  );
+  // How the co-op works: a woodlot per plot, each plot joining at its own node, a vote, old growth.
+  for (const piece of [
+    'vc-landscape-story-woodlot',
+    'vc-landscape-story-join-',
+    'vc-landscape-story-link',
+    'vc-landscape-story-vote',
+    'vc-landscape-story-old-tree',
+  ])
+    assert.ok(landscape.includes(piece), piece);
+  assert.equal(
+    (landscape.match(/woodlot:\s/g) ?? []).length,
+    3,
+    'one woodlot for each of the three plots',
+  );
+  for (const name of [
+    'vc-story-join-1',
+    'vc-story-join-2',
+    'vc-story-join-3',
+    'vc-story-woodlot-age',
+    'vc-story-grow',
+  ])
+    assert.ok(css.includes(`@keyframes ${name}`), name);
+  assert.match(
+    css,
+    /prefers-reduced-motion: reduce[\s\S]*animation: none !important/,
+  );
   // Every story animation is switched off in the static view, which shows the final state.
-  const storyRules = [...css.matchAll(/([^{}]*)\{\s*animation: vc-story-/g)].map((m) => m[1]);
+  const storyRules = [
+    ...css.matchAll(/([^{}]*)\{\s*animation: vc-story-/g),
+  ].map((m) => m[1]);
   assert.ok(storyRules.length >= 15, `${storyRules.length} story animations`);
   for (const selector of storyRules)
     assert.ok(selector.includes(":not([data-motion='static'])"), selector);
   // The junction scene is the aim, not a feature on offer, and nothing claims a real place.
   assert.match(en, /landscapeStoryNext: 'The aim: /);
+  assert.match(en, /landscapeStoryJoin: 'Each owner agrees for their own plot/);
   assert.match(en, /landscapeCaptionDisclaimer: 'Illustration only/);
-  assert.doesNotMatch(en.match(/landscapeStory\w+: '[^']*'/g).join(' '), /certif|guarantee|carbon credit/i);
+  assert.doesNotMatch(
+    en.match(/landscapeStory\w+: '[^']*'/g).join(' '),
+    /certif|guarantee|carbon credit/i,
+  );
 });
