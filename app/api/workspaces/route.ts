@@ -155,6 +155,8 @@ export async function POST(request: Request) {
     if (
       data.op === 'submit_treatment_plan' ||
       data.op === 'propose_corridor_use' ||
+      // AG1: a band is checked for overlap with the corridor.
+      data.op === 'propose_edge_band' ||
       // CF2: a right-of-way is checked; a blowdown has nothing to check (CF4).
       (data.op === 'record_corridor_fact' &&
         data.payload?.kind === 'right-of-way')

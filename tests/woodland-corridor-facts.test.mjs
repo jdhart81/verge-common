@@ -98,7 +98,7 @@ await test('CF1 a fact is recorded by a steward with its source and reviewed by 
   assert.equal(adoptedUseUnits(f.s, f.project).length, fact(f, id).units.length);
   // A use is not reviewed like a fact.
   const use = f.run('propose_corridor_use', { projectId: f.project, name: 'Trail', kind: 'ski-trail', audience: 'members', features: ALONG_EDGE.map((l) => ({ ...l, properties: { cleared_width_m: 0 } })) }, member);
-  refuses(() => f.run('review_corridor_fact', { id: use, decision: 'approve', note: 'x' }, reviewer), /Only a recorded fact is reviewed/, 409);
+  refuses(() => f.run('review_corridor_fact', { id: use, decision: 'approve', note: 'x' }, reviewer), /Only a recorded fact or an edge band is reviewed/, 409);
 });
 
 await test('CF2 + CF3 a right-of-way is never blocked: the co-op sees the links it breaks, and its cleared ground stops counting', () => {
