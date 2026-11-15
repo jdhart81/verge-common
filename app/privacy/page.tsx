@@ -21,7 +21,7 @@ export default function PrivacyPage() {
       intro="Understand what your co-op shares, what stays private, and what happens when you leave. VergeCommon is operated by Viridis LLC."
     >
       <p>
-        Updated October 4, 2026. This page summarizes the hosted public beta.
+        Updated November 15, 2026. This page summarizes the hosted public beta.
         The{' '}
         <a href={documentBranch + '/PRIVACY.md'}>
           full privacy and visibility policy
@@ -199,7 +199,15 @@ export default function PrivacyPage() {
           see another member’s woodlot, boundary, planned join year or place in
           the build-out order. Every member sees the share of the spine
           committed and which links between core areas it holds, which can
-          indicate that the woodlots along a single route have consented. Account deletion removes your treatment plans; a
+          indicate that the woodlots along a single route have consented. A
+          recreation use proposed along the corridor, and a right-of-way or
+          blowdown a steward records there, are shared co-op records visible
+          to active members; which woodlots a route crosses is shown to
+          stewards and to the members who recorded those woodlots, and other
+          members see only how many holders must agree and how many have. An
+          agroforestry edge band you record on your own woodlot is shown,
+          with its map and species, to stewards and you; other members see
+          only that a band exists, its kind and its area. Account deletion removes your treatment plans; a
           plan another member reviewed or voted on keeps only its status, the
           review decision and pseudonymous votes.
         </p>

@@ -1,12 +1,12 @@
 # Release notes
 
-## Unreleased — the corridor story on the opening page
+## v0.11.0 — the corridor story on the opening page (deployed 15 November 2026, 21:34 UTC, in release branch `3378166`, English only)
 
-Not deployed. The opening page's landscape now tells the corridor story in one 36-second loop, with a caption for each scene: a valley of separate woodlots, the old-growth corridor mapped along streams and ridges, built woodlot by woodlot as owners join, aging toward old growth, tree crops and a trail beside it, and, as the aim, meeting the next co-op's corridor. SVG and CSS only, in English and Hindi. A visitor can pause it; with reduced motion it shows the finished scene and one summary line. It is still labelled an illustration.
+The Hindi captions are on `main` and not yet live. The opening page's landscape now tells the corridor story in one 36-second loop, with a caption for each scene: a valley of separate woodlots, the old-growth corridor mapped along streams and ridges, built woodlot by woodlot as owners join, aging toward old growth, tree crops and a trail beside it, and, as the aim, meeting the next co-op's corridor. SVG and CSS only, in English and Hindi. A visitor can pause it; with reduced motion it shows the finished scene and one summary line. It is still labelled an illustration.
 
-## Unreleased — uses and facts along the corridor
+## v0.11.0 — uses, facts and edge bands along the corridor (deployed 15 November 2026, 21:34 UTC, as release branch `3378166` on production `12e0fec`)
 
-Not deployed. By default the corridor is natural and ages toward old growth. A woodland co-op can now adopt a shared recreation use on a mapped stretch: a walking trail, a bike trail, disc golf or another use.
+See the [receipt](history/RELEASE_CORRIDOR_USES_2026-11-15.md). By default the corridor is natural and ages toward old growth. A woodland co-op can now adopt a shared recreation use on a mapped stretch: a walking trail, a bike trail, disc golf or another use.
 
 - A member uploads the route: trail lines with the width cleared of trees, and polygons of cleared ground.
 - **The corridor comes first.** The corridor check runs with the cleared ground removed. A use that loses or pinches a link is blocked, with no override vote.

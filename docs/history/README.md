@@ -4,6 +4,7 @@ Point-in-time receipts and reviews, preserved unchanged as the audit record. The
 
 | Date | Record |
 | --- | --- |
+| 2026-11-15 | [Uses, facts and edge bands along the corridor; the corridor story](RELEASE_CORRIDOR_USES_2026-11-15.md) |
 | 2026-11-15 | [The old-growth corridor first, on dfm-core 0.3.0](RELEASE_OLD_GROWTH_2026-11-15.md) |
 | 2026-11-14 | [Woodland downloads as a Land Package](RELEASE_LAND_PACKAGE_2026-11-14.md) |
 | 2026-11-14 | [Related open projects in the public footers; dendriticforest.com site update](RELEASE_ECOSYSTEM_LINKS_2026-11-14.md) |
