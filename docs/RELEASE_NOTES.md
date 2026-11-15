@@ -1,5 +1,9 @@
 # Release notes
 
+## v0.11.0 — the opening page shows how a co-op works (deployed 15 November 2026, 22:56 UTC, in release branch `f91cea0`, English only)
+
+See the [receipt](history/RELEASE_COOP_STORY_2026-11-15.md). The opening-page animation is rebuilt around the three plots: a woodlot behind each home, one corridor mapped through all three, each owner agreeing for their own plot and connecting at its node, a shared trail going to a co-op vote while tree crops on a field stay the owner's call, the woodlots growing old and, as the aim, the corridor meeting the next co-op's. The pause button is removed: the 40-second loop runs on its own, stops off screen, and reduced motion shows the finished scene. This replaces the 36-second version below. The Hindi captions are on `main` and not yet live.
+
 ## v0.11.0 — the corridor story on the opening page (deployed 15 November 2026, 21:34 UTC, in release branch `3378166`, English only)
 
 The Hindi captions are on `main` and not yet live. The opening page's landscape now tells the corridor story in one 36-second loop, with a caption for each scene: a valley of separate woodlots, the old-growth corridor mapped along streams and ridges, built woodlot by woodlot as owners join, aging toward old growth, tree crops and a trail beside it, and, as the aim, meeting the next co-op's corridor. SVG and CSS only, in English and Hindi. A visitor can pause it; with reduced motion it shows the finished scene and one summary line. It is still labelled an illustration.
