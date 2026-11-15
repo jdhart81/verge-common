@@ -1,8 +1,8 @@
 # Release notes
 
-## Unreleased — native old growth (dfm-core 0.3.0)
+## v0.11.0 — native old growth (dfm-core 0.3.0; deployed 15 November 2026, 15:11 UTC, as release branch `12e0fec` on production `7541560`)
 
-The old-growth corridor is now the lead of woodland projects, and the engine behind it moves to dfm-core 0.3.0. Woodland projects stay off unless the operator sets `VERGE_WOODLAND_DFM=1`. No deployment is part of this change.
+The old-growth corridor is now the lead of woodland projects, and the engine behind it moves to dfm-core 0.3.0. Woodland projects stay off unless the operator sets `VERGE_WOODLAND_DFM=1`. See the [receipt](history/RELEASE_OLD_GROWTH_2026-11-15.md).
 
 - **Engine:** `vendor/viridis-dfm-core-0.3.0.tgz` replaces the 0.2.0 tarball; it is the `npm pack` of hdfm-framework `packages/dfm-core` 0.3.0, and a test pins its SHA-256. Engine names in new results are `dfm-connectivity-0.3.0`, `dfm-spine-0.3.0` and `dfm-outlook-0.3.0`.
 - **A plantation is never projected as old growth.** Retained corridors and core areas can record how the stand was established (naturally regenerating, planted, or plantation), whether it was never plowed or clear-cut, and its share in native species, each with its source. A plantation never counts at old-growth age whatever its age; a remnant counts in every year; with a minimum native share, a stand of mostly introduced species does not count. The outlook shows how much committed forest is plantation or below the native share.
