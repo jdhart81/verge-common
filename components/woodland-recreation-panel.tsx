@@ -4,10 +4,11 @@
 // Natural corridor is the default. Members propose a route, agree for their own woodlots, vote
 // and end a use; stewards record and review facts. Every rule is enforced by the co-op's
 // commands on the server; this component only displays and sends.
-import { useId, useState } from 'react';
+import { lazy, Suspense, useId, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ControlLabel } from '@/components/ui/label';
+import type { WoodlandFeature, WoodlandLayers } from './woodland-map-editor';
 import {
   NativeSelect,
   NativeSelectOption,
@@ -19,9 +20,26 @@ import {
   RECREATION_LIMITS,
   FACT_KINDS,
   BLOWDOWN_SEVERITIES,
+  EDGE_BAND_KINDS,
+  drawnFeature,
 } from '@/lib/woodland-recreation.mjs';
 
+// MapLibre is loaded only when a member opens the corridor map.
+const WoodlandMap = lazy(() =>
+  import('./woodland-map').then((m) => ({ default: m.WoodlandMap })),
+);
 type Save = (op: string, payload: Record<string, unknown>) => Promise<boolean>;
+type Point = number[];
+/** Statuses shown on the map: everything that is proposed or in effect. */
+const ON_MAP = [
+  'blocked',
+  'awaiting_agreement',
+  'agreed',
+  'voting',
+  'adopted',
+  'submitted',
+  'reviewed',
+];
 type Pair = { a: string; b: string };
 type UseFeature = {
   type: 'Feature';
@@ -33,8 +51,14 @@ export type CorridorUse = {
   projectId: string;
   name: string;
   kind: string;
-  /** 'fact' for a right-of-way or blowdown; absent for a use the co-op decides on. */
+  /** 'fact' for a right-of-way or blowdown, 'band' for agroforestry beside the corridor; absent for a use. */
   basis?: string;
+  species?: { name: string; native: boolean }[];
+  nativeStatusSource?: string;
+  plantedYear?: number;
+  areaM2?: number;
+  /** A band on another member's land: only its kind, status and area are shown (AG7). */
+  hidden?: boolean;
   audience?: string;
   source?: string;
   eventYear?: number;
@@ -117,6 +141,8 @@ export function WoodlandRecreationPanel({
   uses,
   parcelNames,
   layersReviewed,
+  layers,
+  ownParcels,
   steward,
   memberId,
   disabled,
@@ -126,6 +152,10 @@ export function WoodlandRecreationPanel({
   uses: CorridorUse[];
   parcelNames: Record<string, string>;
   layersReviewed: boolean;
+  /** The current reviewed corridor layers, as background for the map. */
+  layers?: WoodlandLayers;
+  /** The viewer's own woodlots (stewards: every woodlot), as the co-op already shows them. */
+  ownParcels?: WoodlandFeature[];
   steward: boolean;
   memberId: string;
   disabled: boolean;
@@ -150,6 +180,41 @@ export function WoodlandRecreationPanel({
     width: '0',
   });
   const [factRoute, setFactRoute] = useState<UseFeature[] | null>(null);
+  const [band, setBand] = useState({
+    kind: EDGE_BAND_KINDS[0] as string,
+    name: '',
+    species: '',
+    source: '',
+    year: '',
+    native: false,
+  });
+  // Drawing on the map: finished shapes, and the one in progress.
+  const [mapOpen, setMapOpen] = useState(false);
+  const [drawn, setDrawn] = useState<UseFeature[]>([]);
+  const [shape, setShape] = useState<'line' | 'area' | null>(null);
+  const [points, setPoints] = useState<Point[]>([]);
+  const [drawWidth, setDrawWidth] = useState('0');
+  const finishShape = () => {
+    const feature = shape
+      ? drawnFeature(shape, points, Number(drawWidth) || 0)
+      : null;
+    if (feature) setDrawn((d) => [...d, feature as UseFeature]);
+    setShape(null);
+    setPoints([]);
+  };
+  const inProgress =
+    shape && points.length > 1
+      ? [
+          {
+            type: 'Feature' as const,
+            geometry: {
+              type: 'LineString',
+              coordinates: shape === 'area' ? [...points, points[0]] : points,
+            },
+            properties: { name: 'Drawing' },
+          },
+        ]
+      : [];
   const run = async (fn: () => Promise<unknown>) => {
     setError('');
     try {
@@ -158,9 +223,32 @@ export function WoodlandRecreationPanel({
       setError(e instanceof Error ? e.message : String(e));
     }
   };
-  const list = uses.filter((u) => u.projectId === projectId).slice().reverse();
+  const list = uses
+    .filter((u) => u.projectId === projectId)
+    .slice()
+    .reverse();
   const adopted = list.filter((u) => u.status === 'adopted');
-  const facts = list.filter((u) => u.status === 'reviewed');
+  const facts = list.filter(
+    (u) => u.status === 'reviewed' && u.basis === 'fact',
+  );
+  const bands = list.filter(
+    (u) => u.status === 'reviewed' && u.basis === 'band',
+  );
+  const mapped = [
+    ...list
+      .filter((u) => ON_MAP.includes(u.status))
+      .flatMap((u) =>
+        u.features.map((f) => ({
+          ...f,
+          properties: { ...f.properties, name: f.properties.name || u.name },
+        })),
+      ),
+    ...drawn.map((f, i) => ({
+      ...f,
+      properties: { ...f.properties, name: `Drawn ${i + 1}` },
+    })),
+    ...inProgress,
+  ];
   const pairs = (links?: Pair[]) =>
     (links ?? []).map((l) => `${l.a} – ${l.b}`).join('; ');
   return (
@@ -171,13 +259,13 @@ export function WoodlandRecreationPanel({
     >
       <h3>Uses and facts along the corridor</h3>
       <p className="small">
-        By default the corridor is natural and ages toward old growth. The
-        co-op can adopt a shared use on a mapped stretch, such as a walking
-        trail, a bike trail or disc golf. A use is adopted only if the corridor
-        still holds with its ground cleared, every holder of a woodlot it
-        crosses agrees, and the co-op votes for it. Cleared ground never counts
-        as retained forest or toward old growth. A holder or a steward can end
-        a use at any time.
+        By default the corridor is natural and ages toward old growth. The co-op
+        can adopt a shared use on a mapped stretch, such as a walking trail, a
+        bike trail or disc golf. A use is adopted only if the corridor still
+        holds with its ground cleared, every holder of a woodlot it crosses
+        agrees, and the co-op votes for it. Cleared ground never counts as
+        retained forest or toward old growth. A holder or a steward can end a
+        use at any time.
       </p>
       <p className="small" data-corridor-default>
         {adopted.length
@@ -188,12 +276,23 @@ export function WoodlandRecreationPanel({
           : ''}
       </p>
       <p className="small">
-        Stewards also record what the corridor has to live with. A
-        right-of-way (a power line, a road or access easement) is checked and
-        recorded even when it breaks a link, so the map shows the ground as
-        it is. A blowdown stays corridor: fallen trees are part of old growth,
-        leaving them is the default, and salvage is a treatment plan that
-        meets the corridor check. Another steward reviews each record.
+        Stewards also record what the corridor has to live with. A right-of-way
+        (a power line, a road or access easement) is checked and recorded even
+        when it breaks a link, so the map shows the ground as it is. A blowdown
+        stays corridor: fallen trees are part of old growth, leaving them is the
+        default, and salvage is a treatment plan that meets the corridor check.
+        Another steward reviews each record.
+      </p>
+      <p className="small" data-edge-bands>
+        The corridor itself is never farmed. Where a field meets it, a woodlot’s
+        holder can plant an edge band of native tree crops: nut and fruit trees,
+        alley cropping, silvopasture, a windbreak or a riparian buffer. A band
+        is a buffer beside the corridor, not part of it: it cannot overlap
+        retained forest, and it counts toward neither the corridor’s width nor
+        old growth.{' '}
+        {bands.length
+          ? `${bands.length} edge ${bands.length === 1 ? 'band' : 'bands'} in effect, ${(bands.reduce((sum, u) => sum + (u.areaM2 ?? 0), 0) / 10000).toFixed(2)} ha of buffer.`
+          : 'No edge band is in effect.'}
       </p>
       <p className="small">
         This records the co-op’s decision and the holders’ agreement. It does
@@ -205,37 +304,181 @@ export function WoodlandRecreationPanel({
           {error}
         </p>
       )}
+      {layersReviewed && layers && (
+        <div data-corridor-map>
+          <div className="actions">
+            <Button
+              type="button"
+              variant="outline"
+              aria-expanded={mapOpen}
+              onClick={() => setMapOpen((v) => !v)}
+            >
+              {mapOpen ? 'Hide the corridor map' : 'Show the corridor map'}
+            </Button>
+          </div>
+          {mapOpen && (
+            <>
+              <p className="small">
+                Orange: routes and areas of uses and facts that are proposed or
+                in effect, and anything you draw. Behind them: the reviewed
+                corridor layers{ownParcels?.length ? ' and your woodlots' : ''}.
+                To draw, start a shape, click the map for each point, drag a
+                numbered point to move it, then finish the shape. A drawing is
+                sent only when you propose or record it below.
+              </p>
+              <Suspense fallback={<p className="small">Loading the map…</p>}>
+                <WoodlandMap
+                  points={points}
+                  drawing={!!shape}
+                  disabled={disabled}
+                  layers={layers}
+                  treatments={[]}
+                  parcels={(ownParcels ?? []).map((p) => ({
+                    ...p,
+                    properties: {
+                      ...p.properties,
+                      name:
+                        parcelNames[String(p.properties.dfm_id)] ?? 'Woodlot',
+                    },
+                  }))}
+                  loss={[]}
+                  routes={mapped as unknown as WoodlandFeature[]}
+                  onAdd={(point) => setPoints((p) => [...p, point])}
+                  onMove={(index, point) =>
+                    setPoints((p) => p.map((v, i) => (i === index ? point : v)))
+                  }
+                  onSelect={() => undefined}
+                />
+              </Suspense>
+              <div className="actions">
+                <ControlLabel htmlFor={`${id}-draw-width`}>
+                  Width cleared along a drawn trail (m)
+                </ControlLabel>
+                <Input
+                  id={`${id}-draw-width`}
+                  className="w-24"
+                  type="number"
+                  min={0}
+                  max={RECREATION_LIMITS.maxClearedWidthM}
+                  step="0.5"
+                  value={drawWidth}
+                  disabled={!!shape}
+                  onChange={(e) => setDrawWidth(e.target.value)}
+                />
+                {!shape ? (
+                  <>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      disabled={
+                        disabled ||
+                        drawn.length >= RECREATION_LIMITS.featuresPerUse
+                      }
+                      onClick={() => setShape('line')}
+                    >
+                      Draw a trail or line
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      disabled={
+                        disabled ||
+                        drawn.length >= RECREATION_LIMITS.featuresPerUse
+                      }
+                      onClick={() => setShape('area')}
+                    >
+                      Draw an area
+                    </Button>
+                  </>
+                ) : (
+                  <>
+                    <Button
+                      type="button"
+                      disabled={points.length < (shape === 'line' ? 2 : 3)}
+                      onClick={finishShape}
+                    >
+                      Finish this {shape === 'line' ? 'line' : 'area'}
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      disabled={!points.length}
+                      onClick={() => setPoints((p) => p.slice(0, -1))}
+                    >
+                      Undo last point
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => {
+                        setShape(null);
+                        setPoints([]);
+                      }}
+                    >
+                      Cancel this shape
+                    </Button>
+                  </>
+                )}
+                {drawn.length > 0 && !shape && (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => setDrawn([])}
+                  >
+                    Clear the drawing
+                  </Button>
+                )}
+              </div>
+              <p className="small" aria-live="polite" data-drawn-count>
+                {drawn.length
+                  ? `${drawn.length} drawn ${drawn.length === 1 ? 'shape' : 'shapes'} ready to propose or record below.`
+                  : shape
+                    ? `${points.length} ${points.length === 1 ? 'point' : 'points'} placed.`
+                    : 'Nothing drawn yet.'}
+              </p>
+            </>
+          )}
+        </div>
+      )}
       {list.map((u) => {
         const tally = (choice: string) =>
           u.vote?.votes.filter((v) => v.choice === choice).length ?? 0;
-        const yours = u.vote?.votes.find((v) => v.memberId === memberId)?.choice;
+        const yours = u.vote?.votes.find(
+          (v) => v.memberId === memberId,
+        )?.choice;
         return (
           <article
             key={u.id}
             className="network-card mt-4"
             data-corridor-use={u.status}
           >
-            <h4>{u.name}</h4>
+            <h4>{u.hidden ? 'An edge band on a member’s woodlot' : u.name}</h4>
             <p className="muted small">
               {RECREATION_KIND_LABELS[
                 u.kind as keyof typeof RECREATION_KIND_LABELS
               ] ?? u.kind}{' '}
-              {u.basis === 'fact'
-                ? ` · ${u.kind === 'blowdown' ? `${u.eventYear}, ${SEVERITY[u.severity ?? ''] ?? u.severity}` : 'recorded fact'} · source: ${u.source}`
-                : ` · for ${AUDIENCE[u.audience ?? ''] ?? u.audience}`}{' '}
+              {u.basis === 'band'
+                ? ` · ${u.areaM2} m² beside the corridor`
+                : u.basis === 'fact'
+                  ? ` · ${u.kind === 'blowdown' ? `${u.eventYear}, ${SEVERITY[u.severity ?? ''] ?? u.severity}` : 'recorded fact'} · source: ${u.source}`
+                  : ` · for ${AUDIENCE[u.audience ?? ''] ?? u.audience}`}{' '}
               · {STATUS[u.status] ?? u.status}
             </p>
             {u.description && <p>{u.description}</p>}
             <p className="small">
-              {!u.check
-                ? 'Still corridor: fallen trees are habitat, so no check or projection changes. If the stand came down, record its stand ages again in the layers.'
-                : u.holds
-                  ? `The corridor holds: every link between core areas keeps the minimum width with ${u.clearedM2} m² of corridor cleared.`
-                  : u.check.status === 'incomplete'
-                    ? `The corridor check could not be completed: ${(u.check.reasons ?? []).join(' ')}`
-                    : `The corridor does not hold. Links lost: ${pairs(u.check.lostLinks) || 'none'}. Links pinched below the minimum width: ${pairs(u.check.pinchedLinks) || 'none'}. ${u.basis === 'fact' ? 'It is recorded as it is; a link elsewhere, such as a saddle or ridge link, would give these core areas another route.' : 'Route it along the corridor’s edge, or record a tread under standing trees, and propose it again.'}`}
+              {u.basis === 'band'
+                ? u.hidden
+                  ? 'A buffer beside the corridor. Its map and species are shown to stewards and its holder.'
+                  : `A buffer beside the corridor: it overlaps no retained forest, and changes no check or projection. Species (all recorded native; source: ${u.nativeStatusSource}): ${(u.species ?? []).map((sp) => sp.name).join(', ')}.${u.plantedYear ? ` Planted ${u.plantedYear}.` : ''}`
+                : !u.check
+                  ? 'Still corridor: fallen trees are habitat, so no check or projection changes. If the stand came down, record its stand ages again in the layers.'
+                  : u.holds
+                    ? `The corridor holds: every link between core areas keeps the minimum width with ${u.clearedM2} m² of corridor cleared.`
+                    : u.check.status === 'incomplete'
+                      ? `The corridor check could not be completed: ${(u.check.reasons ?? []).join(' ')}`
+                      : `The corridor does not hold. Links lost: ${pairs(u.check.lostLinks) || 'none'}. Links pinched below the minimum width: ${pairs(u.check.pinchedLinks) || 'none'}. ${u.basis === 'fact' ? 'It is recorded as it is; a link elsewhere, such as a saddle or ridge link, would give these core areas another route.' : 'Route it along the corridor’s edge, or record a tread under standing trees, and propose it again.'}`}
             </p>
-            <p className="small">
+            <p className="small" hidden={u.hidden}>
               {u.features.length} mapped{' '}
               {u.features.length === 1 ? 'feature' : 'features'}:{' '}
               {u.features
@@ -246,17 +489,21 @@ export function WoodlandRecreationPanel({
                 )
                 .join('; ')}
               .{' '}
-              {u.basis === 'fact'
-                ? `Crosses ${u.woodlotCount} recorded ${u.woodlotCount === 1 ? 'woodlot' : 'woodlots'}.`
-                : `Holders agreed: ${u.agreedCount} of ${u.woodlotCount}.`}
+              {u.basis === 'band'
+                ? ''
+                : u.basis === 'fact'
+                  ? `Crosses ${u.woodlotCount} recorded ${u.woodlotCount === 1 ? 'woodlot' : 'woodlots'}.`
+                  : `Holders agreed: ${u.agreedCount} of ${u.woodlotCount}.`}
               {u.reviewNote ? ` Review note: ${u.reviewNote}` : ''}
             </p>
-            {u.basis !== 'fact' && u.woodlots.length > 0 && (
+            {!u.basis && u.woodlots.length > 0 && (
               <ul className="small">
                 {u.woodlots.map((w) => (
                   <li key={w.parcelId}>
                     {parcelNames[w.parcelId] ?? 'Woodlot'}:{' '}
-                    {w.agreedAt ? `agreed ${date(w.agreedAt)}` : 'not yet agreed'}
+                    {w.agreedAt
+                      ? `agreed ${date(w.agreedAt)}`
+                      : 'not yet agreed'}
                   </li>
                 ))}
               </ul>
@@ -277,6 +524,7 @@ export function WoodlandRecreationPanel({
               <Button
                 type="button"
                 variant="outline"
+                hidden={u.hidden}
                 onClick={() => {
                   const url = URL.createObjectURL(
                     new Blob(
@@ -379,7 +627,9 @@ export function WoodlandRecreationPanel({
                         )
                       }
                     >
-                      {decision === 'approve' ? 'Confirm this record' : 'Reject'}
+                      {decision === 'approve'
+                        ? 'Confirm this record'
+                        : 'Reject'}
                     </Button>
                   ))}
                 </span>
@@ -389,7 +639,9 @@ export function WoodlandRecreationPanel({
                   type="button"
                   disabled={disabled}
                   onClick={() =>
-                    void run(() => mutate('open_corridor_use_vote', { id: u.id }))
+                    void run(() =>
+                      mutate('open_corridor_use_vote', { id: u.id }),
+                    )
                   }
                 >
                   Open the co-op vote
@@ -417,7 +669,9 @@ export function WoodlandRecreationPanel({
                   variant="outline"
                   disabled={disabled}
                   onClick={() =>
-                    void run(() => mutate('close_corridor_use_vote', { id: u.id }))
+                    void run(() =>
+                      mutate('close_corridor_use_vote', { id: u.id }),
+                    )
                   }
                 >
                   Close the vote
@@ -436,11 +690,13 @@ export function WoodlandRecreationPanel({
                 >
                   {u.status === 'adopted'
                     ? 'End this use: return to natural corridor'
-                    : u.status === 'reviewed'
-                      ? 'It no longer exists: end this record'
-                      : u.basis === 'fact'
-                        ? 'Withdraw this record'
-                        : 'Withdraw this proposal'}
+                    : u.basis === 'band'
+                      ? 'Remove this band'
+                      : u.status === 'reviewed'
+                        ? 'It no longer exists: end this record'
+                        : u.basis === 'fact'
+                          ? 'Withdraw this record'
+                          : 'Withdraw this proposal'}
                 </Button>
               )}
             </div>
@@ -460,7 +716,11 @@ export function WoodlandRecreationPanel({
             onSubmit={(e) => {
               e.preventDefault();
               void run(async () => {
-                if (!route) throw new Error('Upload the route first.');
+                const features = route ?? (drawn.length ? drawn : null);
+                if (!features)
+                  throw new Error(
+                    'Draw the route on the map or upload it first.',
+                  );
                 if (
                   await mutate('propose_corridor_use', {
                     projectId,
@@ -468,12 +728,13 @@ export function WoodlandRecreationPanel({
                     kind,
                     audience,
                     description,
-                    features: route,
+                    features,
                   })
                 ) {
                   setName('');
                   setDescription('');
                   setRoute(null);
+                  if (!route) setDrawn([]);
                 }
               });
             }}
@@ -500,7 +761,9 @@ export function WoodlandRecreationPanel({
                 </NativeSelectOption>
               ))}
             </NativeSelect>
-            <ControlLabel htmlFor={`${id}-audience`}>Who it is for</ControlLabel>
+            <ControlLabel htmlFor={`${id}-audience`}>
+              Who it is for
+            </ControlLabel>
             <NativeSelect
               className="w-full"
               id={`${id}-audience`}
@@ -523,8 +786,8 @@ export function WoodlandRecreationPanel({
               onChange={(e) => setDescription(e.target.value)}
             />
             <ControlLabel htmlFor={`${id}-width`}>
-              Width cleared of trees along trail lines, in metres (0 for a
-              tread under standing trees)
+              Width cleared of trees along uploaded trail lines, in metres (0
+              for a tread under standing trees)
             </ControlLabel>
             <Input
               id={`${id}-width`}
@@ -539,8 +802,8 @@ export function WoodlandRecreationPanel({
               }}
             />
             <ControlLabel htmlFor={`${id}-route`}>
-              Route (GeoJSON): lines for trails, polygons for cleared ground
-              such as fairways
+              Route: draw it on the corridor map above, or upload GeoJSON (lines
+              for trails, polygons for cleared ground such as fairways)
             </ControlLabel>
             <Input
               id={`${id}-route`}
@@ -552,22 +815,29 @@ export function WoodlandRecreationPanel({
                   setRoute(null);
                   if (!file) return;
                   if (file.size > 60000)
-                    throw new Error('The route file must be under 60000 bytes.');
+                    throw new Error(
+                      'The route file must be under 60000 bytes.',
+                    );
                   setRoute(
-                    readRoute(JSON.parse(await file.text()), Number(width) || 0),
+                    readRoute(
+                      JSON.parse(await file.text()),
+                      Number(width) || 0,
+                    ),
                   );
                 });
               }}
             />
             <p className="small" aria-live="polite">
               {route
-                ? `${route.length} ${route.length === 1 ? 'feature' : 'features'} ready. A line’s own cleared_width_m is used when it records one.`
-                : 'A wider clearing down the middle of a corridor splits it; a trail along its edge, or a tread under standing trees, usually keeps it whole.'}
+                ? `${route.length} uploaded ${route.length === 1 ? 'feature' : 'features'} ready. A line’s own cleared_width_m is used when it records one.`
+                : drawn.length
+                  ? `${drawn.length} drawn ${drawn.length === 1 ? 'shape' : 'shapes'} will be proposed.`
+                  : 'A wider clearing down the middle of a corridor splits it; a trail along its edge, or a tread under standing trees, usually keeps it whole.'}
             </p>
             <div className="actions">
               <Button
                 type="submit"
-                disabled={disabled || !route || !name.trim()}
+                disabled={disabled || !(route || drawn.length) || !name.trim()}
               >
                 Check against the corridor and propose
               </Button>
@@ -575,6 +845,140 @@ export function WoodlandRecreationPanel({
           </form>
         )}
       </details>
+      {layersReviewed && (
+        <details className="mt-4" data-propose-edge-band>
+          <summary>
+            Plant an edge band beside the corridor (agroforestry)
+          </summary>
+          <p className="small">
+            For a field you hold, next to the corridor. Draw the band as one or
+            more areas on the corridor map above, inside a woodlot you recorded.
+            A steward reviews the map and the species; no co-op vote is needed.
+            If the band matures and you consent, a steward can later add it to
+            the corridor through the layers review, as a planted stand.
+          </p>
+          <form
+            className="action-form"
+            onSubmit={(e) => {
+              e.preventDefault();
+              void run(async () => {
+                const features = drawn.filter(
+                  (f) => f.geometry.type === 'Polygon',
+                );
+                if (!features.length)
+                  throw new Error(
+                    'Draw the band as an area on the corridor map first.',
+                  );
+                if (
+                  await mutate('propose_edge_band', {
+                    projectId,
+                    kind: band.kind,
+                    name: band.name,
+                    species: band.species
+                      .split(/[\n,]/)
+                      .map((v) => v.trim())
+                      .filter(Boolean)
+                      .map((v) => ({ name: v, native: band.native })),
+                    nativeStatusSource: band.source,
+                    ...(band.year ? { plantedYear: Number(band.year) } : {}),
+                    features,
+                  })
+                ) {
+                  setBand((b) => ({
+                    ...b,
+                    name: '',
+                    species: '',
+                    native: false,
+                  }));
+                  setDrawn([]);
+                }
+              });
+            }}
+          >
+            <ControlLabel htmlFor={`${id}-band-kind`}>
+              Kind of band
+            </ControlLabel>
+            <NativeSelect
+              className="w-full"
+              id={`${id}-band-kind`}
+              value={band.kind}
+              onChange={(e) => setBand((b) => ({ ...b, kind: e.target.value }))}
+            >
+              {EDGE_BAND_KINDS.map((k: string) => (
+                <NativeSelectOption key={k} value={k}>
+                  {RECREATION_KIND_LABELS[
+                    k as keyof typeof RECREATION_KIND_LABELS
+                  ] ?? k}
+                </NativeSelectOption>
+              ))}
+            </NativeSelect>
+            <ControlLabel htmlFor={`${id}-band-name`}>Name</ControlLabel>
+            <Input
+              id={`${id}-band-name`}
+              maxLength={120}
+              value={band.name}
+              onChange={(e) => setBand((b) => ({ ...b, name: e.target.value }))}
+            />
+            <ControlLabel htmlFor={`${id}-band-species`}>
+              Species planted, separated by commas
+            </ControlLabel>
+            <Input
+              id={`${id}-band-species`}
+              maxLength={3000}
+              placeholder="Such as Quercus rubra, Carya ovata"
+              value={band.species}
+              onChange={(e) =>
+                setBand((b) => ({ ...b, species: e.target.value }))
+              }
+            />
+            <label className="block small mt-2">
+              <input
+                type="checkbox"
+                checked={band.native}
+                onChange={(e) =>
+                  setBand((b) => ({ ...b, native: e.target.checked }))
+                }
+              />{' '}
+              Every species listed is native here
+            </label>
+            <ControlLabel htmlFor={`${id}-band-source`}>
+              Where their native status comes from, such as a state flora
+            </ControlLabel>
+            <Input
+              id={`${id}-band-source`}
+              maxLength={300}
+              value={band.source}
+              onChange={(e) =>
+                setBand((b) => ({ ...b, source: e.target.value }))
+              }
+            />
+            <ControlLabel htmlFor={`${id}-band-year`}>
+              Year planted (optional)
+            </ControlLabel>
+            <Input
+              id={`${id}-band-year`}
+              type="number"
+              value={band.year}
+              onChange={(e) => setBand((b) => ({ ...b, year: e.target.value }))}
+            />
+            <div className="actions">
+              <Button
+                type="submit"
+                disabled={
+                  disabled ||
+                  !drawn.some((f) => f.geometry.type === 'Polygon') ||
+                  !band.name.trim() ||
+                  !band.species.trim() ||
+                  !band.source.trim() ||
+                  !band.native
+                }
+              >
+                Check against the corridor and send for review
+              </Button>
+            </div>
+          </form>
+        </details>
+      )}
       {steward && layersReviewed && (
         <details className="mt-4" data-record-corridor-fact>
           <summary>Record a right-of-way or a blowdown (stewards)</summary>
@@ -583,20 +987,26 @@ export function WoodlandRecreationPanel({
             onSubmit={(e) => {
               e.preventDefault();
               void run(async () => {
-                if (!factRoute) throw new Error('Upload the map first.');
+                const features = factRoute ?? (drawn.length ? drawn : null);
+                if (!features)
+                  throw new Error('Draw it on the map or upload it first.');
                 if (
                   await mutate('record_corridor_fact', {
                     projectId,
                     kind: fact.kind,
                     name: fact.name,
                     source: fact.source,
-                    features: factRoute,
+                    features,
                     ...(fact.kind === 'blowdown'
-                      ? { eventYear: Number(fact.year), severity: fact.severity }
+                      ? {
+                          eventYear: Number(fact.year),
+                          severity: fact.severity,
+                        }
                       : {}),
                   })
                 ) {
                   setFact((f) => ({ ...f, name: '', source: '' }));
+                  if (!factRoute) setDrawn([]);
                   setFactRoute(null);
                 }
               });
@@ -689,7 +1099,7 @@ export function WoodlandRecreationPanel({
               </>
             )}
             <ControlLabel htmlFor={`${id}-fact-route`}>
-              Map (GeoJSON):{' '}
+              Draw it on the corridor map above, or upload GeoJSON:{' '}
               {fact.kind === 'blowdown'
                 ? 'polygons of the blowdown'
                 : 'lines along the right-of-way, or polygons of cleared ground'}
@@ -719,7 +1129,7 @@ export function WoodlandRecreationPanel({
                 type="submit"
                 disabled={
                   disabled ||
-                  !factRoute ||
+                  !(factRoute || drawn.length) ||
                   !fact.name.trim() ||
                   !fact.source.trim()
                 }

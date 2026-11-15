@@ -17,6 +17,7 @@ import {
   adoptedUseUnits,
   cleanUseFeatures,
   corridorHolds,
+  drawnFeature,
 } from '../lib/woodland-recreation.mjs';
 import { clearedUnits } from '../lib/woodland-recreation-geo.mjs';
 import { eraseWorkspaceState } from '../self-hosted/erasure.mjs';
@@ -389,4 +390,27 @@ await test('RC9 uses, features and bytes are bounded', () => {
     line(Array.from({ length: 500 }, (_, i) => [200 + i * 0.01, 200 + (i % 2)]), 0),
   );
   refuses(() => cleanUseFeatures(big), /Simplify the route/, 413);
+});
+
+await test('RC2 a route drawn on the corridor map is the same feature an upload gives, and the map shows uses and facts', async () => {
+  const a = P(289, 150), b = P(293, 196), c = P(301, 232);
+  assert.equal(drawnFeature('line', [a], 3), null);
+  assert.equal(drawnFeature('area', [a, b], 0), null);
+  const trail = drawnFeature('line', [a, b, c], 3);
+  assert.deepEqual(cleanUseFeatures([trail]), cleanUseFeatures([line(EAST_EDGE, 3)]));
+  const area = drawnFeature('area', [a, b, c], 0);
+  assert.deepEqual(area.geometry.coordinates[0].at(-1), a);
+  assert.equal(cleanUseFeatures([area])[0].geometry.type, 'Polygon');
+  // A drawn route is proposed through the same command.
+  const f = coop();
+  assert.equal(record(f, propose(f, [trail])).status, 'awaiting_agreement');
+  const read = (name) =>
+    readFile(new URL(`../components/${name}`, import.meta.url), 'utf8');
+  const panel = await read('woodland-recreation-panel.tsx');
+  for (const piece of ['data-corridor-map', 'routes={', 'Draw a trail or line', 'Draw an area', 'drawnFeature('])
+    assert.ok(panel.includes(piece), piece);
+  // MapLibre loads only when the map is opened, and never Turf or the engine in this panel.
+  assert.match(panel, /lazy\(\(\) =>\s*import\('\.\/woodland-map'\)/);
+  assert.doesNotMatch(panel, /@turf|dfm-core|woodland-recreation-geo/);
+  assert.ok((await read('woodland-map.tsx')).includes("['routes', '#c2410c'"));
 });

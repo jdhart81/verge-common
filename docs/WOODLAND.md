@@ -86,7 +86,7 @@ The engine's network, projection, climate and build-out functions, and on a wate
 
 By default the corridor is natural and ages toward old growth. A co-op can adopt a shared recreation use on a mapped stretch of it: a walking trail, a bike trail, disc golf or another use. Nothing changes for a project that adopts none (RC1). The rules are RC1 to RC9 in `lib/woodland-recreation.mjs`.
 
-1. **Propose.** Any member uploads the route as GeoJSON in **Recreation along the corridor**: lines for trails, each with the width of ground cleared of trees (0 when only a tread is worn under standing trees), and polygons for cleared ground such as fairways. They name it, choose its kind and say whether it is meant for members or the public.
+1. **Propose.** Any member draws the route on the corridor map, or uploads it as GeoJSON, in **Uses and facts along the corridor**: lines for trails, each with the width of ground cleared of trees (0 when only a tread is worn under standing trees), and polygons for cleared ground such as fairways. They name it, choose its kind and say whether it is meant for members or the public.
 2. **The corridor comes first.** The cleared ground is removed from retained habitat and the corridor check runs on what is left, against the current reviewed layers, the co-op's consents and every use already adopted. If any link between core areas is lost or pinched below the minimum width, or the check is incomplete, the use is stored as blocked. There is no override vote for recreation: route it again. In practice a clearing down the middle of a corridor splits it into two strips that are each too narrow, and a clearing across a corridor cuts it; a trail along the corridor's edge, or a tread under standing trees, keeps it whole.
 3. **Each holder agrees.** The use needs the recorded agreement of whoever recorded each woodlot it crosses, with an attestation that they may agree. Pooling consent is not agreement to people on the land. One refusal ends the proposal. A route that crosses no recorded woodlot with a reviewed boundary cannot be proposed.
 4. **The co-op votes.** Once every holder has agreed, a steward opens a vote. The electorate is frozen to active members, the quorum is two thirds, and the use is adopted only with approval from a majority of the electorate. If the reviewed layers changed since the use was checked, it must be proposed again.
@@ -97,7 +97,7 @@ By default the corridor is natural and ages toward old growth. A co-op can adopt
 
 **What it does not establish.** A recorded use is the co-op's decision and the holders' agreement. It is not a right of way or an easement, does not open land to the public, and says nothing about liability, insurance, accessibility, trail safety, wetlands or any permit. The cleared width is as recorded; nobody measures it. The check is the same structural one as for harvests: it does not show that wildlife tolerates a trail.
 
-**Limits.** 20 uses in progress or adopted per project, 20 features and 20 KB per use, lines of up to 500 points, cleared widths up to 30 m. Routes are uploaded, not drawn: the map editor does not draw or display recreation routes yet, so members review a route by downloading it. Agents cannot propose, agree to or vote on a use, or record a fact.
+**Limits.** 20 uses in progress or adopted per project, 20 features and 20 KB per use, lines of up to 500 points, cleared widths up to 30 m. **The corridor map.** **Show the corridor map** in this section draws every proposed or in-effect use and fact in orange over the reviewed corridor layers and the viewer's own woodlots. A member draws a trail line or an area on it (click for each point, drag a point to move it, finish the shape) and proposes or records the drawing; a route can still be uploaded as GeoJSON or downloaded. The map loads only when opened. It does not yet highlight the links a blocked proposal would break; the card lists them. Agents cannot propose, agree to or vote on a use, or record a fact.
 
 `tests/woodland-recreation.test.mjs` covers RC1 to RC9 on the watershed co-op.
 
@@ -111,6 +111,30 @@ A corridor is shaped by three kinds of record: **treatments** a member plans (ab
 - **Blowdown stays corridor (CF4).** Fallen trees are part of an old-growth corridor, and leaving them is the default. Recording a blowdown changes no check and no projection. Salvage is a treatment plan and meets the corridor check like any harvest, with the same override vote. A stand-replacing blowdown does reset the stand's age, which the software cannot map for the co-op: every spine analysis carries a warning until a steward saves layers whose stand ages were recorded in or after the year of the blowdown. Gaps under a standing canopy do not warn.
 - **Ending (CF5).** A steward ends a fact when it no longer holds, such as a line removed or an easement released. A woodlot leaving the co-op does not end a fact.
 - **Privacy and limits (CF6).** As for a use: every member sees the fact, its source and what it does to the corridor; which woodlots it crosses is shown to stewards and their holders. Facts share the 20-record limit per project. A project with no reviewed fact and no adopted use is unchanged.
+
+## Edge bands: agroforestry beside the corridor
+
+The corridor itself is native forest evolving toward old growth, and it is never farmed. Where a field meets it, the woodlot's holder can plant an **edge band** of native tree crops, in the tradition of J. Russell Smith's *Tree Crops: A Permanent Agriculture* (1929): trees as the crop on ground that should not be plowed. The rules are AG1 to AG7 in `lib/woodland-recreation.mjs`.
+
+| Kind | What it is |
+| --- | --- |
+| Tree-crop edge | Nut and fruit trees along the corridor's field side |
+| Alley cropping | Tree rows with crops or hay between |
+| Silvopasture | Trees with managed grazing, fenced out of the corridor |
+| Windbreak or hedgerow | A linear planting from field edges toward the corridor |
+| Planted riparian buffer | A planted buffer on a field's stream side |
+
+- **Beside the corridor, never in it (AG1).** A band is drawn as one or more areas and may not overlap retained forest or a core area; the corridor check measures the overlap and the proposal is refused if there is any. No forest is converted to make a band.
+- **A buffer, never corridor (AG2).** A band changes no check and no projection. It counts toward neither the corridor's minimum width, committed forest nor old-growth age.
+- **Native tree crops only (AG3).** Every species is recorded native, with the source of that status. A band that lists an introduced species is refused. The software does not identify species or check a flora.
+- **The holder decides (AG4).** A band lies only on woodlots its proposer recorded. A steward reviews the map and the species; there is no co-op vote, because no shared corridor ground changes.
+- **It can grow into corridor (AG5).** When a band has matured and its holder consents, a steward adds the stand to the retained layers through the ordinary layers review, recording it as planted. It then counts by its recorded age; a one- or two-species plantation never counts as old growth. This is the path from field, to tree-crop edge, to native forest.
+- **Ending (AG6).** The holder or a steward removes a band. Withdrawing its woodlot, or deleting its holder's account, removes it.
+- **Privacy (AG7).** A band is on one holder's land. Its map, name and species are shown to stewards and its holder; other members see that a band exists, its kind and its area.
+
+**Forest farming** (understorey crops under the standing native canopy) is inside the forest, so it is not a band: it is a kind of use, proposed with nothing cleared, agreed by the crossed holders and voted on by the co-op.
+
+A band records what a holder says they planted. It is not a planting plan, a grazing plan or advice on what will grow. `tests/woodland-edge-bands.test.mjs` covers AG1 to AG4, AG6 and AG7.
 
 A recorded right-of-way is the co-op's note of what is on the ground. It does not establish that an easement exists, who holds it or what it allows. `tests/woodland-corridor-facts.test.mjs` covers CF1 to CF6.
 

@@ -427,12 +427,14 @@ export function eraseWorkspaceState(
   // without its proposer's description. One nobody else acted on goes with its proposer. Uses
   // that cross a woodlot removed here end with it (RC7).
   const othersActedOnUse = (u) =>
-    rows(u, 'woodlots').some(
+    // An edge band is its holder's own land record and always goes with them (AG6).
+    u.basis !== 'band' &&
+    (rows(u, 'woodlots').some(
       (w) => w.agreedAt && !deletedParcelIds.has(w.parcelId),
     ) ||
     rows(u.vote ?? {}, 'votes').some((v) => !memberIds.has(v.memberId)) ||
     // A fact another steward reviewed is a shared record of the land, like a layers version.
-    (u.reviewedBy && u.reviewedBy !== userId);
+    (u.reviewedBy && u.reviewedBy !== userId));
   if (s.corridorUses) {
     s.corridorUses = s.corridorUses
       .filter((u) => !authored(u, userId) || othersActedOnUse(u))

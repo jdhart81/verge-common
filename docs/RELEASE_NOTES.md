@@ -11,8 +11,9 @@ Not deployed. By default the corridor is natural and ages toward old growth. A w
 - **An adopted use counts everywhere.** Its cleared ground is excluded from habitat in later harvest-plan checks and spine analyses, so it never counts toward old growth.
 - **It can always end.** A steward or any crossed holder ends it; withdrawing a woodlot or deleting an account ends the uses that cross it.
 - **Rights-of-way and blowdown are recorded as facts.** A steward records one with its source and another steward reviews it; nobody votes. A right-of-way is checked and recorded even when it breaks a link, and its cleared ground stops counting as forest. A blowdown stays corridor: leaving fallen trees is the default, salvage is a treatment plan, and a stand-replacing blowdown warns in every analysis until stand ages are recorded again.
-- New kinds of use: ski or snowshoe trail, snowmobile or ATV trail, maple sugaring lines.
-- Projects with no adopted use and no reviewed fact store, check and project exactly as before. The rollback guard refuses older writers once a use exists. Routes are uploaded as GeoJSON; the map editor does not draw them yet. See the [woodland guide](WOODLAND.md#recreation-along-the-corridor).
+- **Agroforestry beside the corridor.** A woodlot's holder can plant an edge band of native tree crops where a field meets the corridor: tree-crop edge, alley cropping, silvopasture, windbreak or planted riparian buffer. A band may not overlap retained forest, is reviewed by a steward, and counts toward neither the corridor's width nor old growth. The corridor itself is never farmed.
+- New kinds of use: ski or snowshoe trail, snowmobile or ATV trail, maple sugaring lines, forest farming under the standing canopy.
+- Projects with no adopted use and no reviewed fact store, check and project exactly as before. The rollback guard refuses older writers once a use exists. Uses and facts are shown on a corridor map in the Woodland tab, and routes are drawn there or uploaded as GeoJSON. See the [woodland guide](WOODLAND.md#recreation-along-the-corridor).
 
 ## v0.11.0 — native old growth (dfm-core 0.3.0; deployed 15 November 2026, 15:11 UTC, as release branch `12e0fec` on production `7541560`)
 
