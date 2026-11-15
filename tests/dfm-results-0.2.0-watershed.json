@@ -1,0 +1,909 @@
+{
+ "note": "Results dfm-core 0.2.0 gave for the watershed co-op in tests/woodland-spine-fixture.mjs (spineCoop() with reviewWatershedLayers(), analysis time NOW): the four spine analyses on spineAnalysisInput and the corridor check on the reviewed layers with no treatment units (its geometry left out). Recorded with vendor/viridis-dfm-core-0.2.0.tgz at VergeCommon 2706ace, immediately before the engine moved to 0.3.0. Synthetic data only. tests/woodland-native.test.mjs requires dfm-core 0.3.0 to give the same results apart from the engine version names. Do not regenerate with a newer engine.",
+ "engine": "dfm-connectivity-0.2.0",
+ "results": {
+  "network": {
+   "engine": "dfm-spine-0.2.0",
+   "inputChecksum": "sha256:3fffc81e5262339f1565ef1206991669808ba248b375f4a4321d6ed252e7eab6",
+   "status": "ok",
+   "reasons": [],
+   "warnings": [
+    "Crossing underpass-e passage is assumed, not field-verified.",
+    "Crossing underpass-e on road town-road carries spine line saddle-e; its passage is assumed, not field-verified."
+   ],
+   "summary": {
+    "sections": 23,
+    "severedSections": 0,
+    "nodes": 22,
+    "cores": 4,
+    "loops": 2,
+    "loopsThroughCores": 2,
+    "dendritic": false,
+    "linkedPairs": 6,
+    "robustPairs": 1,
+    "totalPairs": 6,
+    "rho2": 0.16666666666666666,
+    "pFail1": 0.5652173913043478,
+    "exposedShare": 0.31564111641598686,
+    "lengthM": 11374,
+    "cutsTested": 2216,
+    "disturbanceWidthM": 182,
+    "resolutionM": 2.5,
+    "testedWidths": {
+     "coarseM": 283,
+     "fineM": 208
+    }
+   },
+   "coreLinks": [
+    {
+     "a": "core-e",
+     "b": "core-n",
+     "robust": false
+    },
+    {
+     "a": "core-e",
+     "b": "core-s",
+     "robust": false
+    },
+    {
+     "a": "core-e",
+     "b": "core-w",
+     "robust": false
+    },
+    {
+     "a": "core-n",
+     "b": "core-s",
+     "robust": false
+    },
+    {
+     "a": "core-n",
+     "b": "core-w",
+     "robust": true
+    },
+    {
+     "a": "core-s",
+     "b": "core-w",
+     "robust": false
+    }
+   ],
+   "singlePointsOfFailure": [
+    {
+     "kind": "zone",
+     "location": [
+      0.0129631,
+      0.0121796
+     ],
+     "separates": [
+      {
+       "a": "core-e",
+       "b": "core-n"
+      },
+      {
+       "a": "core-e",
+       "b": "core-w"
+      },
+      {
+       "a": "core-n",
+       "b": "core-s"
+      },
+      {
+       "a": "core-s",
+       "b": "core-w"
+      }
+     ],
+     "verified": true,
+     "nearLines": [
+      "main",
+      "main-upper",
+      "w1"
+     ],
+     "nearPatches": [],
+     "extentM": 743
+    },
+    {
+     "kind": "zone",
+     "location": [
+      0.0147067,
+      0.0026693
+     ],
+     "separates": [
+      {
+       "a": "core-e",
+       "b": "core-s"
+      },
+      {
+       "a": "core-n",
+       "b": "core-s"
+      },
+      {
+       "a": "core-s",
+       "b": "core-w"
+      }
+     ],
+     "verified": true,
+     "nearLines": [
+      "e2",
+      "main"
+     ],
+     "nearPatches": [],
+     "extentM": 454
+    },
+    {
+     "kind": "zone",
+     "location": [
+      0.0204129,
+      0.0164593
+     ],
+     "separates": [
+      {
+       "a": "core-e",
+       "b": "core-n"
+      },
+      {
+       "a": "core-e",
+       "b": "core-s"
+      },
+      {
+       "a": "core-e",
+       "b": "core-w"
+      }
+     ],
+     "verified": true,
+     "nearLines": [
+      "e1",
+      "e1a",
+      "e1b"
+     ],
+     "nearPatches": [],
+     "extentM": 270
+    }
+   ],
+   "severed": [],
+   "sections": [
+    {
+     "id": "e1#0.0",
+     "sourceId": "e1",
+     "origin": "stream",
+     "order": 2,
+     "widthM": 140,
+     "lengthM": 978.4
+    },
+    {
+     "id": "e1a#0.0",
+     "sourceId": "e1a",
+     "origin": "stream",
+     "order": 1,
+     "widthM": 115,
+     "lengthM": 380.4
+    },
+    {
+     "id": "e1a#0.1",
+     "sourceId": "e1a",
+     "origin": "stream",
+     "order": 1,
+     "widthM": 115,
+     "lengthM": 226.2
+    },
+    {
+     "id": "e1b#0.0",
+     "sourceId": "e1b",
+     "origin": "stream",
+     "order": 1,
+     "widthM": 115,
+     "lengthM": 164.5
+    },
+    {
+     "id": "e1b#0.1",
+     "sourceId": "e1b",
+     "origin": "stream",
+     "order": 1,
+     "widthM": 115,
+     "lengthM": 177.9
+    },
+    {
+     "id": "e1b#0.2",
+     "sourceId": "e1b",
+     "origin": "stream",
+     "order": 1,
+     "widthM": 115,
+     "lengthM": 182.5
+    },
+    {
+     "id": "e2#0.0",
+     "sourceId": "e2",
+     "origin": "stream",
+     "order": 1,
+     "widthM": 115,
+     "lengthM": 283.2
+    },
+    {
+     "id": "e2#0.1",
+     "sourceId": "e2",
+     "origin": "stream",
+     "order": 1,
+     "widthM": 115,
+     "lengthM": 853.3
+    },
+    {
+     "id": "h1#0.0",
+     "sourceId": "h1",
+     "origin": "stream",
+     "order": 1,
+     "widthM": 115,
+     "lengthM": 168.1
+    },
+    {
+     "id": "h1#0.1",
+     "sourceId": "h1",
+     "origin": "stream",
+     "order": 1,
+     "widthM": 115,
+     "lengthM": 265.8
+    },
+    {
+     "id": "h2#0.0",
+     "sourceId": "h2",
+     "origin": "stream",
+     "order": 1,
+     "widthM": 115,
+     "lengthM": 512.4
+    },
+    {
+     "id": "main#0.0",
+     "sourceId": "main",
+     "origin": "stream",
+     "order": 3,
+     "widthM": 180,
+     "lengthM": 374.8
+    },
+    {
+     "id": "main#0.1",
+     "sourceId": "main",
+     "origin": "stream",
+     "order": 3,
+     "widthM": 180,
+     "lengthM": 461.1
+    },
+    {
+     "id": "main#0.2",
+     "sourceId": "main",
+     "origin": "stream",
+     "order": 3,
+     "widthM": 180,
+     "lengthM": 281.9
+    },
+    {
+     "id": "main#0.3",
+     "sourceId": "main",
+     "origin": "stream",
+     "order": 3,
+     "widthM": 180,
+     "lengthM": 349.5
+    },
+    {
+     "id": "main-upper#0.0",
+     "sourceId": "main-upper",
+     "origin": "stream",
+     "order": 2,
+     "widthM": 140,
+     "lengthM": 603.9
+    },
+    {
+     "id": "w1#0.0",
+     "sourceId": "w1",
+     "origin": "stream",
+     "order": 2,
+     "widthM": 140,
+     "lengthM": 765.5
+    },
+    {
+     "id": "w1a#0.0",
+     "sourceId": "w1a",
+     "origin": "stream",
+     "order": 1,
+     "widthM": 115,
+     "lengthM": 261.9
+    },
+    {
+     "id": "w1a#0.1",
+     "sourceId": "w1a",
+     "origin": "stream",
+     "order": 1,
+     "widthM": 115,
+     "lengthM": 381.7
+    },
+    {
+     "id": "w1b#0.0",
+     "sourceId": "w1b",
+     "origin": "stream",
+     "order": 1,
+     "widthM": 115,
+     "lengthM": 590.1
+    },
+    {
+     "id": "w2#0.0",
+     "sourceId": "w2",
+     "origin": "stream",
+     "order": 1,
+     "widthM": 115,
+     "lengthM": 1292.7
+    },
+    {
+     "id": "saddle-e#0.0",
+     "sourceId": "saddle-e",
+     "origin": "saddle",
+     "widthM": 115,
+     "lengthM": 1049.3
+    },
+    {
+     "id": "saddle-nw#0.0",
+     "sourceId": "saddle-nw",
+     "origin": "saddle",
+     "widthM": 115,
+     "lengthM": 769.2
+    }
+   ],
+   "limitations": [
+    "Links follow the connectivity check: the corridors derived from these lines, with roads, crossings, open water and the minimum width applied. Run the check on the saved retained layer for a treatment plan.",
+    "Robust means no single disturbance up to 182 m wide, centered anywhere, separates the pair under the check's rules. Disturbances may overlap core areas but do not remove core habitat in this test.",
+    "Reported failures are places where a disturbance up to 208 m wide (the tested width with its safety margin) separates a pair. Those marked verified separate it at 182 m exactly; unverified ones were not confirmed at nominal width and may still be real.",
+    "Robust does not mean the corridor resists fire, storm or pests, or that species use it; two disturbances at once are not tested.",
+    "Lines join where one ends within 5 m of another; lines that cross mid-way are reported, not joined."
+   ]
+  },
+  "outlook": {
+   "engine": "dfm-outlook-0.2.0",
+   "inputChecksum": "sha256:c1d6ea475d931ee76c93ec924211a4d34c761cabe869e9e06706dfead9089011",
+   "status": "ok",
+   "reasons": [],
+   "warnings": [
+    "Features with different recorded ages overlap (milestones 2126); the youngest age applies where they overlap."
+   ],
+   "parameters": {
+    "ageAsOfYear": 2026,
+    "oldGrowthAgeYears": 150,
+    "oldGrowthAgeSource": "Fixture threshold",
+    "minWidthM": 100
+   },
+   "linkedAfter": [
+    {
+     "a": "core-e",
+     "b": "core-n"
+    },
+    {
+     "a": "core-e",
+     "b": "core-s"
+    },
+    {
+     "a": "core-e",
+     "b": "core-w"
+    },
+    {
+     "a": "core-n",
+     "b": "core-s"
+    },
+    {
+     "a": "core-n",
+     "b": "core-w"
+    },
+    {
+     "a": "core-s",
+     "b": "core-w"
+    }
+   ],
+   "milestones": [
+    {
+     "year": 2026,
+     "committedParcels": [
+      "woodlot-1",
+      "woodlot-2",
+      "woodlot-3"
+     ],
+     "committedLinks": [
+      {
+       "a": "core-n",
+       "b": "core-s"
+      }
+     ],
+     "committedM2": 692468.4004868262,
+     "oldGrowthAgeLinks": [],
+     "oldGrowthAgeM2": 0,
+     "unknownAgeM2": 0
+    },
+    {
+     "year": 2036,
+     "committedParcels": [
+      "woodlot-1",
+      "woodlot-2",
+      "woodlot-3",
+      "woodlot-4",
+      "woodlot-5"
+     ],
+     "committedLinks": [
+      {
+       "a": "core-e",
+       "b": "core-n"
+      },
+      {
+       "a": "core-e",
+       "b": "core-s"
+      },
+      {
+       "a": "core-e",
+       "b": "core-w"
+      },
+      {
+       "a": "core-n",
+       "b": "core-s"
+      },
+      {
+       "a": "core-n",
+       "b": "core-w"
+      },
+      {
+       "a": "core-s",
+       "b": "core-w"
+      }
+     ],
+     "committedM2": 992775.6911655201,
+     "oldGrowthAgeLinks": [],
+     "oldGrowthAgeM2": 0,
+     "unknownAgeM2": 0
+    },
+    {
+     "year": 2051,
+     "committedParcels": [
+      "woodlot-1",
+      "woodlot-2",
+      "woodlot-3",
+      "woodlot-4",
+      "woodlot-5",
+      "woodlot-7",
+      "woodlot-8"
+     ],
+     "committedLinks": [
+      {
+       "a": "core-e",
+       "b": "core-n"
+      },
+      {
+       "a": "core-e",
+       "b": "core-s"
+      },
+      {
+       "a": "core-e",
+       "b": "core-w"
+      },
+      {
+       "a": "core-n",
+       "b": "core-s"
+      },
+      {
+       "a": "core-n",
+       "b": "core-w"
+      },
+      {
+       "a": "core-s",
+       "b": "core-w"
+      }
+     ],
+     "committedM2": 1186493.150444551,
+     "oldGrowthAgeLinks": [],
+     "oldGrowthAgeM2": 0,
+     "unknownAgeM2": 0
+    },
+    {
+     "year": 2076,
+     "committedParcels": [
+      "woodlot-1",
+      "woodlot-2",
+      "woodlot-3",
+      "woodlot-4",
+      "woodlot-5",
+      "woodlot-7",
+      "woodlot-8"
+     ],
+     "committedLinks": [
+      {
+       "a": "core-e",
+       "b": "core-n"
+      },
+      {
+       "a": "core-e",
+       "b": "core-s"
+      },
+      {
+       "a": "core-e",
+       "b": "core-w"
+      },
+      {
+       "a": "core-n",
+       "b": "core-s"
+      },
+      {
+       "a": "core-n",
+       "b": "core-w"
+      },
+      {
+       "a": "core-s",
+       "b": "core-w"
+      }
+     ],
+     "committedM2": 1186493.150444551,
+     "oldGrowthAgeLinks": [],
+     "oldGrowthAgeM2": 0,
+     "unknownAgeM2": 0
+    },
+    {
+     "year": 2126,
+     "committedParcels": [
+      "woodlot-1",
+      "woodlot-2",
+      "woodlot-3",
+      "woodlot-4",
+      "woodlot-5",
+      "woodlot-7",
+      "woodlot-8"
+     ],
+     "committedLinks": [
+      {
+       "a": "core-e",
+       "b": "core-n"
+      },
+      {
+       "a": "core-e",
+       "b": "core-s"
+      },
+      {
+       "a": "core-e",
+       "b": "core-w"
+      },
+      {
+       "a": "core-n",
+       "b": "core-s"
+      },
+      {
+       "a": "core-n",
+       "b": "core-w"
+      },
+      {
+       "a": "core-s",
+       "b": "core-w"
+      }
+     ],
+     "committedM2": 1186493.150444551,
+     "oldGrowthAgeLinks": [
+      {
+       "a": "core-e",
+       "b": "core-n"
+      },
+      {
+       "a": "core-e",
+       "b": "core-s"
+      },
+      {
+       "a": "core-e",
+       "b": "core-w"
+      },
+      {
+       "a": "core-n",
+       "b": "core-s"
+      },
+      {
+       "a": "core-n",
+       "b": "core-w"
+      },
+      {
+       "a": "core-s",
+       "b": "core-w"
+      }
+     ],
+     "oldGrowthAgeM2": 991534.5662809628,
+     "unknownAgeM2": 0
+    }
+   ],
+   "assumptions": [
+    "Woodlots join in the years recorded (consent_year, planned_year) and consent does not lapse.",
+    "Recorded ages grow one year per year from 2026 and remnants stay at old-growth age; no loss to fire, storm, pests, conversion or a new road is predicted.",
+    "The proposed treatment units apply at every milestone."
+   ],
+   "limitations": [
+    "Old-growth age means a recorded age at or above the threshold, or recorded remnant status; where features overlap the youngest age applies, and features with neither never count. Old-growth condition needs field evidence.",
+    "Areas are retained habitat outside core areas, after the treatment units, roads and open water.",
+    "Structural connectivity at the minimum width only; not species movement or genetics."
+   ]
+  },
+  "climate": {
+   "engine": "dfm-outlook-0.2.0",
+   "inputChecksum": "sha256:3fffc81e5262339f1565ef1206991669808ba248b375f4a4321d6ed252e7eab6",
+   "status": "ok",
+   "reasons": [],
+   "warnings": [],
+   "checkStatus": "pass",
+   "target": {
+    "warmingC": 2,
+    "source": "Fixture warming target"
+   },
+   "temperatureSource": "Fixture temperatures",
+   "cores": [
+    {
+     "id": "core-e",
+     "tempC": 7,
+     "status": "short",
+     "coolest": {
+      "id": "core-n",
+      "tempC": 6,
+      "via": [
+       "core-e",
+       "core-n"
+      ],
+      "exit": false,
+      "toward": null
+     },
+     "coolingC": 1
+    },
+    {
+     "id": "core-n",
+     "tempC": 6,
+     "status": "coolest",
+     "coolest": null,
+     "coolingC": null
+    },
+    {
+     "id": "core-s",
+     "tempC": 8.6,
+     "status": "route",
+     "coolest": {
+      "id": "core-n",
+      "tempC": 6,
+      "via": [
+       "core-s",
+       "core-n"
+      ],
+      "exit": false,
+      "toward": null
+     },
+     "coolingC": 2.6
+    },
+    {
+     "id": "core-w",
+     "tempC": 7.2,
+     "status": "short",
+     "coolest": {
+      "id": "core-n",
+      "tempC": 6,
+      "via": [
+       "core-w",
+       "core-n"
+      ],
+      "exit": false,
+      "toward": null
+     },
+     "coolingC": 1.2
+    }
+   ],
+   "exits": [],
+   "flagged": [
+    "core-e",
+    "core-w"
+   ],
+   "limitations": [
+    "Routes follow links that hold after the plan, chained through linked cores; they do not predict whether species move.",
+    "A route is judged by its end cores' temperatures; the corridor between them may cross warmer ground.",
+    "Core temperatures are as supplied; one value per core does not capture the microclimate within it."
+   ]
+  },
+  "frontier": {
+   "engine": "dfm-outlook-0.2.0",
+   "inputChecksum": "sha256:3fffc81e5262339f1565ef1206991669808ba248b375f4a4321d6ed252e7eab6",
+   "status": "ok",
+   "reasons": [],
+   "warnings": [],
+   "committed": {
+    "parcels": [
+     "woodlot-1",
+     "woodlot-2",
+     "woodlot-3"
+    ],
+    "spineM2": 712490,
+    "mappedSpineM2": 1413277,
+    "share": 0.5041403294624749,
+    "links": [
+     {
+      "a": "core-n",
+      "b": "core-s"
+     }
+    ]
+   },
+   "frontier": [
+    {
+     "parcel": "woodlot-4",
+     "spineM2": 208338,
+     "completesLinks": [
+      {
+       "a": "core-e",
+       "b": "core-n"
+      },
+      {
+       "a": "core-e",
+       "b": "core-s"
+      }
+     ],
+     "direction": "E",
+     "bearingDeg": 70,
+     "distanceM": 918
+    },
+    {
+     "parcel": "woodlot-5",
+     "spineM2": 129004,
+     "completesLinks": [
+      {
+       "a": "core-n",
+       "b": "core-w"
+      },
+      {
+       "a": "core-s",
+       "b": "core-w"
+      }
+     ],
+     "direction": "NW",
+     "bearingDeg": 298,
+     "distanceM": 1025
+    },
+    {
+     "parcel": "woodlot-9",
+     "spineM2": 106535,
+     "completesLinks": [],
+     "direction": "SE",
+     "bearingDeg": 122,
+     "distanceM": 1028
+    },
+    {
+     "parcel": "woodlot-7",
+     "spineM2": 97652,
+     "completesLinks": [],
+     "direction": "SW",
+     "bearingDeg": 241,
+     "distanceM": 976
+    },
+    {
+     "parcel": "woodlot-8",
+     "spineM2": 96310,
+     "completesLinks": [],
+     "direction": "NW",
+     "bearingDeg": 316,
+     "distanceM": 1235
+    }
+   ],
+   "laterParcels": [
+    "woodlot-6"
+   ],
+   "limitations": [
+    "Links a parcel would complete assume it alone joins now, with the proposed treatment units applied.",
+    "Direction is from the committed piece of spine the parcel adjoins to the spine inside the parcel."
+   ]
+  },
+  "check": {
+   "engine": "dfm-connectivity-0.2.0",
+   "inputChecksum": "sha256:747b6f378272088cc5f2eeb6cca652822c3f75b67f5bd9f3a8df602463089bc5",
+   "parameters": {
+    "minWidthM": 100,
+    "minWidthSource": "Fixture value for tests",
+    "roadWidthM": 6,
+    "connectorWidthM": 115,
+    "ageAsOfYear": 2026,
+    "oldGrowthAgeYears": 150,
+    "climateWarmingC": 2,
+    "spineWidthSource": "Fixture widths by stream order",
+    "connectorWidthSource": "Fixture link width",
+    "oldGrowthAgeSource": "Fixture threshold",
+    "coreTempSource": "Fixture temperatures",
+    "climateSource": "Fixture warming target",
+    "spineWidthByOrderM": {
+     "1": 115,
+     "2": 140,
+     "3": 180
+    }
+   },
+   "status": "pass",
+   "reasons": [],
+   "warnings": [
+    "Crossing underpass-e passage is assumed, not field-verified."
+   ],
+   "cores": [
+    {
+     "id": "core-n",
+     "coreClass": "old-growth-candidate",
+     "areaM2": 96049.8353133762,
+     "remainingM2": 96049.83528789594
+    },
+    {
+     "id": "core-w",
+     "coreClass": "old-growth-candidate",
+     "areaM2": 48347.463618004396,
+     "remainingM2": 48347.463593908746
+    },
+    {
+     "id": "core-e",
+     "coreClass": "reserve",
+     "areaM2": 50150.68426851786,
+     "remainingM2": 50150.68424603582
+    },
+    {
+     "id": "core-s",
+     "coreClass": "riparian-core",
+     "areaM2": 48800.87007619774,
+     "remainingM2": 48800.87004515739
+    }
+   ],
+   "linkedBefore": [
+    {
+     "a": "core-e",
+     "b": "core-n"
+    },
+    {
+     "a": "core-e",
+     "b": "core-s"
+    },
+    {
+     "a": "core-e",
+     "b": "core-w"
+    },
+    {
+     "a": "core-n",
+     "b": "core-s"
+    },
+    {
+     "a": "core-n",
+     "b": "core-w"
+    },
+    {
+     "a": "core-s",
+     "b": "core-w"
+    }
+   ],
+   "linkedAfter": [
+    {
+     "a": "core-e",
+     "b": "core-n"
+    },
+    {
+     "a": "core-e",
+     "b": "core-s"
+    },
+    {
+     "a": "core-e",
+     "b": "core-w"
+    },
+    {
+     "a": "core-n",
+     "b": "core-s"
+    },
+    {
+     "a": "core-n",
+     "b": "core-w"
+    },
+    {
+     "a": "core-s",
+     "b": "core-w"
+    }
+   ],
+   "lostLinks": [],
+   "overlaps": [],
+   "pinchedLinks": [],
+   "consent": {
+    "committedM2": 712489.8093299428,
+    "proposedM2": 700786.9465479613
+   },
+   "areas": {
+    "habitatBeforeM2": 1591596.6819074852,
+    "habitatAfterM2": 1591596.6819074852
+   },
+   "limitations": [
+    "Structural connectivity at a minimum width only; not species movement, genetics or verified old-growth condition.",
+    "Widths are horizontal, on a spherical Earth (within about 0.5%), after road surfaces and open water are removed; slope and edge effects are not modeled.",
+    "Crossing passage is as recorded; assumed crossings need field verification."
+   ]
+  }
+ }
+}

@@ -1,4 +1,5 @@
-// The old-growth spine in woodland projects (dfm-core 0.2.0). Each test names the invariant it
+// The old-growth spine in woodland projects (dfm-core 0.3.0; the native old-growth records it
+// adds are tested in tests/woodland-native.test.mjs). Each test names the invariant it
 // checks: WS1–WS5 in lib/woodland.mjs and lib/woodland-input.mjs, WS4/WS8/WS9/WS11 in
 // lib/woodland-spine.mjs, WS7/WS10 in server/woodland-analysis.mjs and
 // self-hosted/woodland-analysis.mjs.
@@ -45,19 +46,19 @@ import {
 import { watershed, withAges } from './dfm-watershed-fixture.mjs';
 
 const pair = (a, b) => ({ a, b });
-// npm pack of hdfm-framework packages/dfm-core 0.2.0 (#43 with #44: any biome, and the network
-// soundness fix).
-const PUBLISHED_0_2_0_SHA256 =
-  '4c79dc3b1763a57abe867fc4efc38d6389c2573fe3f7b5babe47b545fd4075e3';
+// npm pack of hdfm-framework packages/dfm-core 0.3.0 at f4e22b1 (native old growth: stand
+// origin, native composition and native-only planting, on top of 0.2.0's spine).
+const PACKED_0_3_0_SHA256 =
+  '764ba7329a320f244f8638b38a992f8e5af0c2f12f1cd26bbaee632253136514';
 
-await test('WS1 the vendored engine is the published dfm-core 0.2.0 with the unchanged connectivity check', async () => {
+await test('WS1 the vendored engine is the npm pack of dfm-core 0.3.0 with the unchanged connectivity check', async () => {
   const tgz = await readFile(
-    new URL('../vendor/viridis-dfm-core-0.2.0.tgz', import.meta.url),
+    new URL('../vendor/viridis-dfm-core-0.3.0.tgz', import.meta.url),
   );
   assert.equal(
     createHash('sha256').update(tgz).digest('hex'),
-    PUBLISHED_0_2_0_SHA256,
-    'vendor/ must hold the exact npm pack of hdfm-framework packages/dfm-core 0.2.0',
+    PACKED_0_3_0_SHA256,
+    'vendor/ must hold the exact npm pack of hdfm-framework packages/dfm-core 0.3.0',
   );
   const pkg = JSON.parse(
     await readFile(
@@ -67,8 +68,8 @@ await test('WS1 the vendored engine is the published dfm-core 0.2.0 with the unc
       ),
     ),
   );
-  assert.equal(pkg.version, '0.2.0');
-  assert.equal(ENGINE_VERSION, 'dfm-connectivity-0.2.0');
+  assert.equal(pkg.version, '0.3.0');
+  assert.equal(ENGINE_VERSION, 'dfm-connectivity-0.3.0');
   // Woodland projects offer the forest link kinds; the engine also takes flat-land ones.
   assert.deepEqual([...LINK_KINDS], ['ridge', 'valley', 'saddle']);
   assert.ok(LINK_KINDS.every((k) => SPINE_LINK_KINDS.includes(k)));

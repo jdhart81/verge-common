@@ -33,6 +33,10 @@ For the self-hosted application, use Node 24.19.0 and follow [the single-server 
 
 The original Cloudflare/Sites development path remains available through `npm run launch` with Node.js 22.13+. Its identity is a development fixture; never expose that development server publicly. In either workflow, create a co-op and follow the **Start** checklist. See [Worldwide adoption](docs/WORLDWIDE.md) for regional setup.
 
+## Woodland projects: the old-growth corridor
+
+Map the old-growth corridor that runs through your woods, then plan harvests that keep it connected while it ages toward old growth. The corridor is the old-growth spine: retained forest along streams, valleys and ridges, mapped whole and built woodlot by woodlot as owners consent. A plantation or a stand of introduced species is never projected as old growth, and a corridor is never replanted with introduced species. Structural connectivity only; not a claim about species movement, genetics, regulatory compliance or old-growth condition. Age is reported, never condition. See the [woodland guide](docs/WOODLAND.md) and [vergecommon.com/woodland](https://vergecommon.com/woodland/).
+
 ## Part of the Viridis open commons
 
 VergeCommon is one of five open projects that build on each other. Each one is useful alone; together they carry a piece of land from a map to a verified result.
@@ -45,7 +49,7 @@ VergeCommon is one of five open projects that build on each other. Each one is u
 | ViridisOS | Turns verified results into recomputable conservation modules and certificates anyone can check. Apache-2.0. | [viridisos](https://github.com/jdhart81/viridisos) |
 | Viridis Research | The public, machine-checked research record behind the methods. CC BY 4.0. | [viridis-research](https://github.com/jdhart81/viridis-research) |
 
-How they connect: DFM finds where a corridor runs. The corridor almost always crosses property lines, so VergeCommon gives the neighbours along it a private place to organize and consent. GSIP adds soil evidence from the same ground. ViridisOS lets anyone recompute what was claimed, and Viridis Research holds the proofs those checks rest on. Viridis Conservation ([viridisconservation.com](https://viridisconservation.com)) offers paid data preparation, assessments and support for teams that want help.
+How they connect: DFM finds where a corridor runs. The corridor almost always crosses property lines, so VergeCommon gives the neighbours along it a private place to organize and consent. GSIP adds soil evidence from the same ground. ViridisOS lets anyone recompute what was claimed, and Viridis Research holds the proofs those checks rest on. Viridis Conservation ([viridisconservation.com](https://viridisconservation.com)) offers professional old-growth corridor mapping for land trusts, towns and landowner groups, built on this same open engine.
 
 Built something with one of these? Add the badge and tell us in an issue, so we can link back:
 

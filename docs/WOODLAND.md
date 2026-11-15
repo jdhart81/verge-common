@@ -2,9 +2,11 @@
 
 Off by default. Set `VERGE_WOODLAND_DFM=1` on the server to enable it. With the flag off, woodland commands and analyses return 404, the project type is hidden, the analysis worker is not started, and the MCP tools are not registered.
 
+Map the old-growth corridor that runs through your woods, then plan harvests that keep it connected while it ages toward old growth. That corridor is the [old-growth spine](#the-old-growth-spine), and it is the core of a woodland project: every harvest plan is checked against it. Structural connectivity only; not a claim about species movement, genetics, regulatory compliance or old-growth condition. Age is reported, never condition.
+
 Agents with an `mcp:read` token can use `check_woodland_plan` (the corridor check on proposed units) and `analyze_woodland_spine` (one spine analysis); both are read-only and follow the same membership and privacy rules as the website.
 
-Woodland projects keep retained corridors connected across working woodlots as harvests are planned, and build the old-growth spine woodlot by woodlot. The engine is `@viridis/dfm-core` from the open-source [Dendritic Forest Management](https://github.com/jdhart81/hdfm-framework) repository (MIT), described at [dendriticforest.com](https://dendriticforest.com/). It is vendored as `vendor/viridis-dfm-core-0.2.0.tgz`, byte-identical to `npm pack` of `packages/dfm-core` at 0.2.0 (a test pins its SHA-256), until the package is published to npm. Its corridor check, `dfm-connectivity-0.2.0`, gives the same results as 0.1.0 for every input without the stepping-stone setting, which woodland projects do not use, apart from four upkeep treatments 0.2.0 added (below); a test checks a plan stored with 0.1.0 still reproduces. 0.2.0 also runs in prairie, savanna and flat country (stepping stones, flat-land links, remnants, exits); woodland projects offer the forest link kinds, and an upload names anything it leaves out.
+Woodland projects build the old-growth spine woodlot by woodlot and keep its retained corridors connected across working woodlots as harvests are planned. The engine is `@viridis/dfm-core` from the open-source [Dendritic Forest Management](https://github.com/jdhart81/hdfm-framework) repository (MIT), described at [dendriticforest.com](https://dendriticforest.com/). It is vendored as `vendor/viridis-dfm-core-0.3.0.tgz`, the `npm pack` of `packages/dfm-core` at 0.3.0 (a test pins its SHA-256), until the package is published to npm. 0.3.0 adds [native old growth](#native-old-growth-not-plantations): stand origin, native composition and native-only planting. Without those records its results are the ones 0.2.0 gave, apart from the engine names (`dfm-connectivity-0.3.0`, `dfm-spine-0.3.0`, `dfm-outlook-0.3.0`); `tests/woodland-native.test.mjs` checks every analysis and the corridor check against results recorded with 0.2.0, and a plan stored with 0.1.0 still reproduces. The corridor check gives the same results as 0.1.0 for every input without the stepping-stone setting, which woodland projects do not use, apart from four upkeep treatments 0.2.0 added (below). The engine also runs in prairie, savanna and flat country (stepping stones, flat-land links, exits); woodland projects offer the forest link kinds, and an upload names anything it leaves out.
 
 The public page [/woodland/](https://vergecommon.com/woodland/) explains woodland projects to visitors and says whether they are open on the service; dendriticforest.com links to it.
 
@@ -25,7 +27,7 @@ Corridor sections count as **committed** only on parcels whose current consent h
 The spine is the dendritic network of retained forest along a landscape's streams, valleys and ridges: mapped whole, then committed woodlot by woodlot as holders consent, aging toward old growth while the woods around it are worked. It is optional; a project without spine lines works exactly as before.
 
 1. **Lines.** In **Draw corridor layers**, a steward adds `streams` (lines with a Strahler `stream_order` from 1 to 12) and `connectors` (ridge, valley or saddle links that close loops), or imports them in a Landscape Package. Optional settings, each with its source: corridor width by stream order (never narrower for a larger stream, never below the minimum), the link width, the year stand ages were recorded, the old-growth age threshold, milestone years, core temperatures and a warming target.
-2. **Draft.** **Draft spine corridors** runs `deriveSpine` in the browser. The drafted corridors replace earlier ones marked `spine` in **Retained corridors**; other retained features stay, and a corridor keeps the name and stand age given to it under the same ID. Record stand ages on corridors and cores, check the draft against the ground, then submit the layers. They take effect only after another steward reviews them (W1). Spine lines are saved only when the engine can draft them (WS5).
+2. **Draft.** **Draft spine corridors** runs `deriveSpine` in the browser. The drafted corridors replace earlier ones marked `spine` in **Retained corridors**; other retained features stay, and a corridor keeps the name, stand age and origin and native-species records given to it under the same ID. Record stand ages and how each stand was established on corridors and cores, check the draft against the ground, then submit the layers. They take effect only after another steward reviews them (W1). Spine lines are saved only when the engine can draft them (WS5).
 3. **Analyze.** The **Old-growth spine** section runs four read-only analyses on the current reviewed layers, in the server's analysis worker:
    - **Test the network** (`spineNetwork`): which core pairs the spine links, its loops, and where one disturbance up to the stated width would still cut a link (single points of failure, verified or not at nominal width). Robustness is reported only from a completed search, never assumed.
    - **Project the years ahead** (`projectSpine`): at each milestone, links through committed forest and through forest at old-growth age. A woodlot counts from the UTC year its current consent was reviewed; stand ages recorded as of the stand-age year (default: the year the layers were saved) are rolled forward to the current year.
@@ -35,6 +37,27 @@ The spine is the dendritic network of retained forest along a landscape's stream
 4. **Plan the build-out.** A woodlot without consent can carry a **planned join year** (`plan_parcel_join`), set by whoever recorded it or a steward. It is a projection assumption only: it never counts as consent, and only a year after the current one is used.
 
 Analyses are structural. They do not establish species movement, genetic viability, old-growth condition or regulatory compliance, and projections predict no fire, storm or new road.
+
+### Native old growth, not plantations
+
+The spine's aim is old growth of the place's own species. A plantation does not become old growth by standing long enough, and neither does a stand made up mostly of introduced species. Since dfm-core 0.3.0 a woodland project records how each stand was established and what it is made of, and the engine uses that in the old-growth projection and in the corridor check. All of it is optional and recorded as stated, each value with its source; the software does not identify species or survey a stand.
+
+On a retained corridor or core area, under **Origin and native species**:
+
+- **How the stand was established** (`stand_origin`, with `origin_source`): naturally regenerating, planted or seeded, or plantation (one or two species, even-aged, regularly spaced), as defined in FAO's Global Forest Resources Assessment. A plantation is never counted at old-growth age, whatever its recorded age. A planted stand that is not a plantation counts by its recorded age.
+- **Never plowed or clear-cut** (`remnant`, with `remnant_source`): a remnant counts at old-growth age in every projection year. A stand cannot be both a remnant and a plantation.
+- **Share in native species** (`native_share` from 0 to 1, with `composition_source`).
+
+In the layer settings, under **Native old growth**:
+
+- **Minimum native share** (`nativeShareMin`, with `nativeShareSource`): once set, a stand counts at old-growth age only where it records a share at or above the minimum. A stand without a recorded share never counts.
+- **Native-status source for corridor planting** (`nativeStatusSource`, such as a state flora): the native-only planting policy. Once recorded, every restoration planting inside a corridor or core must list its species.
+
+On a treatment unit that is a corridor-permitted `restoration-planting`, **Species planted** lists each species as native or not, with a native-status source. The planting stays permitted only when every species is native and a source is recorded, on the unit or in the layer settings. Otherwise the check treats it like any other unit: it removes the habitat it covers, the check names it and says why, and a plan that breaks a link is blocked. Without the policy setting, a planting that lists no species is checked as it was before 0.3.0; record a native-status source to require a species list for every corridor planting.
+
+**Project the years ahead** then also shows, per milestone, how much committed forest is plantation and how much is below the minimum native share, and the panel says what the reviewed layers record. None of this changes whether a link holds today: origin and composition are read only by the projection, and the species list only by the corridor check. Age and origin are reported; old-growth condition is never claimed.
+
+Layers, settings and units without these records are stored exactly as before and give the same results and checksums.
 
 ### Privacy (WS8)
 
@@ -69,7 +92,7 @@ The corridor check's input is the Landscape Package's canonical form: every pack
 
 The contract runs both ways. dfm-core's own tests read a package downloaded from a VergeCommon plan (written by `scripts/dfm-contract-fixture.mjs`) and must reproduce its stored result and checksum, so a change in the engine cannot silently break plans stored here.
 
-Packages from the DFM mapping workspace or other tools import into the editor: non-UUID IDs become UUIDs and the original ID becomes the feature's name when it has none; spine lines keep their link to the corridors drafted from them; the planning `boundary` layer is not kept. An upload lists anything it leaves out, so nothing is dropped silently: the planning boundary, woodlots and treatment units (which have their own places here), and any layer, setting or feature property VergeCommon does not use yet, such as a newer DFM tool's stepping stones or exits. With those, the check here can differ from the tool that wrote the package. `tests/woodland-interop.test.mjs` checks a package exported by the workspace: the same status, lost links and responsible units by name, and areas within 0.01% (records are stored at 1e-7 degrees, about 1 cm).
+Packages from the DFM mapping workspace or other tools import into the editor: non-UUID IDs become UUIDs and the original ID becomes the feature's name when it has none; spine lines keep their link to the corridors drafted from them; the planning `boundary` layer is not kept. An upload lists anything it leaves out, so nothing is dropped silently: the planning boundary, woodlots and treatment units (which have their own places here), and any layer, setting or feature property VergeCommon does not use yet, such as a newer DFM tool's stepping stones or exits. Stand origin, remnant status, native share, the native settings and a planting's species list are kept. With those, the check here can differ from the tool that wrote the package. `tests/woodland-interop.test.mjs` checks a package exported by the workspace: the same status, lost links and responsible units by name, and areas within 0.01% (records are stored at 1e-7 degrees, about 1 cm).
 
 ## Erasure and rollback
 
@@ -104,7 +127,9 @@ old growth. Crossings default to assumed passage. Treatment intensity can be
 free text; corridor permission requires one of the engine's `LIGHT_INTENSITIES`
 and a reason. Since dfm-core 0.2.0 that list also holds the upkeep that fire- and
 grazing-dependent woodland needs: prescribed burn, prescribed grazing,
-late-season mowing and brush management. Invalid geometry and missing properties are listed with the
+late-season mowing and brush management. Since dfm-core 0.3.0 a corridor-permitted
+restoration planting can list the species it plants, and stays permitted only with
+native species (see Native old growth). Invalid geometry and missing properties are listed with the
 feature name/ID and prevent submission. Validation shares the boundary editor's
 WGS84, self-crossing, closure and 200-corner rules, with 2–200 vertices for roads
 and one coordinate for crossings. Polygon holes and antimeridian drawings are
@@ -177,6 +202,10 @@ crossing entry, map clicks/dragging, invalid-save prevention, independent stewar
 review, a parcel-free failed named-unit preview, the geometry-free full-state
 server preview and blocked plan with the identical server checksum, file export/import, over-limit prevention, opted-in basemap requests,
 flag-off client projection and bundle separation, 390px overflow and browser
-errors. `tests/woodland-preview.test.mjs` covers membership/flag checks, plan
+errors. `tests/woodland-native.test.mjs` covers native old growth (NO1–NO5): a plantation
+past the age threshold is not counted at old-growth age, a remnant counts in every
+year, a corridor planting with an introduced species is blocked, and layers
+without the new records give the results dfm-core 0.2.0 gave.
+`tests/woodland-preview.test.mjs` covers membership/flag checks, plan
 limits, non-mutation, privacy, structural local/server equality, and server
 preview/stored checksum equality with private reviewed consents. Outputs: `outputs/woodland-editor-review/`.
