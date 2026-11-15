@@ -4,10 +4,11 @@
 // Natural corridor is the default. Members propose a route, agree for their own woodlots, vote
 // and end a use; stewards record and review facts. Every rule is enforced by the co-op's
 // commands on the server; this component only displays and sends.
-import { useId, useState } from 'react';
+import { lazy, Suspense, useId, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ControlLabel } from '@/components/ui/label';
+import type { WoodlandFeature, WoodlandLayers } from './woodland-map-editor';
 import {
   NativeSelect,
   NativeSelectOption,
@@ -19,9 +20,25 @@ import {
   RECREATION_LIMITS,
   FACT_KINDS,
   BLOWDOWN_SEVERITIES,
+  drawnFeature,
 } from '@/lib/woodland-recreation.mjs';
 
+// MapLibre is loaded only when a member opens the corridor map.
+const WoodlandMap = lazy(() =>
+  import('./woodland-map').then((m) => ({ default: m.WoodlandMap })),
+);
 type Save = (op: string, payload: Record<string, unknown>) => Promise<boolean>;
+type Point = number[];
+/** Statuses shown on the map: everything that is proposed or in effect. */
+const ON_MAP = [
+  'blocked',
+  'awaiting_agreement',
+  'agreed',
+  'voting',
+  'adopted',
+  'submitted',
+  'reviewed',
+];
 type Pair = { a: string; b: string };
 type UseFeature = {
   type: 'Feature';
@@ -117,6 +134,8 @@ export function WoodlandRecreationPanel({
   uses,
   parcelNames,
   layersReviewed,
+  layers,
+  ownParcels,
   steward,
   memberId,
   disabled,
@@ -126,6 +145,10 @@ export function WoodlandRecreationPanel({
   uses: CorridorUse[];
   parcelNames: Record<string, string>;
   layersReviewed: boolean;
+  /** The current reviewed corridor layers, as background for the map. */
+  layers?: WoodlandLayers;
+  /** The viewer's own woodlots (stewards: every woodlot), as the co-op already shows them. */
+  ownParcels?: WoodlandFeature[];
   steward: boolean;
   memberId: string;
   disabled: boolean;
@@ -150,6 +173,33 @@ export function WoodlandRecreationPanel({
     width: '0',
   });
   const [factRoute, setFactRoute] = useState<UseFeature[] | null>(null);
+  // Drawing on the map: finished shapes, and the one in progress.
+  const [mapOpen, setMapOpen] = useState(false);
+  const [drawn, setDrawn] = useState<UseFeature[]>([]);
+  const [shape, setShape] = useState<'line' | 'area' | null>(null);
+  const [points, setPoints] = useState<Point[]>([]);
+  const [drawWidth, setDrawWidth] = useState('0');
+  const finishShape = () => {
+    const feature = shape
+      ? drawnFeature(shape, points, Number(drawWidth) || 0)
+      : null;
+    if (feature) setDrawn((d) => [...d, feature as UseFeature]);
+    setShape(null);
+    setPoints([]);
+  };
+  const inProgress =
+    shape && points.length > 1
+      ? [
+          {
+            type: 'Feature' as const,
+            geometry: {
+              type: 'LineString',
+              coordinates: shape === 'area' ? [...points, points[0]] : points,
+            },
+            properties: { name: 'Drawing' },
+          },
+        ]
+      : [];
   const run = async (fn: () => Promise<unknown>) => {
     setError('');
     try {
@@ -161,6 +211,21 @@ export function WoodlandRecreationPanel({
   const list = uses.filter((u) => u.projectId === projectId).slice().reverse();
   const adopted = list.filter((u) => u.status === 'adopted');
   const facts = list.filter((u) => u.status === 'reviewed');
+  const mapped = [
+    ...list
+      .filter((u) => ON_MAP.includes(u.status))
+      .flatMap((u) =>
+        u.features.map((f) => ({
+          ...f,
+          properties: { ...f.properties, name: f.properties.name || u.name },
+        })),
+      ),
+    ...drawn.map((f, i) => ({
+      ...f,
+      properties: { ...f.properties, name: `Drawn ${i + 1}` },
+    })),
+    ...inProgress,
+  ];
   const pairs = (links?: Pair[]) =>
     (links ?? []).map((l) => `${l.a} – ${l.b}`).join('; ');
   return (
@@ -204,6 +269,142 @@ export function WoodlandRecreationPanel({
         <p role="alert" className="error">
           {error}
         </p>
+      )}
+      {layersReviewed && layers && (
+        <div data-corridor-map>
+          <div className="actions">
+            <Button
+              type="button"
+              variant="outline"
+              aria-expanded={mapOpen}
+              onClick={() => setMapOpen((v) => !v)}
+            >
+              {mapOpen ? 'Hide the corridor map' : 'Show the corridor map'}
+            </Button>
+          </div>
+          {mapOpen && (
+            <>
+              <p className="small">
+                Orange: routes and areas of uses and facts that are proposed or
+                in effect, and anything you draw. Behind them: the reviewed
+                corridor layers{ownParcels?.length ? ' and your woodlots' : ''}.
+                To draw, start a shape, click the map for each point, drag a
+                numbered point to move it, then finish the shape. A drawing is
+                sent only when you propose or record it below.
+              </p>
+              <Suspense fallback={<p className="small">Loading the map…</p>}>
+                <WoodlandMap
+                  points={points}
+                  drawing={!!shape}
+                  disabled={disabled}
+                  layers={layers}
+                  treatments={[]}
+                  parcels={(ownParcels ?? []).map((p) => ({
+                    ...p,
+                    properties: {
+                      ...p.properties,
+                      name:
+                        parcelNames[String(p.properties.dfm_id)] ?? 'Woodlot',
+                    },
+                  }))}
+                  loss={[]}
+                  routes={mapped as unknown as WoodlandFeature[]}
+                  onAdd={(point) => setPoints((p) => [...p, point])}
+                  onMove={(index, point) =>
+                    setPoints((p) => p.map((v, i) => (i === index ? point : v)))
+                  }
+                  onSelect={() => undefined}
+                />
+              </Suspense>
+              <div className="actions">
+                <ControlLabel htmlFor={`${id}-draw-width`}>
+                  Width cleared along a drawn trail (m)
+                </ControlLabel>
+                <Input
+                  id={`${id}-draw-width`}
+                  className="w-24"
+                  type="number"
+                  min={0}
+                  max={RECREATION_LIMITS.maxClearedWidthM}
+                  step="0.5"
+                  value={drawWidth}
+                  disabled={!!shape}
+                  onChange={(e) => setDrawWidth(e.target.value)}
+                />
+                {!shape ? (
+                  <>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      disabled={
+                        disabled ||
+                        drawn.length >= RECREATION_LIMITS.featuresPerUse
+                      }
+                      onClick={() => setShape('line')}
+                    >
+                      Draw a trail or line
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      disabled={
+                        disabled ||
+                        drawn.length >= RECREATION_LIMITS.featuresPerUse
+                      }
+                      onClick={() => setShape('area')}
+                    >
+                      Draw an area
+                    </Button>
+                  </>
+                ) : (
+                  <>
+                    <Button
+                      type="button"
+                      disabled={points.length < (shape === 'line' ? 2 : 3)}
+                      onClick={finishShape}
+                    >
+                      Finish this {shape === 'line' ? 'line' : 'area'}
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      disabled={!points.length}
+                      onClick={() => setPoints((p) => p.slice(0, -1))}
+                    >
+                      Undo last point
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => {
+                        setShape(null);
+                        setPoints([]);
+                      }}
+                    >
+                      Cancel this shape
+                    </Button>
+                  </>
+                )}
+                {drawn.length > 0 && !shape && (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => setDrawn([])}
+                  >
+                    Clear the drawing
+                  </Button>
+                )}
+              </div>
+              <p className="small" aria-live="polite" data-drawn-count>
+                {drawn.length
+                  ? `${drawn.length} drawn ${drawn.length === 1 ? 'shape' : 'shapes'} ready to propose or record below.`
+                  : shape
+                    ? `${points.length} ${points.length === 1 ? 'point' : 'points'} placed.`
+                    : 'Nothing drawn yet.'}
+              </p>
+            </>
+          )}
+        </div>
       )}
       {list.map((u) => {
         const tally = (choice: string) =>
@@ -460,7 +661,9 @@ export function WoodlandRecreationPanel({
             onSubmit={(e) => {
               e.preventDefault();
               void run(async () => {
-                if (!route) throw new Error('Upload the route first.');
+                const features = route ?? (drawn.length ? drawn : null);
+                if (!features)
+                  throw new Error('Draw the route on the map or upload it first.');
                 if (
                   await mutate('propose_corridor_use', {
                     projectId,
@@ -468,12 +671,13 @@ export function WoodlandRecreationPanel({
                     kind,
                     audience,
                     description,
-                    features: route,
+                    features,
                   })
                 ) {
                   setName('');
                   setDescription('');
                   setRoute(null);
+                  if (!route) setDrawn([]);
                 }
               });
             }}
@@ -523,8 +727,8 @@ export function WoodlandRecreationPanel({
               onChange={(e) => setDescription(e.target.value)}
             />
             <ControlLabel htmlFor={`${id}-width`}>
-              Width cleared of trees along trail lines, in metres (0 for a
-              tread under standing trees)
+              Width cleared of trees along uploaded trail lines, in metres (0
+              for a tread under standing trees)
             </ControlLabel>
             <Input
               id={`${id}-width`}
@@ -539,8 +743,8 @@ export function WoodlandRecreationPanel({
               }}
             />
             <ControlLabel htmlFor={`${id}-route`}>
-              Route (GeoJSON): lines for trails, polygons for cleared ground
-              such as fairways
+              Route: draw it on the corridor map above, or upload GeoJSON
+              (lines for trails, polygons for cleared ground such as fairways)
             </ControlLabel>
             <Input
               id={`${id}-route`}
@@ -561,13 +765,17 @@ export function WoodlandRecreationPanel({
             />
             <p className="small" aria-live="polite">
               {route
-                ? `${route.length} ${route.length === 1 ? 'feature' : 'features'} ready. A line’s own cleared_width_m is used when it records one.`
-                : 'A wider clearing down the middle of a corridor splits it; a trail along its edge, or a tread under standing trees, usually keeps it whole.'}
+                ? `${route.length} uploaded ${route.length === 1 ? 'feature' : 'features'} ready. A line’s own cleared_width_m is used when it records one.`
+                : drawn.length
+                  ? `${drawn.length} drawn ${drawn.length === 1 ? 'shape' : 'shapes'} will be proposed.`
+                  : 'A wider clearing down the middle of a corridor splits it; a trail along its edge, or a tread under standing trees, usually keeps it whole.'}
             </p>
             <div className="actions">
               <Button
                 type="submit"
-                disabled={disabled || !route || !name.trim()}
+                disabled={
+                  disabled || !(route || drawn.length) || !name.trim()
+                }
               >
                 Check against the corridor and propose
               </Button>
@@ -583,20 +791,23 @@ export function WoodlandRecreationPanel({
             onSubmit={(e) => {
               e.preventDefault();
               void run(async () => {
-                if (!factRoute) throw new Error('Upload the map first.');
+                const features = factRoute ?? (drawn.length ? drawn : null);
+                if (!features)
+                  throw new Error('Draw it on the map or upload it first.');
                 if (
                   await mutate('record_corridor_fact', {
                     projectId,
                     kind: fact.kind,
                     name: fact.name,
                     source: fact.source,
-                    features: factRoute,
+                    features,
                     ...(fact.kind === 'blowdown'
                       ? { eventYear: Number(fact.year), severity: fact.severity }
                       : {}),
                   })
                 ) {
                   setFact((f) => ({ ...f, name: '', source: '' }));
+                  if (!factRoute) setDrawn([]);
                   setFactRoute(null);
                 }
               });
@@ -689,7 +900,7 @@ export function WoodlandRecreationPanel({
               </>
             )}
             <ControlLabel htmlFor={`${id}-fact-route`}>
-              Map (GeoJSON):{' '}
+              Draw it on the corridor map above, or upload GeoJSON:{' '}
               {fact.kind === 'blowdown'
                 ? 'polygons of the blowdown'
                 : 'lines along the right-of-way, or polygons of cleared ground'}
@@ -719,7 +930,7 @@ export function WoodlandRecreationPanel({
                 type="submit"
                 disabled={
                   disabled ||
-                  !factRoute ||
+                  !(factRoute || drawn.length) ||
                   !fact.name.trim() ||
                   !fact.source.trim()
                 }
