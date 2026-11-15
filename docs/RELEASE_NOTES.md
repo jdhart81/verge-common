@@ -1,5 +1,17 @@
 # Release notes
 
+## Unreleased — recreation along the corridor
+
+On `main`, not deployed. By default the corridor is natural and ages toward old growth. A woodland co-op can now adopt a shared recreation use on a mapped stretch: a walking trail, a bike trail, disc golf or another use.
+
+- A member uploads the route: trail lines with the width cleared of trees, and polygons of cleared ground.
+- **The corridor comes first.** The corridor check runs with the cleared ground removed. A use that loses or pinches a link is blocked, with no override vote.
+- **Each holder agrees.** Whoever recorded each woodlot the route crosses must agree; pooling consent is not enough, and one refusal ends the proposal.
+- **The co-op votes.** Frozen electorate, two-thirds quorum, approval from a majority of all members.
+- **An adopted use counts everywhere.** Its cleared ground is excluded from habitat in later harvest-plan checks and spine analyses, so it never counts toward old growth.
+- **It can always end.** A steward or any crossed holder ends it; withdrawing a woodlot or deleting an account ends the uses that cross it.
+- Projects with no adopted use store, check and project exactly as before. The rollback guard refuses older writers once a use exists. Routes are uploaded as GeoJSON; the map editor does not draw them yet. See the [woodland guide](WOODLAND.md#recreation-along-the-corridor).
+
 ## v0.11.0 — native old growth (dfm-core 0.3.0; deployed 15 November 2026, 15:11 UTC, as release branch `12e0fec` on production `7541560`)
 
 The old-growth corridor is now the lead of woodland projects, and the engine behind it moves to dfm-core 0.3.0. Woodland projects stay off unless the operator sets `VERGE_WOODLAND_DFM=1`. See the [receipt](history/RELEASE_OLD_GROWTH_2026-11-15.md).
