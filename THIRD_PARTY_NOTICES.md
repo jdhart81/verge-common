@@ -37,7 +37,7 @@ SOFTWARE.
 - @openai/sites-vite-plugin: MIT
 - @shadcn/react: MIT
 - @tailwindcss/postcss: MIT
-- @turf/* (area, buffer, difference, intersect, union and other Turf.js 7 modules used by @viridis/dfm-core): MIT
+- @turf/* (area, boolean-intersects, buffer, difference, intersect, union and other Turf.js 7 modules, used directly and by @viridis/dfm-core): MIT
 - @types/node: MIT
 - @types/react: MIT
 - @types/react-dom: MIT

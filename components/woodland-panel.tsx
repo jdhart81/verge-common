@@ -17,6 +17,10 @@ import {
   NativeSelect,
   NativeSelectOption,
 } from '@/components/ui/native-select';
+import {
+  WoodlandRecreationPanel,
+  type CorridorUse,
+} from './woodland-recreation-panel';
 // Loaded only when a woodland project has reviewed layers.
 const WoodlandSpinePanel = lazy(() =>
   import('./woodland-spine-panel').then((m) => ({
@@ -92,6 +96,8 @@ export type WoodlandState = {
   projects: { id: string; name: string; kind: string }[];
   woodlandLayers?: LayersVersion[];
   treatmentPlans?: Plan[];
+  /** Recreation uses along the corridor, as this viewer may see them (RC8). */
+  corridorUses?: CorridorUse[];
 };
 
 const ha = (m2?: number) => `${((m2 ?? 0) / 10000).toFixed(2)} ha`;
@@ -395,6 +401,18 @@ export function WoodlandPanel({
           />
         </Suspense>
       )}
+      <WoodlandRecreationPanel
+        projectId={projectId}
+        uses={state.corridorUses ?? []}
+        parcelNames={Object.fromEntries(
+          (state.parcels ?? []).map((p) => [p.id, p.name || 'Woodlot']),
+        )}
+        layersReviewed={!!current?.layers}
+        steward={steward}
+        memberId={memberId}
+        disabled={disabled}
+        mutate={mutate}
+      />
       <h3 className="mt-6">Treatment plans</h3>
       {current?.layers && (
         <WoodlandMapEditor

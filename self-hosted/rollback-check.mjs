@@ -31,6 +31,9 @@ try {
         s.treatmentPlans?.length ||
         s.parcels?.some((p) => p.plannedJoinYear != null),
     ],
+    // Recreation uses along the corridor: an older writer would ignore an adopted use's
+    // cleared ground in plan checks and drop its privacy projection.
+    ['0.11.0 with corridor recreation uses', (s) => s.corridorUses?.length],
   ];
   const needed = checks
     .filter(([, present]) => states.some(present))

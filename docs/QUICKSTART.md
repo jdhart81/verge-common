@@ -15,7 +15,7 @@ npm run typecheck
 npm run lint
 ```
 
-Expected: `npm test` ends with `# fail 0` (480 tests). Clone without `--depth`: one test resolves the reviewed production baseline from git history and fails in a shallow clone. `typecheck` and `lint` print no errors.
+Expected: `npm test` ends with `# fail 0` (493 tests). Clone without `--depth`: one test resolves the reviewed production baseline from git history and fails in a shallow clone. `typecheck` and `lint` print no errors.
 
 ## 2. Worked example: reproduce a woodland corridor check with the open engine
 

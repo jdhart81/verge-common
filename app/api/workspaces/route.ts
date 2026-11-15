@@ -151,7 +151,14 @@ export async function POST(request: Request) {
     // Skipped when the command will not apply: an invalid request ID (refused), a retried
     // request (answered from its receipt) or a stale version (refused).
     let context = {};
-    if (data.op === 'submit_treatment_plan') {
+    // A proposed recreation use is checked the same way (RC3 in lib/woodland-recreation.mjs).
+    if (
+      data.op === 'submit_treatment_plan' ||
+      data.op === 'propose_corridor_use' ||
+      // CF2: a right-of-way is checked; a blowdown has nothing to check (CF4).
+      (data.op === 'record_corridor_fact' &&
+        data.payload?.kind === 'right-of-way')
+    ) {
       const current = await load(data.id);
       if (
         /^[0-9a-f-]{36}$/.test(data.requestId ?? '') &&

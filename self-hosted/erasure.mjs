@@ -15,6 +15,7 @@ import {
 import { resolve, join } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { DomainError } from '../lib/network.mjs';
+import { endUsesCrossing } from '../lib/woodland-recreation.mjs';
 
 const accountIdPattern =
   /^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/;
@@ -421,6 +422,27 @@ export function eraseWorkspaceState(
         ? { ...plan, override: { ...plan.override, reason: '' } }
         : plan;
     });
+  // Recreation uses along the corridor (lib/woodland-recreation.mjs). A use is a shared co-op
+  // decision about a mapped route: once another member agreed to it or voted on it, it stays,
+  // without its proposer's description. One nobody else acted on goes with its proposer. Uses
+  // that cross a woodlot removed here end with it (RC7).
+  const othersActedOnUse = (u) =>
+    rows(u, 'woodlots').some(
+      (w) => w.agreedAt && !deletedParcelIds.has(w.parcelId),
+    ) ||
+    rows(u.vote ?? {}, 'votes').some((v) => !memberIds.has(v.memberId)) ||
+    // A fact another steward reviewed is a shared record of the land, like a layers version.
+    (u.reviewedBy && u.reviewedBy !== userId);
+  if (s.corridorUses) {
+    s.corridorUses = s.corridorUses
+      .filter((u) => !authored(u, userId) || othersActedOnUse(u))
+      .map((u) =>
+        authored(u, userId)
+          ? { ...u, description: '', erasureRedacted: true }
+          : u,
+      );
+    endUsesCrossing(s, deletedParcelIds, now);
+  }
   s.woodlandLayers = rows(s, 'woodlandLayers').map((v) =>
     authored(v, userId) ? { ...v, notes: '', erasureRedacted: true } : v,
   );

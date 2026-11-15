@@ -82,6 +82,38 @@ The engine's network, projection, climate and build-out functions, and on a wate
 
 `vinext dev` runs engine work inline; a production build without the runner refuses it (503).
 
+## Recreation along the corridor
+
+By default the corridor is natural and ages toward old growth. A co-op can adopt a shared recreation use on a mapped stretch of it: a walking trail, a bike trail, disc golf or another use. Nothing changes for a project that adopts none (RC1). The rules are RC1 to RC9 in `lib/woodland-recreation.mjs`.
+
+1. **Propose.** Any member uploads the route as GeoJSON in **Recreation along the corridor**: lines for trails, each with the width of ground cleared of trees (0 when only a tread is worn under standing trees), and polygons for cleared ground such as fairways. They name it, choose its kind and say whether it is meant for members or the public.
+2. **The corridor comes first.** The cleared ground is removed from retained habitat and the corridor check runs on what is left, against the current reviewed layers, the co-op's consents and every use already adopted. If any link between core areas is lost or pinched below the minimum width, or the check is incomplete, the use is stored as blocked. There is no override vote for recreation: route it again. In practice a clearing down the middle of a corridor splits it into two strips that are each too narrow, and a clearing across a corridor cuts it; a trail along the corridor's edge, or a tread under standing trees, keeps it whole.
+3. **Each holder agrees.** The use needs the recorded agreement of whoever recorded each woodlot it crosses, with an attestation that they may agree. Pooling consent is not agreement to people on the land. One refusal ends the proposal. A route that crosses no recorded woodlot with a reviewed boundary cannot be proposed.
+4. **The co-op votes.** Once every holder has agreed, a steward opens a vote. The electorate is frozen to active members, the quorum is two thirds, and the use is adopted only with approval from a majority of the electorate. If the reviewed layers changed since the use was checked, it must be proposed again.
+5. **An adopted use counts everywhere.** Its cleared ground is excluded from habitat in every later harvest-plan check and spine analysis, so it never counts as committed forest or toward old-growth age. A plan checked with adopted uses records the cleared ground it was checked with, and **Download check inputs** carries it in the package's `water` layer, marked `excluded: "recreation-clearing"`, so the stored result still reproduces.
+6. **It can always end.** A steward, or the holder of any woodlot the use crosses, ends an adopted use, and the stretch is natural corridor again. Withdrawing a woodlot, or deleting the account that recorded it, ends the uses that cross it. A proposer can withdraw a proposal.
+
+**Privacy.** Every member sees the whole route and the corridor result, because they vote on it. Which woodlots it crosses is shown to stewards and, for their own woodlots, to the members who recorded them; everyone else sees how many holders must agree and how many have. No parcel geometry is part of a use. When a member deletes their account, a use nobody else agreed to or voted on goes with them; one others acted on stays, without its description.
+
+**What it does not establish.** A recorded use is the co-op's decision and the holders' agreement. It is not a right of way or an easement, does not open land to the public, and says nothing about liability, insurance, accessibility, trail safety, wetlands or any permit. The cleared width is as recorded; nobody measures it. The check is the same structural one as for harvests: it does not show that wildlife tolerates a trail.
+
+**Limits.** 20 uses in progress or adopted per project, 20 features and 20 KB per use, lines of up to 500 points, cleared widths up to 30 m. Routes are uploaded, not drawn: the map editor does not draw or display recreation routes yet, so members review a route by downloading it. Agents cannot propose, agree to or vote on a use, or record a fact.
+
+`tests/woodland-recreation.test.mjs` covers RC1 to RC9 on the watershed co-op.
+
+## Rights-of-way and blowdown
+
+A corridor is shaped by three kinds of record: **treatments** a member plans (above), **uses** the co-op decides on (recreation) and **facts** it has to live with. Facts are CF1 to CF6 in `lib/woodland-recreation.mjs`, and they share the same section of the Woodland tab.
+
+- **Recorded, not decided (CF1).** A steward records a right-of-way that exists on the land (a power line, a road or access easement) or a blowdown that has happened, with its source: a deed, a utility map, a field visit. It takes effect only after another steward reviews it. Nobody votes on a fact, and no holder is asked to agree to it.
+- **Never blocked (CF2).** A right-of-way is checked against the corridor so the co-op sees which links it breaks or pinches, and it is recorded either way, because the map must show the ground as it is. Where a line breaks a link, a new loop such as a saddle or ridge link gives those core areas another route. On the test watershed a 20 m clearing straight across the main corridor breaks no link, because a saddle link already goes around it; the same clearing down the corridor's middle breaks four.
+- **Cleared ground stops counting (CF3).** A reviewed right-of-way's cleared ground, at the width kept clear, is excluded from habitat in every later plan check and spine analysis, exactly like an adopted use.
+- **Blowdown stays corridor (CF4).** Fallen trees are part of an old-growth corridor, and leaving them is the default. Recording a blowdown changes no check and no projection. Salvage is a treatment plan and meets the corridor check like any harvest, with the same override vote. A stand-replacing blowdown does reset the stand's age, which the software cannot map for the co-op: every spine analysis carries a warning until a steward saves layers whose stand ages were recorded in or after the year of the blowdown. Gaps under a standing canopy do not warn.
+- **Ending (CF5).** A steward ends a fact when it no longer holds, such as a line removed or an easement released. A woodlot leaving the co-op does not end a fact.
+- **Privacy and limits (CF6).** As for a use: every member sees the fact, its source and what it does to the corridor; which woodlots it crosses is shown to stewards and their holders. Facts share the 20-record limit per project. A project with no reviewed fact and no adopted use is unchanged.
+
+A recorded right-of-way is the co-op's note of what is on the ground. It does not establish that an easement exists, who holds it or what it allows. `tests/woodland-corridor-facts.test.mjs` covers CF1 to CF6.
+
 ## What the check establishes
 
 Structural connectivity at a minimum width: whether core areas stay linked by retained habitat after road surfaces, open water and the proposed units are removed. It does not establish species movement, genetic viability, regulatory compliance or old-growth condition. Calling a stand `old-growth-verified` requires an evidence reference; otherwise it is reported as a candidate.

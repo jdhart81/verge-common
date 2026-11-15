@@ -51,6 +51,12 @@ export default function WoodlandPage() {
             native species.
           </li>
           <li>
+            The corridor is natural by default. A co-op can vote to add a
+            shared trail for walking or biking, or disc golf, on a mapped
+            stretch, but only where the corridor still holds, and only with
+            the agreement of every owner whose woodlot it crosses.
+          </li>
+          <li>
             Stewards map core areas, retained corridors, roads, open water and
             road crossings, with a minimum corridor width and where it comes
             from. Another steward reviews them before they are used.

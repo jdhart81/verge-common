@@ -1,5 +1,9 @@
 # VergeCommon — current status
 
+## Unreleased — uses and facts along the corridor
+
+Not deployed. A woodland co-op can adopt a shared recreation use (walking trail, bike trail, disc golf) on a mapped stretch of its corridor; natural corridor stays the default. A use needs a corridor that still holds with its ground cleared, the agreement of every holder whose woodlot it crosses, and a co-op vote, and it can be ended by a steward or any crossed holder. Adopted cleared ground never counts toward old growth. Stewards also record rights-of-way and blowdown as facts, with a source and a second steward's review: a right-of-way's cleared ground stops counting as forest, and a blowdown stays corridor. Routes are uploaded as GeoJSON; drawing them on the map is not built. Connecting one co-op's spine to the next and a carbon program application record are specified, not built ([spec](docs/specs/CORRIDOR_NETWORK_AND_CARBON_SPEC.md)). See the [woodland guide](docs/WOODLAND.md#recreation-along-the-corridor).
+
 ## Unreleased — optional email updates
 
 Disabled by default, with a separate double opt-in form, encrypted 48-hour confirmation links and an explicit confirmation POST, Resend-only subscriber records, abuse limits and no tracking. Adds an offline-tested campaign draft/preview/lint/test/send CLI and a read-only DNS checker. See [email operator runbook](docs/EMAIL.md) for configuration and deliberate send gates. No deployment, real email, DNS change or provider setup is part of this change.
