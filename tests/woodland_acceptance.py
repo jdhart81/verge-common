@@ -2,7 +2,8 @@
 
 Synthetic accounts only. Exercises the woodland page, spine layers with independent review,
 woodlot consent, a planned join year, all four spine analyses in the server's analysis worker,
-a plan preview and a submitted plan checked there too, member privacy, and cleanup (archive and
+a plan preview and a submitted plan checked there too, member privacy, a recreation use and
+corridor facts (right-of-way, blowdown), and cleanup (archive and
 account closure). Local targets by default; a
 specifically authorized production check needs VERGE_ALLOW_PRODUCTION_FIXTURES=1.
 """
@@ -139,6 +140,55 @@ assert analyze(a, 'outlook')['planId'] is None
 assert analyze(d, 'frontier', 403)
 assert analyze(a, 'everything', 400)
 checks.append('member sees only their woodlots and the build-out total, applies plans only to the network; outsiders and unknown analyses refused')
+# Uses and facts along the corridor (RC1-RC9, CF1-CF6 in lib/woodland-recreation.mjs). The main
+# brook's corridor is 80 m wide and the minimum is 50 m; Woodlot A (steward A) lies across its
+# west end, where the north brook and the saddle give a second route; east of the north brook's
+# mouth (Woodlots B and C) it is the only route to the east core.
+def trail(y, width, x0=0.0020, x1=0.0038):
+    return [{'type': 'Feature', 'geometry': {'type': 'LineString', 'coordinates': [[x0, y], [x1, y]]}, 'properties': {'cleared_width_m': width}}]
+def uses(client): return state(client)['state'].get('corridorUses', [])
+def use(client, name): return next(u for u in uses(client) if u['name'] == name)
+before_area = analyze(a, 'outlook')['result']['milestones'][0]['committedM2']
+ok(c, 'propose_corridor_use', {'projectId': project, 'name': 'Synthetic middle trail', 'kind': 'bike-trail', 'audience': 'members', 'features': trail(0.0044966, 4, 0.0058, 0.0086)})
+middle = use(c, 'Synthetic middle trail')
+assert middle['status'] == 'blocked' and middle['holds'] is False and middle['check']['lostLinks'], middle
+ok(c, 'propose_corridor_use', {'projectId': project, 'name': 'Synthetic edge trail', 'kind': 'walking-trail', 'audience': 'members', 'features': trail(0.0048000, 4)})
+edge = use(c, 'Synthetic edge trail')
+assert edge['status'] == 'awaiting_agreement' and edge['holds'] is True and edge['mine'] is True, edge
+assert edge['woodlots'] == [] and edge['woodlotCount'] == 1 and edge['canAgree'] is False, edge
+assert parcels['Woodlot A'] not in json.dumps(uses(c)) and 'createdBy' not in json.dumps(uses(c))
+agree = {'id': edge['id'], 'parcelId': parcels['Woodlot A'], 'decision': 'agree', 'attested': True}
+assert command(c, 'agree_corridor_use', agree)[0] in (403, 404)
+assert command(b, 'open_corridor_use_vote', {'id': edge['id']})[0] == 409
+assert use(a, 'Synthetic edge trail')['canAgree'] is True
+ok(a, 'agree_corridor_use', agree)
+assert command(c, 'open_corridor_use_vote', {'id': edge['id']})[0] == 403
+ok(b, 'open_corridor_use_vote', {'id': edge['id']})
+for client in (a, b, c): ok(client, 'vote_corridor_use', {'id': edge['id'], 'choice': 'approve'})
+ok(b, 'close_corridor_use_vote', {'id': edge['id']})
+assert use(c, 'Synthetic edge trail')['status'] == 'adopted'
+after_area = analyze(a, 'outlook')['result']['milestones'][0]['committedM2']
+assert 0 < before_area - after_area < 2000, (before_area, after_area)
+checks.append('recreation use: blocked when it splits the corridor; adopted after the holder agrees and the co-op votes; cleared ground leaves the committed forest; crossed woodlots hidden from other members')
+row = {'projectId': project, 'kind': 'right-of-way', 'name': 'Synthetic power line', 'source': 'Synthetic easement record',
+       'features': [{'type': 'Feature', 'geometry': {'type': 'LineString', 'coordinates': [[0.0075, 0.0038], [0.0075, 0.0052]]}, 'properties': {'cleared_width_m': 12}}]}
+assert command(c, 'record_corridor_fact', row)[0] == 403
+ok(a, 'record_corridor_fact', row)
+line = use(a, 'Synthetic power line')
+assert line['status'] == 'submitted' and line['basis'] == 'fact' and line['holds'] is False and line['check']['lostLinks'], line
+assert command(a, 'review_corridor_fact', {'id': line['id'], 'decision': 'approve', 'note': 'Self review'})[0] == 403
+assert analyze(a, 'network')['result']['summary']['linkedPairs'] == 3, 'an unreviewed fact changes nothing'
+ok(b, 'review_corridor_fact', {'id': line['id'], 'decision': 'approve', 'note': 'Synthetic independent review'})
+assert analyze(a, 'network')['result']['summary']['linkedPairs'] < 3, 'the corridor is shown as it is'
+ok(a, 'record_corridor_fact', {'projectId': project, 'kind': 'blowdown', 'name': 'Synthetic windstorm', 'source': 'Synthetic field visit', 'eventYear': year, 'severity': 'gaps',
+   'features': [{'type': 'Feature', 'geometry': {'type': 'Polygon', 'coordinates': [[[0.0022, 0.0043], [0.0026, 0.0043], [0.0026, 0.0047], [0.0022, 0.0047], [0.0022, 0.0043]]]}, 'properties': {}}]})
+storm = use(a, 'Synthetic windstorm')
+assert storm['check'] is None and storm['clearedM2'] == 0, storm
+ok(b, 'review_corridor_fact', {'id': storm['id'], 'decision': 'approve', 'note': 'Synthetic independent review'})
+assert command(c, 'end_corridor_use', {'id': line['id']})[0] == 403
+ok(b, 'end_corridor_use', {'id': line['id']})
+assert analyze(a, 'network')['result']['summary']['linkedPairs'] == 3
+checks.append('corridor facts: a right-of-way is recorded though it breaks a link, takes effect only after another steward reviews it and stops when ended; a blowdown stays corridor')
 # Cleanup: archive the fixture, then close every synthetic account.
 assert command(a, 'archive', {})[0] == 200
 for client in [a, b, c, d]:
