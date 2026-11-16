@@ -1,5 +1,16 @@
 # Release notes
 
+## Unreleased — easier first day for a new co-op
+
+Not deployed. Found by walking the whole app as a new customer on the live build (15 November 2026).
+
+- **Everyday tabs first.** A co-op opens on nine tabs: Community, Get started, Projects, Woodland corridors, Parcels, Map & monitor, Evidence, Care & participation and Members. Organizations, Land pooling, Agreements, Governance, Records ledger, History and Settings sit behind one “More” link and open by themselves when a step or a pending item leads there. Nothing is removed.
+- **Get started follows the corridor.** A co-op with a woodland project gets a “Map the corridor” step. The carbon pathway and benefit-sharing steps are marked as later and optional. Buttons use the tab names.
+- **The parcel map opens on the land.** When a parcel has a saved boundary, the background map opens on it and draws it as a dashed outline, and “Fit boundary” returns to it. Before, the map opened on the whole world.
+- **An organization profile no longer needs a website.** A website, when given, must still be HTTPS.
+- **Votes say what happens next.** When everyone has voted, members see that a steward records the result and stewards see “Close and tally” highlighted. The voting rules are unchanged: a member can change a vote until a steward closes it.
+- **The opening page links to woodland corridors** beside the first buttons, not only in the footer.
+
 ## v0.11.0 — the opening page shows how a co-op works (deployed 15 November 2026, 22:56 UTC, in release branch `f91cea0`, English only)
 
 See the [receipt](history/RELEASE_COOP_STORY_2026-11-15.md). The opening-page animation is rebuilt around the three plots: a woodlot behind each home, one corridor mapped through all three, each owner agreeing for their own plot and connecting at its node, a shared trail going to a co-op vote while tree crops on a field stay the owner's call, the woodlots growing old and, as the aim, the corridor meeting the next co-op's. The pause button is removed: the 40-second loop runs on its own, stops off screen, and reduced motion shows the finished scene. This replaces the 36-second version below. The Hindi captions are on `main` and not yet live.

@@ -65,9 +65,14 @@ await test('pollinator grassland projects persist and remain private until share
   assert.equal(publicWorkspace(saved).projects.length, 0);
   f.run('project_status', { id, status: 'active', visibility: 'public' });
   assert.equal(publicWorkspace(f.s).projects[0].kind, 'grassland');
-  assert.throws(() => f.run('create_project', {
-    name: 'Invalid type', summary: 'Synthetic', region: 'Synthetic', kind: 'unsupported',
-  }));
+  assert.throws(() =>
+    f.run('create_project', {
+      name: 'Invalid type',
+      summary: 'Synthetic',
+      region: 'Synthetic',
+      kind: 'unsupported',
+    }),
+  );
 });
 await test('founder responsibility transfers only after confirmation to an active steward and preserves historical records', () => {
   const f = twoStewards();
@@ -784,6 +789,15 @@ await test('organization profile is opt-in and self-reported, with HTTPS referen
         ...profile,
         website: 'javascript:alert(1)',
       }),
+    /HTTPS/,
+  );
+  // A neighborhood group with no website can still save a profile.
+  for (const website of [undefined, '', '   ']) {
+    f.run('update_organization', { ...profile, website });
+    assert.equal(f.s.organization.website, '');
+  }
+  assert.throws(
+    () => f.run('update_organization', { ...profile, website: 'http://x.org' }),
     /HTTPS/,
   );
 });

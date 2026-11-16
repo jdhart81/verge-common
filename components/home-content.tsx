@@ -87,6 +87,17 @@ export function HomeContent({
                 {t.justLooking}{' '}
                 <Link href="/demo/">{t.tryWithoutAccount}</Link>
               </p>
+              <p className="home-try">
+                <Link
+                  href={
+                    publicPreview
+                      ? 'https://vergecommon.com/woodland/'
+                      : '/woodland/'
+                  }
+                >
+                  {t.woodlandCorridors} →
+                </Link>
+              </p>
               <p className="fine home-pilot">
                 <span aria-hidden="true" />{' '}
                 {publicPreview
