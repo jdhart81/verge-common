@@ -8,6 +8,8 @@ import { boundaryFeatures } from '@/lib/boundary-editor.mjs';
 type Point = number[];
 type Props = {
   points: Point[];
+  // The parcel's latest saved boundary, drawn dashed so the map opens on the land.
+  reference?: Point[];
   drawing: boolean;
   disabled: boolean;
   focus: { point: Point; request: number } | null;
@@ -47,11 +49,12 @@ export function BoundaryMap(props: Props) {
         // MapLibre's computed relative worker URL cannot survive Vite chunk naming.
         lib.setWorkerUrl(workerUrl);
         const points = latest.current.points;
+        const start = points.length ? points : (latest.current.reference ?? []);
         instance = new lib.Map({
           container: container.current,
           style: 'https://tiles.openfreemap.org/styles/liberty',
-          center: points.length ? [points[0][0], points[0][1]] : [0, 20],
-          zoom: points.length ? 16 : 1,
+          center: start.length ? [start[0][0], start[0][1]] : [0, 20],
+          zoom: start.length ? 16 : 1,
           renderWorldCopies: false,
           attributionControl: { compact: false },
         });
@@ -99,7 +102,21 @@ export function BoundaryMap(props: Props) {
             filter: ['==', '$type', 'LineString'],
             paint: { 'line-color': '#193628', 'line-width': 3 },
           });
-          if (points.length > 1) fit(instance, points);
+          instance.addSource('reference', {
+            type: 'geojson',
+            data: referenceFeature(latest.current.reference),
+          });
+          instance.addLayer({
+            id: 'reference-line',
+            type: 'line',
+            source: 'reference',
+            paint: {
+              'line-color': '#193628',
+              'line-width': 2,
+              'line-dasharray': [2, 2],
+            },
+          });
+          if (start.length > 1) fit(instance, start);
           setReady(true);
         });
         instance.on('click', (event) => {
@@ -174,6 +191,15 @@ export function BoundaryMap(props: Props) {
   }, [props.points, props.drawing, props.disabled, ready]);
 
   useEffect(() => {
+    if (!ready || !map.current) return;
+    void (
+      map.current.getSource('reference') as GeoJSONSource | undefined
+    )?.setData(
+      referenceFeature(props.reference),
+    );
+  }, [props.reference, ready]);
+
+  useEffect(() => {
     if (ready && props.focus)
       map.current?.flyTo({
         center: [props.focus.point[0], props.focus.point[1]],
@@ -192,8 +218,14 @@ export function BoundaryMap(props: Props) {
         <Button
           type="button"
           variant="outline"
-          disabled={!ready || !props.points.length}
-          onClick={() => map.current && fit(map.current, props.points)}
+          disabled={!ready || !(props.points.length || props.reference?.length)}
+          onClick={() =>
+            map.current &&
+            fit(
+              map.current,
+              props.points.length ? props.points : (props.reference ?? []),
+            )
+          }
         >
           Fit boundary
         </Button>
@@ -221,6 +253,25 @@ export function BoundaryMap(props: Props) {
       )}
     </div>
   );
+}
+
+function referenceFeature(reference: Point[] | undefined) {
+  return {
+    type: 'FeatureCollection' as const,
+    features:
+      reference && reference.length > 1
+        ? [
+            {
+              type: 'Feature' as const,
+              properties: {},
+              geometry: {
+                type: 'LineString' as const,
+                coordinates: [...reference, reference[0]],
+              },
+            },
+          ]
+        : [],
+  };
 }
 
 function fit(map: LibreMap, points: Point[]) {

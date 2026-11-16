@@ -393,6 +393,7 @@ export function MonitoringBoard({
               value={geometry}
               onChange={setGeometry}
               disabled={disabled}
+              reference={boundary?.geometry.coordinates[0]?.slice(0, -1)}
             />
             <Form
               key={`boundary-${editorRevision}`}

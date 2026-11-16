@@ -24,9 +24,16 @@ type Props = {
   value: string;
   onChange: (value: string) => void;
   disabled: boolean;
+  // Outer ring of the parcel's latest saved boundary, shown dashed on the map.
+  reference?: number[][];
 };
 
-export function BoundaryEditor({ value, onChange, disabled }: Props) {
+export function BoundaryEditor({
+  value,
+  onChange,
+  disabled,
+  reference,
+}: Props) {
   const inputId = useId();
   const [externalMap, setExternalMap] = useState(false);
   const [drawing, setDrawing] = useState(false);
@@ -153,6 +160,7 @@ export function BoundaryEditor({ value, onChange, disabled }: Props) {
             </Button>
             <BoundaryMap
               points={draft.points}
+              reference={reference}
               drawing={drawing}
               disabled={disabled || !!draft.error}
               focus={focus}
