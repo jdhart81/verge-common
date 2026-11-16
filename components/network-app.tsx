@@ -2859,6 +2859,7 @@ export function NetworkApp({
                       memberId={data.memberId ?? ''}
                       growthPaused={data.capacity?.growthPaused}
                       mutate={mutate}
+                      onOpenTab={setWorkspaceTab}
                     />
                   </Suspense>
                 </TabsContent>

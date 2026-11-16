@@ -22,6 +22,20 @@ The public page [/woodland/](https://vergecommon.com/woodland/) explains woodlan
 
 Corridor sections count as **committed** only on parcels whose current consent has been reviewed and matches the reviewed boundary. Elsewhere they are **proposed**.
 
+## Corridor progress
+
+The Woodland tab opens on corridor progress. The aim is one old-growth corridor that branches along the streams, valleys and ridges and is joined one woodlot at a time; each woodlot is a node that connects when its owner agrees. The view shows five ordered steps with the next one marked:
+
+1. **Map the corridor:** a reviewed layers version exists.
+2. **Trace the branches:** the layers hold streams or valley, ridge or saddle links.
+3. **Record the woodlots:** at least one woodlot has a reviewed boundary.
+4. **Owners join:** at least one woodlot has the owner's current reviewed consent.
+5. **The corridor is whole:** every recorded woodlot the mapped corridor touches has joined.
+
+Below the steps a member sees their own woodlots, with what each needs next and whether the mapped corridor touches it. Stewards see every woodlot. Any other member sees four counts for the rest of the co-op and nothing else about a neighbour's woodlot.
+
+Progress is derived for each view from the reviewed layers, the parcels, their latest boundary and their latest consent. Nothing is stored and no analysis runs. "Joined" is the same test the engine uses for a committed woodlot. "Touches" means only that a reviewed boundary meets a retained corridor or core area on the maps; it does not establish species movement, genetics, regulatory compliance or old-growth condition. The rules are CP1 to CP6 in `lib/woodland-progress.mjs`, tested in `tests/woodland-progress.test.mjs`.
+
 ## The old-growth spine
 
 The spine is the dendritic network of retained forest along a landscape's streams, valleys and ridges: mapped whole, then committed woodlot by woodlot as holders consent, aging toward old growth while the woods around it are worked. It is optional; a project without spine lines works exactly as before.

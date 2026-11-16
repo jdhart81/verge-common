@@ -4,6 +4,10 @@
 import { lazy, Suspense, useId, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import {
+  WoodlandProgress,
+  type CorridorProgress,
+} from '@/components/woodland-progress';
+import {
   WoodlandMapEditor,
   type WoodlandLayers,
   type WoodlandFeature,
@@ -99,6 +103,8 @@ export type WoodlandState = {
   treatmentPlans?: Plan[];
   /** Recreation uses along the corridor, as this viewer may see them (RC8). */
   corridorUses?: CorridorUse[];
+  /** Corridor progress by woodland project, as this viewer may see it (CP2). */
+  corridorProgress?: Record<string, CorridorProgress>;
 };
 
 const ha = (m2?: number) => `${((m2 ?? 0) / 10000).toFixed(2)} ha`;
@@ -189,6 +195,7 @@ export function WoodlandPanel({
   growthPaused = false,
   mutate,
   requestEnvelope,
+  onOpenTab,
 }: {
   state: WoodlandState;
   steward: boolean;
@@ -197,6 +204,7 @@ export function WoodlandPanel({
   growthPaused?: boolean;
   mutate: Save;
   requestEnvelope: { id: string; version: number };
+  onOpenTab?: (tab: string) => void;
 }) {
   const ids = { project: useId() };
   const woodland = state.projects.filter((p) => p.kind === 'woodland');
@@ -271,6 +279,14 @@ export function WoodlandPanel({
         <p role="alert" className="error">
           {error}
         </p>
+      )}
+
+      {state.corridorProgress?.[projectId] && (
+        <WoodlandProgress
+          progress={state.corridorProgress[projectId]}
+          steward={steward}
+          onOpenTab={onOpenTab}
+        />
       )}
 
       <h3 className="mt-6">Corridor layers</h3>

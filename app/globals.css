@@ -681,6 +681,74 @@ p {
   gap: 5px;
   padding: 6px !important;
 }
+.corridor-progress {
+  margin: 20px 0 8px;
+  padding: 18px 20px;
+  border: 1px solid #c9d6c4;
+  border-radius: 10px;
+  background: #f4f8f1;
+}
+.corridor-progress h3 {
+  margin-top: 0;
+}
+.corridor-progress-nodes {
+  display: block;
+  max-width: 100%;
+  height: auto;
+  margin: 10px 0 2px;
+}
+.corridor-progress-trunk,
+.corridor-progress-branch {
+  fill: none;
+  stroke: #9fbe84;
+  stroke-width: 5;
+  stroke-linecap: round;
+}
+.corridor-progress-branch {
+  stroke-width: 3;
+  stroke-dasharray: 3 5;
+}
+.corridor-progress-branch.is-joined {
+  stroke: #2f5d3a;
+  stroke-dasharray: none;
+}
+.corridor-progress-node {
+  fill: #fbf8ef;
+  stroke: #2f5d3a;
+  stroke-width: 2;
+}
+.corridor-progress-node.is-joined {
+  fill: #2f5d3a;
+}
+.corridor-progress-steps,
+.corridor-progress-rows {
+  margin: 12px 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: 8px;
+}
+.corridor-progress-steps li,
+.corridor-progress-rows li {
+  display: grid;
+  gap: 2px;
+  padding: 9px 12px;
+  border-left: 3px solid #c9d6c4;
+  background: #fff;
+  font-size: 14px;
+}
+.corridor-progress-steps li[data-state='done'],
+.corridor-progress-rows li[data-woodlot-state='joined'] {
+  border-left-color: #2f5d3a;
+}
+.corridor-progress-steps li[data-state='next'] {
+  border-left-color: #a5612c;
+  background: #fdf6ec;
+}
+.corridor-progress-state {
+  font-weight: 500;
+  color: var(--muted-foreground);
+}
 .coop-tabs-more {
   align-self: flex-start;
   margin-top: 6px;
