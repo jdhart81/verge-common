@@ -1,8 +1,8 @@
 # Release notes
 
-## Unreleased — easier first day for a new co-op
+## v0.11.0 — easier first day for a new co-op (deployed 16 November 2026, 02:17 UTC, in release branch `6457d84`)
 
-Not deployed. Found by walking the whole app as a new customer on the live build (15 November 2026).
+See the [receipt](history/RELEASE_FIRST_DAY_2026-11-16.md). Found by walking the whole app as a new customer on the live build (15 November 2026).
 
 - **Everyday tabs first.** A co-op opens on nine tabs: Community, Get started, Projects, Woodland corridors, Parcels, Map & monitor, Evidence, Care & participation and Members. Organizations, Land pooling, Agreements, Governance, Records ledger, History and Settings sit behind one “More” link and open by themselves when a step or a pending item leads there. Nothing is removed.
 - **Get started follows the corridor.** A co-op with a woodland project gets a “Map the corridor” step. The carbon pathway and benefit-sharing steps are marked as later and optional. Buttons use the tab names.
