@@ -7,6 +7,7 @@ Production `6457d84` plus only PR #99 from `main`.
 - **Corridor progress leads the Woodland tab.** It states the aim (one old-growth corridor that branches along streams, valleys and ridges, joined one woodlot at a time) and shows five ordered steps with the next one marked: map the corridor, trace the branches, record the woodlots, owners join, the corridor is whole.
 - **Each woodlot is a node.** A member sees their own woodlots with what each needs next (a boundary, a review, or the owner's consent) and whether the mapped corridor touches it. Stewards see every woodlot. Other members see counts only, never a neighbour's woodlot (CP2, as WS8).
 - **Joined means what the engine counts:** a reviewed woodlot with a reviewed boundary and the owner's current reviewed consent.
+- **The rest of the app points at the corridor.** A line above the tabs says how many woodlots have joined and the next step, with one button to the Woodland tab. In a woodland project the Parcels tab calls a parcel a woodlot, says what it needs next at every state, and the consent form reads “Join the corridor: record the owner’s consent for this woodlot”. Each woodlot in corridor progress has a button to its own next step. Other project kinds keep the pooling wording.
 - Read-only and derived for each view; nothing new is stored, and no analysis runs. "Touches" compares maps only: it does not establish species movement, genetics, regulatory compliance or old-growth condition.
 
 ## v0.11.0 — easier first day for a new co-op (release branch on production f91cea0)

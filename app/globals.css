@@ -681,6 +681,20 @@ p {
   gap: 5px;
   padding: 6px !important;
 }
+.corridor-strip {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 16px;
+  margin: 0 0 16px;
+  padding: 10px 14px;
+  border-left: 3px solid #2f5d3a;
+  background: #f4f8f1;
+  font-size: 14px;
+}
+.corridor-strip p {
+  margin: 0;
+}
 .corridor-progress {
   margin: 20px 0 8px;
   padding: 18px 20px;

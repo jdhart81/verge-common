@@ -219,6 +219,25 @@ export function WoodlandProgress({
                     ? 'The mapped corridor does not touch this woodlot. A steward can extend a branch to it in the layers.'
                     : ''}
               </span>
+              {onOpenTab && !row.joined && (
+                <span>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() =>
+                      onOpenTab(
+                        row.boundary === 'none' ? 'monitoring' : 'parcels',
+                      )
+                    }
+                  >
+                    {row.boundary === 'none'
+                      ? 'Draw its boundary'
+                      : row.boundary === 'submitted'
+                        ? 'See its record'
+                        : 'Record the owner’s consent'}
+                  </Button>
+                </span>
+              )}
             </li>
           ))}
         </ul>
@@ -234,5 +253,43 @@ export function WoodlandProgress({
           ' You see your own woodlots; for the rest of the co-op you see counts only.'}
       </p>
     </section>
+  );
+}
+
+/** One line above the tabs: where the corridor stands and the next step. */
+export function CorridorStrip({
+  progress,
+  projects,
+  onOpen,
+}: {
+  progress?: Record<string, CorridorProgress>;
+  projects: { id: string; name: string }[];
+  onOpen: () => void;
+}) {
+  const list = Object.values(progress ?? {});
+  if (!list.length) return null;
+  return (
+    <div className="corridor-strip" data-corridor-strip>
+      {list.map((p) => {
+        const stage = STAGES.find((s) => s.id === p.next);
+        return (
+          <p key={p.projectId}>
+            <strong>
+              {projects.find((x) => x.id === p.projectId)?.name ?? 'Corridor'}
+            </strong>
+            {': '}
+            {p.woodlots
+              ? `${p.joined} of ${plural(p.woodlots, 'woodlot')} joined the corridor.`
+              : 'no woodlot has a reviewed boundary yet.'}{' '}
+            {stage
+              ? `Next: ${stage.title.toLowerCase()}.`
+              : 'Every woodlot the mapped corridor touches has joined.'}
+          </p>
+        );
+      })}
+      <Button type="button" variant="outline" onClick={onOpen}>
+        Open Woodland corridors
+      </Button>
+    </div>
   );
 }

@@ -63,6 +63,7 @@ const WoodlandPanel = lazy(() =>
     default: m.WoodlandPanel,
   })),
 );
+import { CorridorStrip } from '@/components/woodland-progress';
 import Link from 'next/link';
 import { ControlLabel } from '@/components/ui/label';
 import {
@@ -724,6 +725,10 @@ export function NetworkApp({
       setBusy(false);
     }
   }
+  // A parcel in a woodland project is a woodlot: a node on the corridor.
+  const woodlot = (p: { projectId: string }) =>
+    data?.state?.projects.find((x) => x.id === p.projectId)?.kind ===
+    'woodland';
   async function quick(op: string, payload: CommandPayload) {
     try {
       await mutate(op, payload);
@@ -1411,8 +1416,9 @@ export function NetworkApp({
               <section>
                 {state.parcels.length === 0 && (
                   <Empty>
-                    Record land rights and consent before bringing a parcel into
-                    a carbon pool.
+                    {state.projects.some((x) => x.kind === 'woodland')
+                      ? 'Record your woodlot here. Each woodlot is a node on the corridor: it joins once its boundary is reviewed and its owner’s consent is reviewed.'
+                      : 'Record land rights and consent before bringing a parcel into a carbon pool.'}
                   </Empty>
                 )}
                 {state.parcels.map((p) => (
@@ -1428,11 +1434,36 @@ export function NetworkApp({
                     </p>
                     <p>{p.notes}</p>
                     <Status value={p.status} />
-                    <p className="small">
-                      {parcelConsentIsCurrent(p)
-                        ? 'Current pooling consent reviewed'
-                        : 'Current pooling consent needed'}
+                    <p className="small" data-parcel-join={p.id}>
+                      {woodlot(p)
+                        ? parcelConsentIsCurrent(p)
+                          ? 'Joined the corridor: the owner’s consent is reviewed.'
+                          : p.status === 'withdrawn'
+                            ? 'Withdrawn: not part of the corridor.'
+                            : p.status !== 'reviewed'
+                              ? 'Not joined yet. Next: another steward reviews this record.'
+                              : !p.boundaries?.length
+                                ? 'Not joined yet. Next: draw this woodlot’s boundary under Map & monitor.'
+                                : p.boundaries.at(-1)?.status !== 'reviewed'
+                                  ? 'Not joined yet. Next: a steward reviews the boundary.'
+                                  : (p.consents ?? []).at(-1)?.status ===
+                                      'submitted'
+                                    ? 'Not joined yet. Next: a steward reviews the owner’s consent.'
+                                    : 'Not joined yet. Next: the owner records consent below.'
+                        : parcelConsentIsCurrent(p)
+                          ? 'Current pooling consent reviewed'
+                          : 'Current pooling consent needed'}
                     </p>
+                    {woodlot(p) &&
+                      p.status === 'reviewed' &&
+                      !p.boundaries?.length && (
+                        <Button
+                          variant="outline"
+                          onClick={() => setWorkspaceTab('monitoring')}
+                        >
+                          Open Map & monitor
+                        </Button>
+                      )}
                     {p.status !== 'withdrawn' &&
                       p.boundaries?.at(-1)?.status === 'reviewed' && (
                         <>
@@ -1459,7 +1490,10 @@ export function NetworkApp({
                       )}
                     {(p.consents ?? []).map((consent) => (
                       <section className="mt-4" key={consent.id}>
-                        <h4>Pooling consent: {consent.holder}</h4>
+                        <h4>
+                          {woodlot(p) ? 'Consent to join' : 'Pooling consent'}:{' '}
+                          {consent.holder}
+                        </h4>
                         <Status value={consent.status} />
                         <p className="small">
                           Reference: {consent.reference}
@@ -1486,7 +1520,11 @@ export function NetworkApp({
                                   'textarea',
                                 ),
                               ]}
-                              submit="Review pooling consent"
+                              submit={
+                                woodlot(p)
+                                  ? 'Review consent to join'
+                                  : 'Review pooling consent'
+                              }
                               disabled={busy}
                               onSubmit={(v) =>
                                 mutate('review_parcel_consent', {
@@ -1523,7 +1561,11 @@ export function NetworkApp({
                     {p.status === 'reviewed' &&
                       p.boundaries?.at(-1)?.status === 'reviewed' && (
                         <ActionForm
-                          title="Record consent for this parcel and boundary"
+                          title={
+                            woodlot(p)
+                              ? 'Join the corridor: record the owner’s consent for this woodlot'
+                              : 'Record consent for this parcel and boundary'
+                          }
                           fields={[
                             field(
                               'holder',
@@ -1545,7 +1587,9 @@ export function NetworkApp({
                             ),
                             field(
                               'scope',
-                              'Agreed pooling purpose, duration, and restrictions',
+                              woodlot(p)
+                                ? 'What the owner agrees to: purpose, duration, and restrictions'
+                                : 'Agreed pooling purpose, duration, and restrictions',
                               'textarea',
                               { max: 2000 },
                             ),
@@ -1558,7 +1602,11 @@ export function NetworkApp({
                               value: '',
                             },
                           ]}
-                          submit="Submit pooling consent for review"
+                          submit={
+                            woodlot(p)
+                              ? 'Submit consent to join for review'
+                              : 'Submit pooling consent for review'
+                          }
                           disabled={busy}
                           onSubmit={(v) =>
                             mutate('record_parcel_consent', {
@@ -2809,6 +2857,15 @@ export function NetworkApp({
               now={now}
               onOpenTab={setWorkspaceTab}
             />
+            {workspaceTab !== 'woodland' && data.features?.woodland && (
+              <CorridorStrip
+                progress={
+                  (state as unknown as WoodlandState).corridorProgress
+                }
+                projects={state.projects}
+                onOpen={() => setWorkspaceTab('woodland')}
+              />
+            )}
             <Tabs
               value={workspaceTab}
               onValueChange={(v) => setWorkspaceTab(String(v))}
