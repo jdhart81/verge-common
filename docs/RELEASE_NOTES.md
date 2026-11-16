@@ -1,5 +1,14 @@
 # Release notes
 
+## Unreleased — corridor progress: every woodlot a node
+
+Not deployed.
+
+- **Corridor progress leads the Woodland tab.** It states the aim (one old-growth corridor that branches along streams, valleys and ridges, joined one woodlot at a time) and shows five ordered steps with the next one marked: map the corridor, trace the branches, record the woodlots, owners join, the corridor is whole.
+- **Each woodlot is a node.** A member sees their own woodlots with what each needs next (a boundary, a review, or the owner's consent) and whether the mapped corridor touches it. Stewards see every woodlot. Other members see counts only, never a neighbour's woodlot (CP2, as WS8).
+- **Joined means what the engine counts:** a reviewed woodlot with a reviewed boundary and the owner's current reviewed consent.
+- Read-only and derived for each view; nothing new is stored, and no analysis runs. "Touches" compares maps only: it does not establish species movement, genetics, regulatory compliance or old-growth condition.
+
 ## v0.11.0 — easier first day for a new co-op (deployed 16 November 2026, 02:17 UTC, in release branch `6457d84`)
 
 See the [receipt](history/RELEASE_FIRST_DAY_2026-11-16.md). Found by walking the whole app as a new customer on the live build (15 November 2026).
