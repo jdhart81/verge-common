@@ -10,6 +10,8 @@ type Props = {
   points: Point[];
   // The parcel's latest saved boundary, drawn dashed so the map opens on the land.
   reference?: Point[];
+  // A corner of another boundary in the same co-op: where to open when this parcel has none.
+  near?: Point;
   drawing: boolean;
   disabled: boolean;
   focus: { point: Point; request: number } | null;
@@ -53,8 +55,12 @@ export function BoundaryMap(props: Props) {
         instance = new lib.Map({
           container: container.current,
           style: 'https://tiles.openfreemap.org/styles/liberty',
-          center: start.length ? [start[0][0], start[0][1]] : [0, 20],
-          zoom: start.length ? 16 : 1,
+          center: start.length
+            ? [start[0][0], start[0][1]]
+            : latest.current.near
+              ? [latest.current.near[0], latest.current.near[1]]
+              : [0, 20],
+          zoom: start.length ? 16 : latest.current.near ? 13 : 1,
           renderWorldCopies: false,
           attributionControl: { compact: false },
         });
@@ -194,9 +200,7 @@ export function BoundaryMap(props: Props) {
     if (!ready || !map.current) return;
     void (
       map.current.getSource('reference') as GeoJSONSource | undefined
-    )?.setData(
-      referenceFeature(props.reference),
-    );
+    )?.setData(referenceFeature(props.reference));
   }, [props.reference, ready]);
 
   useEffect(() => {

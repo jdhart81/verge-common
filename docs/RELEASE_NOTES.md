@@ -1,8 +1,8 @@
 # Release notes
 
-## Unreleased — easier first day for a new co-op
+## v0.11.0 — easier first day for a new co-op (deployed 16 November 2026, 02:17 UTC, in release branch `6457d84`)
 
-Not deployed. Found by walking the whole app as a new customer on the live build (15 November 2026).
+See the [receipt](history/RELEASE_FIRST_DAY_2026-11-16.md). Found by walking the whole app as a new customer on the live build (15 November 2026).
 
 - **Everyday tabs first.** A co-op opens on nine tabs: Community, Get started, Projects, Woodland corridors, Parcels, Map & monitor, Evidence, Care & participation and Members. Organizations, Land pooling, Agreements, Governance, Records ledger, History and Settings sit behind one “More” link and open by themselves when a step or a pending item leads there. Nothing is removed.
 - **Get started follows the corridor.** A co-op with a woodland project gets a “Map the corridor” step. The carbon pathway and benefit-sharing steps are marked as later and optional. Buttons use the tab names.
@@ -10,6 +10,8 @@ Not deployed. Found by walking the whole app as a new customer on the live build
 - **An organization profile no longer needs a website.** A website, when given, must still be HTTPS.
 - **Votes say what happens next.** When everyone has voted, members see that a steward records the result and stewards see “Close and tally” highlighted. The voting rules are unchanged: a member can change a vote until a steward closes it.
 - **The opening page links to woodland corridors** beside the first buttons, not only in the footer.
+- **A new parcel's map opens near the co-op's other land.** When the parcel has no boundary yet, the map starts at another boundary the viewer can already see instead of the whole world. No new map provider is contacted.
+- **A woodland project with no layers says how to get them:** draw them, upload a Landscape Package from the DFM mapping workspace, or ask a forester for GIS layers.
 
 ## v0.11.0 — the opening page shows how a co-op works (deployed 15 November 2026, 22:56 UTC, in release branch `f91cea0`, English only)
 
