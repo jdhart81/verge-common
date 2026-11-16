@@ -10,6 +10,8 @@ Not deployed. Found by walking the whole app as a new customer on the live build
 - **An organization profile no longer needs a website.** A website, when given, must still be HTTPS.
 - **Votes say what happens next.** When everyone has voted, members see that a steward records the result and stewards see “Close and tally” highlighted. The voting rules are unchanged: a member can change a vote until a steward closes it.
 - **The opening page links to woodland corridors** beside the first buttons, not only in the footer.
+- **A new parcel's map opens near the co-op's other land.** When the parcel has no boundary yet, the map starts at another boundary the viewer can already see instead of the whole world. No new map provider is contacted.
+- **A woodland project with no layers says how to get them:** draw them, upload a Landscape Package from the DFM mapping workspace, or ask a forester for GIS layers.
 
 ## v0.11.0 — the opening page shows how a co-op works (deployed 15 November 2026, 22:56 UTC, in release branch `f91cea0`, English only)
 

@@ -290,10 +290,27 @@ export function WoodlandPanel({
             : ''}
         </p>
       ) : (
-        <p className="small">
-          No reviewed layers yet. A steward uploads them and another steward
-          reviews them.
-        </p>
+        <div className="notice" data-woodland-first-steps>
+          <p>
+            <strong>No reviewed layers yet.</strong> This is the first job for a
+            woodland co-op. A steward uploads them and another steward reviews
+            them. There are three ways to get them:
+          </p>
+          <ol className="list-decimal pl-5">
+            <li>
+              Draw them below: at least two core areas, the retained corridors
+              that link them, then roads and open water.
+            </li>
+            <li>
+              Upload a Landscape Package made in the Dendritic Forest Management
+              mapping workspace.
+            </li>
+            <li>
+              Ask a forester or your conservation partner for their GIS layers
+              and upload those as a Landscape Package.
+            </li>
+          </ol>
+        </div>
       )}
       {versions
         .filter((v) => v.status === 'submitted')

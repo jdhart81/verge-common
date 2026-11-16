@@ -26,6 +26,8 @@ type Props = {
   disabled: boolean;
   // Outer ring of the parcel's latest saved boundary, shown dashed on the map.
   reference?: number[][];
+  // Where to open the map when this parcel has no boundary yet.
+  near?: number[];
 };
 
 export function BoundaryEditor({
@@ -33,6 +35,7 @@ export function BoundaryEditor({
   onChange,
   disabled,
   reference,
+  near,
 }: Props) {
   const inputId = useId();
   const [externalMap, setExternalMap] = useState(false);
@@ -161,6 +164,7 @@ export function BoundaryEditor({
             <BoundaryMap
               points={draft.points}
               reference={reference}
+              near={near}
               drawing={drawing}
               disabled={disabled || !!draft.error}
               focus={focus}

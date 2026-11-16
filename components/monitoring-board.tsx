@@ -394,6 +394,11 @@ export function MonitoringBoard({
               onChange={setGeometry}
               disabled={disabled}
               reference={boundary?.geometry.coordinates[0]?.slice(0, -1)}
+              near={
+                state.parcels
+                  .flatMap((p) => p.boundaries ?? [])
+                  .at(-1)?.geometry.coordinates[0]?.[0]
+              }
             />
             <Form
               key={`boundary-${editorRevision}`}
