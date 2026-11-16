@@ -188,3 +188,34 @@ await test('the panel states the aim, keeps the caveat and leads the Woodland ta
   );
   void reviewer;
 });
+
+await test('the rest of the app points at the corridor: a line above the tabs and a join path in Parcels', async () => {
+  const app = await read('components/network-app.tsx');
+  // The line shows on every tab but the Woodland tab itself, and only with woodland on.
+  assert.match(
+    app,
+    /workspaceTab !== 'woodland' && data\.features\?\.woodland && \(\s*<CorridorStrip/,
+  );
+  // In a woodland project a parcel is a woodlot and consent is how its owner joins.
+  for (const copy of [
+    'Each woodlot is a node on the corridor',
+    'Joined the corridor: the owner’s consent is reviewed.',
+    'Join the corridor: record the owner’s consent for this woodlot',
+    'Submit consent to join for review',
+    'Review consent to join',
+  ])
+    assert.ok(app.includes(copy), copy);
+  // Every state short of joined names one next step.
+  assert.equal((app.match(/Not joined yet\. Next: /g) ?? []).length, 5);
+  // Other project kinds keep the pooling wording.
+  for (const copy of [
+    'Submit pooling consent for review',
+    'Review pooling consent',
+    'Current pooling consent needed',
+  ])
+    assert.ok(app.includes(copy), copy);
+  const view = await read('components/woodland-progress.tsx');
+  assert.match(view, /export function CorridorStrip/);
+  assert.match(view, /Record the owner’s consent/);
+  assert.doesNotMatch(app + view, /certified/i);
+});
