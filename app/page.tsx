@@ -86,6 +86,17 @@ export default function Home({
                 Just looking?{' '}
                 <Link href="/demo/">Try a plan without an account.</Link>
               </p>
+              <p className="home-try">
+                <Link
+                  href={
+                    publicPreview
+                      ? 'https://vergecommon.com/woodland/'
+                      : '/woodland/'
+                  }
+                >
+                  Woodland corridors →
+                </Link>
+              </p>
               <p className="fine home-pilot">
                 <span aria-hidden="true" />{' '}
                 {publicPreview

@@ -376,6 +376,16 @@ const TAB_LABELS: Record<string, string> = {
   retirements: 'Retirements',
 };
 const tabLabel = (s: string) => TAB_LABELS[s] ?? label(s);
+// Tabs a new co-op rarely needs on its first day.
+const MORE_TABS = [
+  'organizations',
+  'pooling',
+  'agreements',
+  'governance',
+  'ledger',
+  'history',
+  'settings',
+];
 function Status({ value }: { value: string }) {
   return <span className={`state-tag state-${value}`}>{label(value)}</span>;
 }
@@ -551,6 +561,7 @@ export function NetworkApp({
     [busy, setBusy] = useState(false),
     [search, setSearch] = useState(''),
     [workspaceTab, setWorkspaceTab] = useState('community'),
+    [showMoreTabs, setShowMoreTabs] = useState(false),
     [invitationLink, setInvitationLink] = useState(''),
     [next, setNext] = useState<number | null>(null);
   const load = useCallback(
@@ -911,6 +922,7 @@ export function NetworkApp({
                       field('website', 'Official website (HTTPS)', undefined, {
                         value: state.organization?.website,
                         max: 500,
+                        optional: true,
                       }),
                       field(
                         'services',
@@ -2220,9 +2232,20 @@ export function NetworkApp({
                                 : 'This proposal is open to the members named when voting began.'}
                           </p>
                         )}
+                        {p.votes.length >= p.electorate.length && (
+                          <output className="notice mt-4 block">
+                            {steward
+                              ? 'Everyone has voted. Close and tally to record the result.'
+                              : 'Everyone has voted. A steward records the result.'}
+                          </output>
+                        )}
                         {steward && (
                           <Button
-                            variant="outline"
+                            variant={
+                              p.votes.length >= p.electorate.length
+                                ? 'default'
+                                : 'outline'
+                            }
                             className="mt-4"
                             disabled={
                               busy ||
@@ -2312,8 +2335,9 @@ export function NetworkApp({
                 <p className="small mt-5">
                   The electorate is frozen when a proposal opens. Adoption
                   requires two-thirds participation and approval by more than
-                  half of that electorate. Voting closes at the deadline, or
-                  early once everyone has voted.
+                  half of that electorate. A steward records the result with
+                  “Close and tally” once everyone has voted or the deadline has
+                  passed; until then a member can change their vote.
                 </p>
                 <p className="notice mt-4">
                   An adopted software policy does not establish a legal co-op or
@@ -2790,30 +2814,39 @@ export function NetworkApp({
               onValueChange={(v) => setWorkspaceTab(String(v))}
               className="mt-6"
             >
+              {/* Everyday tabs first. Agreements, carbon records and settings stay one
+                  click away, and open by themselves when one of them is selected. */}
               <TabsList className="coop-tabs">
                 {[
                   'community',
-                  'care',
                   'start',
-                  'organizations',
-                  'monitoring',
-                  ...(data.features?.woodland ? ['woodland'] : []),
-                  'pooling',
                   'projects',
+                  ...(data.features?.woodland ? ['woodland'] : []),
                   'parcels',
-                  'members',
-                  'agreements',
+                  'monitoring',
                   'evidence',
-                  'governance',
-                  'ledger',
-                  'history',
-                  'settings',
+                  'care',
+                  'members',
+                  ...(showMoreTabs || MORE_TABS.includes(workspaceTab)
+                    ? MORE_TABS
+                    : []),
                 ].map((t) => (
                   <TabsTrigger key={t} value={t}>
                     {tabLabel(t)}
                   </TabsTrigger>
                 ))}
               </TabsList>
+              <button
+                type="button"
+                className="coop-tabs-more"
+                aria-expanded={showMoreTabs || MORE_TABS.includes(workspaceTab)}
+                disabled={MORE_TABS.includes(workspaceTab)}
+                onClick={() => setShowMoreTabs(!showMoreTabs)}
+              >
+                {showMoreTabs || MORE_TABS.includes(workspaceTab)
+                  ? 'Fewer tabs'
+                  : 'More: organizations, agreements, carbon records, history and settings'}
+              </button>
               {data.features?.woodland && (
                 <TabsContent value="woodland">
                   <Suspense fallback={<p>Loading woodland tools…</p>}>
@@ -2876,52 +2909,68 @@ export function NetworkApp({
                   {[
                     [
                       'projects',
-                      '1. Add a place',
+                      'Add a place',
                       'Describe your hedgerow, pollinator meadow, woodlot, or conservation project.',
                       state.projects.length > 0,
                     ],
                     [
-                      'organizations',
-                      '2. Connect locally',
-                      'Find a land trust or nonprofit and add your organizer profile.',
-                      !!state.organization,
-                    ],
-                    [
                       'members',
-                      '3. Invite your circle',
-                      'Invite participants; approve members and appoint a second steward.',
+                      'Invite your circle',
+                      'Invite neighbors, approve them and appoint a second steward. Every record needs a second steward to review it.',
                       onboardingProgress(state).circle,
                     ],
                     [
                       'parcels',
-                      '4. Bring land together',
-                      'Record each parcel privately with its consent reference.',
+                      'Bring land together',
+                      'Each owner records their own parcel privately, with its consent reference.',
                       state.parcels.length > 0,
+                    ],
+                    ...(data.features?.woodland &&
+                    state.projects.some((x) => x.kind === 'woodland')
+                      ? ([
+                          [
+                            'woodland',
+                            'Map the corridor',
+                            'Draw or upload the core areas and retained corridors. Another steward reviews them, then each owner agrees for their own woodlot.',
+                            (
+                              (state as unknown as WoodlandState)
+                                .woodlandLayers ?? []
+                            ).length > 0,
+                          ],
+                        ] as const)
+                      : []),
+                    [
+                      'organizations',
+                      'Connect locally',
+                      'Find a land trust or nonprofit and add your organizer profile.',
+                      !!state.organization,
                     ],
                     [
                       'pooling',
-                      '5. Assess a carbon pathway',
-                      'Document the chosen methodology, compatible land, and unresolved requirements.',
+                      'Later: assess a carbon pathway',
+                      'Optional. Document the chosen methodology, compatible land, and unresolved requirements.',
                       onboardingProgress(state).assessment,
                     ],
                     [
                       'governance',
-                      '6. Agree on benefits',
-                      'Show the proposed split, then let members vote on a frozen policy.',
+                      'Later: agree on benefits',
+                      'Optional. Show the proposed split, then let members vote on a frozen policy.',
                       state.charters.length > 0,
                     ],
-                  ].map(([tab, title, description, complete]) => (
+                  ].map(([tab, title, description, complete], index) => (
                     <article className="network-card" key={String(tab)}>
                       <p className="eyebrow">
                         {complete ? 'Recorded' : 'Next step'}
                       </p>
-                      <h3>{title}</h3>
+                      <h3>
+                        {index + 1}. {title}
+                      </h3>
                       <p>{description}</p>
                       <Button
                         variant="outline"
                         onClick={() => setWorkspaceTab(String(tab))}
                       >
-                        Open {String(tab)}
+                        Open {tabLabel(String(tab))}
                       </Button>
                     </article>
                   ))}
@@ -3766,14 +3815,16 @@ function OrganizationCard({ organization: o }: { organization: Organization }) {
       <h3>{o.name}</h3>
       <p>{o.region}</p>
       <p>{o.services}</p>
-      <a
-        className="text-link"
-        href={o.website}
-        target="_blank"
-        rel="noreferrer"
-      >
-        Visit organization website ↗
-      </a>
+      {o.website && (
+        <a
+          className="text-link"
+          href={o.website}
+          target="_blank"
+          rel="noreferrer"
+        >
+          Visit organization website ↗
+        </a>
+      )}
     </article>
   );
 }

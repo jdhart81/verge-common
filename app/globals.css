@@ -681,6 +681,20 @@ p {
   gap: 5px;
   padding: 6px !important;
 }
+.coop-tabs-more {
+  align-self: flex-start;
+  margin-top: 6px;
+  min-height: 44px;
+  padding: 8px 4px;
+  color: var(--muted-foreground);
+  font-size: 14px;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.coop-tabs-more:disabled {
+  text-decoration: none;
+  cursor: default;
+}
 .coop-tabs button {
   padding: 12px 14px;
   min-height: 44px;

@@ -1,5 +1,16 @@
 # Release notes
 
+## v0.11.0 — easier first day for a new co-op (release branch on production f91cea0)
+
+Production `f91cea0` plus only these changes from `main` (#96, #97). Found by walking the whole app as a new customer on the live build (15 November 2026).
+
+- **Everyday tabs first.** A co-op opens on nine tabs: Community, Get started, Projects, Woodland corridors, Parcels, Map & monitor, Evidence, Care & participation and Members. Organizations, Land pooling, Agreements, Governance, Records ledger, History and Settings sit behind one “More” link and open by themselves when a step or a pending item leads there. Nothing is removed.
+- **Get started follows the corridor.** A co-op with a woodland project gets a “Map the corridor” step. The carbon pathway and benefit-sharing steps are marked as later and optional. Buttons use the tab names.
+- **The parcel map opens on the land.** When a parcel has a saved boundary, the background map opens on it and draws it as a dashed outline, and “Fit boundary” returns to it. Before, the map opened on the whole world.
+- **An organization profile no longer needs a website.** A website, when given, must still be HTTPS.
+- **Votes say what happens next.** When everyone has voted, members see that a steward records the result and stewards see “Close and tally” highlighted. The voting rules are unchanged: a member can change a vote until a steward closes it.
+- **The opening page links to woodland corridors** beside the first buttons, not only in the footer.
+
 ## v0.11.0 — uses, facts and edge bands along the corridor; the corridor story (release branch on production 12e0fec)
 
 Production `12e0fec` plus only these changes from `main` (#90, #91, #92). Woodland projects stay behind `VERGE_WOODLAND_DFM`.
