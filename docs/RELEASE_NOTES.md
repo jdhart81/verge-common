@@ -15,7 +15,6 @@ Not deployed.
 - See the [load and failure test](history/LOAD_TEST_2026-11-16.md).
 - Rollback note: the previous build measures a co-op against the single 750 KB limit. After a rollback, a co-op holding more corridor geometry than that would show as full until this build is restored.
 
-## Unreleased — corridor progress: every woodlot a node
 ## v0.11.0 — corridor progress: every woodlot a node (deployed 16 November 2026, 23:35 UTC, in release branch `6ce4f08`)
 
 See the [receipt](history/RELEASE_CORRIDOR_PROGRESS_2026-11-16.md).
