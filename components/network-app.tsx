@@ -46,6 +46,7 @@ import {
 import {
   assessmentIsCurrent,
   projectReadiness,
+  holdingBlockers,
   parcelConsentIsCurrent,
   agreementIsCurrent,
 } from '@/lib/readiness.mjs';
@@ -2436,6 +2437,7 @@ export function NetworkApp({
               busy={busy}
               mutate={mutate}
               quick={quick}
+              onOpenTab={setWorkspaceTab}
             />
           </>
         );
@@ -3560,6 +3562,7 @@ function Ledger({
   busy,
   mutate,
   quick,
+  onOpenTab,
 }: {
   state: Workspace;
   steward: boolean;
@@ -3567,6 +3570,7 @@ function Ledger({
   busy: boolean;
   mutate: (op: string, p: CommandPayload) => Promise<boolean>;
   quick: (op: string, p: CommandPayload) => Promise<void>;
+  onOpenTab: (tab: string) => void;
 }) {
   const canRecord =
     steward &&
@@ -3653,6 +3657,43 @@ function Ledger({
             </section>
             {canRecord && (
               <aside className="panel">
+                {/* HR1 (lib/readiness.mjs): the same list the command checks. */}
+                {state.projects
+                  .map((project) => ({
+                    project,
+                    blockers: holdingBlockers(state, project.id) as {
+                      id: string;
+                      tab: string;
+                      message: string;
+                    }[],
+                  }))
+                  .filter((x) => x.blockers.length)
+                  .map(({ project, blockers }) => (
+                    <div
+                      className="notice mb-4"
+                      key={project.id}
+                      data-holding-blockers={project.id}
+                    >
+                      <strong>
+                        {project.name}: not ready for a holding record yet
+                      </strong>
+                      <ol className="small mt-2">
+                        {blockers.map((b) => (
+                          <li key={b.id}>
+                            {b.message}{' '}
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              onClick={() => onOpenTab(b.tab)}
+                            >
+                              Open {tabLabel(b.tab)}
+                            </Button>
+                          </li>
+                        ))}
+                      </ol>
+                    </div>
+                  ))}
                 <ActionForm
                   title="Record external issued holding"
                   fields={[

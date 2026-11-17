@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { browserTimeZone, mapStart } from '@/lib/map-start.mjs';
 import type { GeoJSONSource, Map as LibreMap, Marker } from 'maplibre-gl';
 import { Button } from '@/components/ui/button';
 import { featurePoints } from '@/lib/woodland-editor.mjs';
@@ -58,11 +59,14 @@ export function WoodlandMap(props: Props) {
         // MapLibre's computed relative worker URL cannot survive Vite chunk naming.
         lib.setWorkerUrl(workerUrl);
         const points = allPoints(latest.current);
+        // An empty corridor map opens on the member's region, not the world
+        // (lib/map-start.mjs MS1–MS5). Read locally; nothing is sent.
+        const opening = mapStart({ points, timeZone: browserTimeZone() });
         instance = new lib.Map({
           container: container.current,
           style: 'https://tiles.openfreemap.org/styles/liberty',
-          center: points.length ? [points[0][0], points[0][1]] : [0, 20],
-          zoom: points.length ? 16 : 1,
+          center: [opening.center[0], opening.center[1]],
+          zoom: opening.zoom,
           renderWorldCopies: false,
           attributionControl: { compact: false },
         });

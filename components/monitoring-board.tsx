@@ -2,6 +2,7 @@
 import { ControlLabel } from '@/components/ui/label';
 import { FieldDraftImport } from '@/components/field-draft-import';
 import { AnalysisPanel, type AnalysisState } from '@/components/analysis-panel';
+import { firstCoordinate } from '@/lib/map-start.mjs';
 import { BoundaryEditor } from '@/components/boundary-editor';
 import { downloadBoundary } from '@/lib/boundary-editor.mjs';
 import { useId, useState } from 'react';
@@ -397,7 +398,14 @@ export function MonitoringBoard({
               near={
                 state.parcels
                   .flatMap((p) => p.boundaries ?? [])
-                  .at(-1)?.geometry.coordinates[0]?.[0]
+                  .at(-1)?.geometry.coordinates[0]?.[0] ??
+                // No boundary anywhere yet: open by the co-op's corridor layers.
+                firstCoordinate(
+                  (state as { woodlandLayers?: unknown[] }).woodlandLayers?.at(
+                    -1,
+                  ),
+                ) ??
+                undefined
               }
             />
             <Form

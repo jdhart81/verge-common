@@ -4,6 +4,7 @@ import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import type { GeoJSONSource, Map as LibreMap, Marker } from 'maplibre-gl';
 import { Button } from '@/components/ui/button';
 import { boundaryFeatures } from '@/lib/boundary-editor.mjs';
+import { browserTimeZone, mapStart } from '@/lib/map-start.mjs';
 
 type Point = number[];
 type Props = {
@@ -28,6 +29,7 @@ export function BoundaryMap(props: Props) {
   const [ready, setReady] = useState(false);
   const [error, setError] = useState('');
   const [attempt, setAttempt] = useState(0);
+  const [openedOn, setOpenedOn] = useState('');
   useLayoutEffect(() => {
     latest.current = props;
   }, [props]);
@@ -51,16 +53,19 @@ export function BoundaryMap(props: Props) {
         // MapLibre's computed relative worker URL cannot survive Vite chunk naming.
         lib.setWorkerUrl(workerUrl);
         const points = latest.current.points;
-        const start = points.length ? points : (latest.current.reference ?? []);
+        // Where the map opens: lib/map-start.mjs (MS1–MS5). Read locally; nothing is sent.
+        const opening = mapStart({
+          points,
+          reference: latest.current.reference,
+          near: latest.current.near,
+          timeZone: browserTimeZone(),
+        });
+        if (!cancelled) setOpenedOn(opening.source);
         instance = new lib.Map({
           container: container.current,
           style: 'https://tiles.openfreemap.org/styles/liberty',
-          center: start.length
-            ? [start[0][0], start[0][1]]
-            : latest.current.near
-              ? [latest.current.near[0], latest.current.near[1]]
-              : [0, 20],
-          zoom: start.length ? 16 : latest.current.near ? 13 : 1,
+          center: [opening.center[0], opening.center[1]],
+          zoom: opening.zoom,
           renderWorldCopies: false,
           attributionControl: { compact: false },
         });
@@ -122,6 +127,9 @@ export function BoundaryMap(props: Props) {
               'line-dasharray': [2, 2],
             },
           });
+          const start = points.length
+            ? points
+            : (latest.current.reference ?? []);
           if (start.length > 1) fit(instance, start);
           setReady(true);
         });
@@ -249,6 +257,23 @@ export function BoundaryMap(props: Props) {
       </div>
       {!ready && !error && (
         <output className="small block">Loading background map…</output>
+      )}
+      {ready && !props.points.length && openedOn === 'region' && (
+        <p className="small" data-map-opened="region">
+          The map opened on your part of the world, from this device&apos;s time
+          zone. Nothing was sent. Zoom in to your land, or use the locate
+          button on the map.
+        </p>
+      )}
+      {ready && !props.points.length && openedOn === 'world' && (
+        <p className="small" data-map-opened="world">
+          Zoom in to your land, or use the locate button on the map.
+        </p>
+      )}
+      {ready && !props.points.length && openedOn === 'near' && (
+        <p className="small" data-map-opened="near">
+          The map opened near land this co-op has already mapped.
+        </p>
       )}
       {error && (
         <p role="alert" className="form-error">
