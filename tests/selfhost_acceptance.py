@@ -56,6 +56,11 @@ payload={'projectId':project,'text':'Private acceptance update','visibility':'me
 code,current=command(b,'post_update',payload,version,rid);assert code==200,(code,current)
 code,replayed=command(b,'post_update',payload,version,rid);assert code==200 and replayed['version']==current['version']
 assert command(b,'post_update',{**payload,'text':'Different'},version,rid)[0]==409
+# CR1-CR3: a member whose page is behind can still post; anything that judges a record cannot.
+stale=version;code,late=command(b,'post_update',{**payload,'text':'Posted from a page that was behind'},stale);assert code==200 and late['version']>current['version'],(code,late)
+assert sum(1 for u in late['state']['updates'] if u['text']=='Posted from a page that was behind')==1
+assert command(a,'member_role',{'id':member['id'],'role':'steward'},stale)[0]==409
+current=late
 assert command(eve,'post_update',payload,current['version'])[0]==403
 assert a.call('/api/workspaces',{'id':id},headers={'Origin':'https://wrong.example'})[0]==403
 # Actual private object bytes and cross-account download authorization.
