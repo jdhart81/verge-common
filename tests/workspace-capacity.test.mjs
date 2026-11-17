@@ -4,7 +4,7 @@ import { randomUUID, randomBytes } from 'node:crypto';
 import { DatabaseSync } from 'node:sqlite';
 import { readFileSync } from 'node:fs';
 import { applyCommand, newWorkspace, memberView, publicWorkspace } from '../lib/network.mjs';
-import { WORKSPACE_CAPACITY as limits, workspaceBytes, workspaceCapacity, workspaceCapacityIssue, isWorkspaceSafetyCommand } from '../lib/workspace-capacity.mjs';
+import { WORKSPACE_CAPACITY as limits, workspaceBytes, corridorBytes, workspaceCapacity, workspaceCapacityIssue, isWorkspaceSafetyCommand } from '../lib/workspace-capacity.mjs';
 import { createSafety } from '../self-hosted/safety.mjs';
 
 const owner = { id: randomUUID() };
@@ -145,4 +145,89 @@ await test('operator reporting and moderation remain independent of an exhausted
   assert.deepEqual(saved.audit, state.audit);
   assert.equal(db.prepare('SELECT count(*) AS n FROM safety_actions').get().n, 1);
   assert.equal(safety.status({ id: input.requestId, receipt: input.receipt }).status, 'action_taken');
+});
+
+// Two budgets: SC1-SC4 in lib/workspace-capacity.mjs.
+const corridorFill = (state, target) => {
+  state.woodlandLayers = [{ id: 'v1', pad: '' }];
+  state.woodlandLayers[0].pad = 'x'.repeat(target - corridorBytes(state));
+  assert.equal(corridorBytes(state), target);
+  return state;
+};
+
+await test('SC1 SC2 corridor records have their own budget and do not consume the general one', () => {
+  const state = fixture();
+  const before = workspaceBytes(state);
+  // More corridor geometry than the whole general budget: general bytes do not move.
+  corridorFill(state, limits.hardBytes * 2);
+  // Only the key's own name stays in the general count.
+  assert.ok(workspaceBytes(state) - before < 40, 'general bytes unchanged');
+  assert.equal(workspaceCapacity(state).level, 'normal');
+  assert.doesNotThrow(() => run(state, 'post_update', { projectId: state.projects[0].id, text: 'Still room', visibility: 'members' }));
+  // And general records do not consume the corridor budget.
+  const general = fillBytes(fixture(), limits.growthBytes - 1000);
+  assert.equal(corridorBytes(general), 0);
+});
+
+await test('SC3 either budget pauses growth; the corridor hard limit makes the co-op full; safety still works', () => {
+  const near = corridorFill(fixture(), Math.ceil(limits.corridorGrowthBytes * limits.warningFraction));
+  assert.equal(workspaceCapacity(near).level, 'near_limit');
+  const paused = corridorFill(fixture(), limits.corridorGrowthBytes);
+  assert.equal(workspaceCapacity(paused).growthPaused, true);
+  assert.equal(workspaceCapacity(paused).level, 'safety_only');
+  assert.throws(
+    () => run(paused, 'post_update', { projectId: paused.projects[0].id, text: 'No room', visibility: 'members' }),
+    /New co-op activity is paused/,
+  );
+  // A safety command still runs in the reserve.
+  assert.doesNotThrow(() => run(paused, 'hide_update', { id: paused.updates[0].id }));
+  const full = corridorFill(fixture(), limits.corridorHardBytes);
+  assert.equal(workspaceCapacity(full).level, 'full');
+  assert.match(
+    workspaceCapacityIssue(full, corridorFill(structuredClone(full), limits.corridorHardBytes + 1), owner, { op: 'hide_update', payload: {} }),
+    /safety storage limit/,
+  );
+});
+
+await test('SC4 a co-op without corridor records is measured exactly as before', () => {
+  const state = fixture();
+  assert.equal(corridorBytes(state), 0);
+  assert.equal(workspaceBytes(state), new TextEncoder().encode(JSON.stringify(state)).length);
+  for (const empty of [[], undefined]) {
+    const s = { ...state, woodlandLayers: empty, treatmentPlans: empty, corridorUses: empty };
+    assert.equal(corridorBytes(s), 0);
+  }
+});
+
+await test('request size: only saving corridor layers may be large, and the editor agrees with the server', async () => {
+  const server = readFileSync(new URL('../server/workspaces.ts', import.meta.url), 'utf8');
+  assert.match(server, /COMMAND_BODY_BYTES = 100000/);
+  assert.match(server, /LAYERS_BODY_BYTES = 900000/);
+  assert.match(server, /text\.length > COMMAND_BODY_BYTES && value\.op !== 'save_woodland_layers'/);
+  const gateway = readFileSync(new URL('../self-hosted/server.mjs', import.meta.url), 'utf8');
+  assert.match(gateway, /url\.pathname === '\/api\/workspaces'\s*\?\s*900000\s*:\s*100000/);
+  const { sizeReport } = await import('../lib/woodland-editor.mjs');
+  const { WOODLAND_LIMITS } = await import('../lib/woodland.mjs');
+  const layers = sizeReport('layers', {}, [], {});
+  assert.equal(layers.limit, WOODLAND_LIMITS.layerBytes);
+  assert.equal(layers.requestLimit, 900000);
+  const plan = sizeReport('plan', {}, [], {});
+  assert.equal(plan.limit, WOODLAND_LIMITS.planBytes);
+  assert.equal(plan.requestLimit, 100000);
+  // Five full-size versions cannot be kept, so history is bounded by bytes too; the corridor
+  // budget holds a full history plus plans and uses with room to spare.
+  assert.ok(WOODLAND_LIMITS.layerHistoryBytes >= 2 * WOODLAND_LIMITS.layerBytes);
+  assert.ok(WOODLAND_LIMITS.layerHistoryBytes + WOODLAND_LIMITS.layerBytes < limits.corridorGrowthBytes);
+});
+
+await test('SC5 a refresh that holds the current version gets a short answer, after the membership check', () => {
+  const route = readFileSync(new URL('../app/api/workspaces/route.ts', import.meta.url), 'utf8');
+  const unchanged = route.indexOf('unchanged: true');
+  assert.ok(unchanged > 0);
+  const guard = route.slice(route.indexOf("searchParams.get('since')"), unchanged);
+  assert.match(guard, /membership\(state, user\.id\) &&/);
+  assert.match(guard, /Number\(since\) === row\.version/);
+  const app = readFileSync(new URL('../components/network-app.tsx', import.meta.url), 'utf8');
+  assert.match(app, /id && background && heldVersion\.current\[id\] !== undefined/);
+  assert.match(app, /\(value as \{ unchanged\?: boolean \}\)\.unchanged\) return;/);
 });

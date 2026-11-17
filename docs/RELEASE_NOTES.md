@@ -1,5 +1,20 @@
 # Release notes
 
+## Unreleased — room for real corridor maps
+
+Not deployed.
+
+- **Corridor layers may be 300 KB per version, up from 90 KB** (about 12,000 corners instead of 3,500). The limit is set by analysis time: the slowest analysis takes about 10 s at that size against a 25 s deadline.
+- **Corridor records have their own storage budget.** Layers, treatment plans and corridor uses count against 2 MB (hard limit 2.5 MB) and no longer consume the co-op's general 650 KB. A co-op without corridor records is measured exactly as before.
+- **Layer history is bounded by bytes as well as by count:** 900 KB of geometry across a project's versions. Older superseded versions keep their record and drop their geometry; the reviewed version always keeps its own.
+- **Only saving layers may send a large request** (900 KB). Every other command stays under 100 KB.
+- **An idle co-op page no longer re-downloads the co-op every 30 seconds.** The refresh says which version it holds and gets a short answer when nothing changed.
+- **A save from a page that is behind no longer fails** for commands that only add the sender's own record: an update, a comment, an RSVP, a report, a parcel, a vote. Reviews, approvals and every change to an existing record still need the version the sender saw.
+- **Simultaneous saves are queued per co-op.** Thirty members posting at the same instant are all saved in 3 s with no conflict shown; before, it took 17 s.
+- **A save costs half as much** on a co-op with large layers: storage is measured in one pass.
+- See the [load and failure test](history/LOAD_TEST_2026-11-16.md).
+- Rollback note: the previous build measures a co-op against the single 750 KB limit. After a rollback, a co-op holding more corridor geometry than that would show as full until this build is restored.
+
 ## v0.11.0 — corridor progress: every woodlot a node (deployed 16 November 2026, 23:35 UTC, in release branch `6ce4f08`)
 
 See the [receipt](history/RELEASE_CORRIDOR_PROGRESS_2026-11-16.md).

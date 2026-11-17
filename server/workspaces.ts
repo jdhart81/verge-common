@@ -31,19 +31,28 @@ export function guardOrigin(request: Request) {
   if (!origin || origin !== new URL(request.url).origin)
     throw new DomainError('A same-origin browser request is required.', 403);
 }
+/** Ordinary commands stay small. Only saving corridor layers may carry map geometry. */
+export const COMMAND_BODY_BYTES = 100000;
+export const LAYERS_BODY_BYTES = 900000;
 export async function body(request: Request) {
-  if (Number(request.headers.get('content-length') ?? 0) > 100000)
+  if (
+    Number(request.headers.get('content-length') ?? 0) > LAYERS_BODY_BYTES
+  )
     throw new DomainError('Request too large.', 413);
   const text = await request.text();
-  if (text.length > 100000) throw new DomainError('Request too large.', 413);
+  if (text.length > LAYERS_BODY_BYTES)
+    throw new DomainError('Request too large.', 413);
+  let value;
   try {
-    const value = JSON.parse(text);
+    value = JSON.parse(text);
     if (!value || typeof value !== 'object' || Array.isArray(value))
       throw new DomainError('A JSON object is required.');
-    return value;
   } catch {
     throw new DomainError('Invalid JSON.');
   }
+  if (text.length > COMMAND_BODY_BYTES && value.op !== 'save_woodland_layers')
+    throw new DomainError('Request too large.', 413);
+  return value;
 }
 export async function load(id: string) {
   const row = await getD1()
@@ -81,12 +90,85 @@ async function hash(value: string) {
     (b) => b.toString(16).padStart(2, '0'),
   ).join('');
 }
-export async function command(
+// Commands that only add the sender's own new record: an update, a comment, an RSVP, a report,
+// a parcel of their own, a vote on a frozen proposal. A stale view cannot mislead them, so they
+// are applied to the co-op as it stands instead of failing because a neighbour saved first.
+//   CR1 Every other command still needs the version the sender saw: reviews, approvals, roles,
+//       consent, layers, plans, money and anything that changes or judges an existing record.
+//   CR2 The command is validated by the same rules against the latest state, so one that no
+//       longer applies is refused with its own reason.
+//   CR3 Retries are bounded, each save is still a compare-and-swap on the stored version, and
+//       a request ID is still answered once: no update is lost or duplicated.
+export const STALE_VIEW_SAFE_OPS = new Set([
+  'post_update',
+  'post_comment',
+  'event_rsvp',
+  'report_content',
+  'record_parcel',
+  'vote',
+]);
+const CONFLICT = 'Someone updated this co-op. Refresh before saving your change.';
+//   CR4 Saves to one co-op run one after another in this process. Without the queue, members
+//       saving at the same moment each read, apply and hash the whole record and all but one
+//       lose the compare-and-swap and start again: measured, 30 simultaneous posts took 17 s.
+//       The queue only orders work; the compare-and-swap below still decides what is stored,
+//       so a second server process would stay correct, only slower.
+const saving = new Map<string, Promise<unknown>>();
+function inTurn<T>(id: string, work: () => Promise<T>): Promise<T> {
+  const before = saving.get(id) ?? Promise.resolve();
+  const mine = before.then(work, work);
+  const settled = mine.then(
+    () => undefined,
+    () => undefined,
+  );
+  saving.set(id, settled);
+  void settled.then(() => {
+    if (saving.get(id) === settled) saving.delete(id);
+  });
+  return mine;
+}
+export function command(
   id: string,
   user: { id: string },
   input: { op: string; payload: Record<string, unknown>; requestId: string },
   expectedVersion: number,
   // Server-computed inputs only (never the request body); see applyCommand.
+  context: { woodlandCheck?: unknown } = {},
+) {
+  return inTurn(id, () =>
+    commandInTurn(id, user, input, expectedVersion, context),
+  );
+}
+async function commandInTurn(
+  id: string,
+  user: { id: string },
+  input: { op: string; payload: Record<string, unknown>; requestId: string },
+  expectedVersion: number,
+  context: { woodlandCheck?: unknown } = {},
+) {
+  if (!STALE_VIEW_SAFE_OPS.has(input.op))
+    return commandOnce(id, user, input, expectedVersion, context);
+  for (let attempt = 1; ; attempt++) {
+    try {
+      return await commandOnce(id, user, input, null, context);
+    } catch (e) {
+      // Another save landed between the read and the write: read again and reapply.
+      if (
+        attempt < 6 &&
+        e instanceof DomainError &&
+        e.message === CONFLICT
+      )
+        continue;
+      throw e;
+    }
+  }
+}
+async function commandOnce(
+  id: string,
+  user: { id: string },
+  input: { op: string; payload: Record<string, unknown>; requestId: string },
+  // null: apply to the co-op as it stands (STALE_VIEW_SAFE_OPS only).
+  expectedVersion: number | null,
   context: { woodlandCheck?: unknown } = {},
 ) {
   const { row, state } = await load(id);
@@ -103,11 +185,8 @@ export async function command(
       throw new DomainError('Request ID conflict.', 409);
     return { state, version: row.version };
   }
-  if (expectedVersion !== row.version)
-    throw new DomainError(
-      'Someone updated this co-op. Refresh before saving your change.',
-      409,
-    );
+  if (expectedVersion !== null && expectedVersion !== row.version)
+    throw new DomainError(CONFLICT, 409);
   const next = applyCommand(
     state,
     user,
@@ -152,11 +231,7 @@ export async function command(
       user.id,
     )
     .first<{ version: number }>();
-  if (!result)
-    throw new DomainError(
-      'Someone updated this co-op. Refresh before saving your change.',
-      409,
-    );
+  if (!result) throw new DomainError(CONFLICT, 409);
   return { state: next, version: result.version };
 }
 export { membership, memberView, newWorkspace, publicWorkspace, DomainError };

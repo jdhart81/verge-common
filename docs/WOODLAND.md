@@ -170,7 +170,7 @@ When a member deletes their account, their treatment plans go with them, because
 
 ## Limits
 
-- Layers: 90 KB per version after rounding, 400 features per layer, 5 versions with geometry per project (older versions keep their record but drop their geometry). Drafted spine corridors and spine lines may have up to 1,000 vertices; drawn features keep the 200-vertex limit. The DFM watershed on dendriticforest.com (2.8 × 2.6 km, 14 lines, 4 cores) uses about 79 KB.
+- Layers: 300 KB per version after rounding (about 12,000 corners), 400 features per layer, 5 versions with geometry per project and 900 KB of layer geometry in all (older superseded versions keep their record but drop their geometry; the reviewed version always keeps its own). Drafted spine corridors and spine lines may have up to 1,000 vertices; drawn features keep the 200-vertex limit. The DFM watershed on dendriticforest.com (2.8 × 2.6 km, 14 lines, 4 cores) uses about 79 KB. The request that saves layers may be up to 900 KB; every other command stays under 100 KB. The limit is set by analysis time, not storage: on a 2.1 GHz core the slowest analysis (the years ahead) took 4 s at 80 KB, 8 s at 200 KB and 10 s at 264 KB, against the worker's 25 s deadline; at 860 KB it took 34 s and would fail.
 - Plans: 50 treatment units and 40 KB each; 40 plans per project.
 - Engine work runs in the analysis worker (WS7). For woodlot-scale layers the corridor check takes well under a second. On the watershed above, the check on drafted spine corridors takes about 2–6 seconds and each spine analysis 1–6 seconds, so plan previews and submissions there take seconds too. Analyze one watershed at a time; a landscape whose check cannot finish within the deadline cannot take plans until it is split.
 

@@ -248,7 +248,7 @@ await test('M4 line/point range, vertex count, self-crossing and feature-specifi
     ).some((p) => /unique/.test(p)),
   );
 });
-await test('M5 exact bytes, 90k/40k, 400 features, 50 units and strict full-body <100k', () => {
+await test('M5 exact bytes, 300k/40k, 400 features, 50 units and strict full-body <900k for layers, <100k for plans', () => {
   const l = emptyLayers(),
     t = [valid('treatments')];
   t[0].properties.intensity = 'clearcut';
@@ -269,11 +269,11 @@ await test('M5 exact bytes, 90k/40k, 400 features, 50 units and strict full-body
   const big = {
     ...l,
     retained: [
-      { ...valid('retained'), properties: { name: 'x'.repeat(90000) } },
+      { ...valid('retained'), properties: { name: 'x'.repeat(300000) } },
     ],
   };
   assert.ok(
-    sizeReport('layers', big, [], {}).problems.some((p) => /90000/.test(p)),
+    sizeReport('layers', big, [], {}).problems.some((p) => /300000/.test(p)),
   );
   assert.ok(
     sizeReport(
@@ -290,7 +290,7 @@ await test('M5 exact bytes, 90k/40k, 400 features, 50 units and strict full-body
   );
   const envelope = { id: 'coop', version: 1, op: 'save_woodland_layers' };
   const n =
-    100000 - sizeReport('layers', l, [], { notes: '' }, envelope).requestBytes;
+    900000 - sizeReport('layers', l, [], { notes: '' }, envelope).requestBytes;
   assert.ok(
     sizeReport(
       'layers',
@@ -298,10 +298,22 @@ await test('M5 exact bytes, 90k/40k, 400 features, 50 units and strict full-body
       [],
       { notes: 'x'.repeat(n) },
       envelope,
-    ).problems.some((p) => /under 100000/.test(p)),
+    ).problems.some((p) => /under 900000/.test(p)),
   );
   assert.ok(
     !sizeReport('layers', l, [], { notes: 'x'.repeat(n - 1) }, envelope)
+      .problems.length,
+  );
+  // A plan's request keeps the ordinary 100 KB limit.
+  const planEnvelope = { id: 'coop', version: 1, op: 'submit_treatment_plan' };
+  const m =
+    100000 - sizeReport('plan', l, [], { notes: '' }, planEnvelope).requestBytes;
+  assert.ok(
+    sizeReport('plan', l, [], { notes: 'x'.repeat(m) }, planEnvelope)
+      .problems.some((p) => /under 100000/.test(p)),
+  );
+  assert.ok(
+    !sizeReport('plan', l, [], { notes: 'x'.repeat(m - 1) }, planEnvelope)
       .problems.length,
   );
 });

@@ -1257,8 +1257,9 @@ export function WoodlandMapEditor({
             const file = e.target.files?.[0];
             void attempt(async () => {
               if (!file) return;
-              if (file.size > 100000)
-                throw new Error('File must be under 100000 bytes.');
+              const fileLimit = mode === 'layers' ? 900000 : 100000;
+              if (file.size > fileLimit)
+                throw new Error(`File must be under ${fileLimit} bytes.`);
               setUploadNotes([]);
               const json = JSON.parse(await file.text());
               const imported = importDraft(json, mode);
@@ -1422,7 +1423,7 @@ export function WoodlandMapEditor({
       </fieldset>
       <output className="small block mt-3" aria-live="polite">
         Draft: {sizes.bytes} / {sizes.limit} bytes · Request:{' '}
-        {sizes.requestBytes} / 100000 bytes (strictly under) ·{' '}
+        {sizes.requestBytes} / {sizes.requestLimit} bytes (strictly under) ·{' '}
         {mode === 'plan'
           ? `${draft.treatments.length} / 50 units`
           : Object.entries(draft.layers)
