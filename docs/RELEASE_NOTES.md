@@ -1,8 +1,8 @@
 # Release notes
 
-## Unreleased — production moves onto `main`
+## v0.11.0 — production moves onto `main` (deployed 17 November 2026, 12:47 UTC, commit `29c8f2e`)
 
-Not deployed. Since October every release has been a hand backport onto a separate release line. This release deploys `main` itself, so the two stop drifting.
+See the [receipt](history/RELEASE_MAIN_2026-11-17.md). Since October every release has been a hand backport onto a separate release line. This release deploys `main` itself, so the two stop drifting.
 
 New for visitors and members, beyond what the backports already shipped:
 
