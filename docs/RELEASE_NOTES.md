@@ -1,16 +1,16 @@
 # Release notes
 
-## Unreleased — corridor layer limit set from the production server's speed
+## v0.11.0 — corridor layer limit set from the production server's speed (deployed 17 November 2026, 01:44 UTC, in release branch `e5085dc`)
 
-Not deployed.
+See the [receipt](history/RELEASE_CAPACITY_2026-11-17.md).
 
 - **Corridor layers: 150 KB per version** (about 6,000 corners), down from the 300 KB released an hour earlier and up from the original 90 KB. Layer history: 450 KB.
 - **Why.** The 300 KB figure came from a development machine. Measured on the production server itself, analyses run about three times slower: the slowest took 28 s at 264 KB, past the 25 s deadline, and 17 s at 142 KB. The only layers over 150 KB stored in between are in the release's own test co-op, which is archived with its two throwaway accounts deleted.
 - Everything else from the previous release stands: the separate corridor storage budget, short refreshes, saves from a page that is behind, and queued saves.
 
-## Unreleased — room for real corridor maps
+## v0.11.0 — room for real corridor maps, and saves that hold up under load (deployed 17 November 2026, 01:05 UTC, in release branch `4f1b54a`; the 300 KB layer limit was corrected to 150 KB 38 minutes later)
 
-Not deployed.
+See the [receipt](history/RELEASE_CAPACITY_2026-11-17.md).
 
 - **Corridor layers may be 300 KB per version, up from 90 KB** (about 12,000 corners instead of 3,500). The limit is set by analysis time: the slowest analysis takes about 10 s at that size against a 25 s deadline.
 - **Corridor records have their own storage budget.** Layers, treatment plans and corridor uses count against 2 MB (hard limit 2.5 MB) and no longer consume the co-op's general 650 KB. A co-op without corridor records is measured exactly as before.
