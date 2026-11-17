@@ -1,5 +1,13 @@
 # Release notes
 
+## Unreleased — corridor layer limit set from the production server's speed
+
+Not deployed.
+
+- **Corridor layers: 150 KB per version** (about 6,000 corners), down from the 300 KB released an hour earlier and up from the original 90 KB. Layer history: 450 KB.
+- **Why.** The 300 KB figure came from a development machine. Measured on the production server itself, analyses run about three times slower: the slowest took 28 s at 264 KB, past the 25 s deadline, and 17 s at 142 KB. No co-op had saved layers over 150 KB in between.
+- Everything else from the previous release stands: the separate corridor storage budget, short refreshes, saves from a page that is behind, and queued saves.
+
 ## Unreleased — room for real corridor maps
 
 Not deployed.
