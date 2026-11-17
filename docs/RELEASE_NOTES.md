@@ -5,7 +5,7 @@
 Production `4f1b54a` plus only PR #102 from `main`.
 
 - **Corridor layers: 150 KB per version** (about 6,000 corners), down from the 300 KB released an hour earlier and up from the original 90 KB. Layer history: 450 KB.
-- **Why.** The 300 KB figure came from a development machine. Measured on the production server itself, analyses run about three times slower: the slowest took 28 s at 264 KB, past the 25 s deadline, and 17 s at 142 KB. No co-op had saved layers over 150 KB in between.
+- **Why.** The 300 KB figure came from a development machine. Measured on the production server itself, analyses run about three times slower: the slowest took 28 s at 264 KB, past the 25 s deadline, and 17 s at 142 KB. The only layers over 150 KB stored in between are in the release's own test co-op, which is archived with its two throwaway accounts deleted.
 - Everything else from the previous release stands: the separate corridor storage budget, short refreshes, saves from a page that is behind, and queued saves.
 
 ## v0.11.0 — room for real corridor maps, and saves that hold up under load (release branch on production 6ce4f08)
