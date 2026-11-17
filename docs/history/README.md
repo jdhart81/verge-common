@@ -4,6 +4,7 @@ Point-in-time receipts and reviews, preserved unchanged as the audit record. The
 
 | Date | Record |
 | --- | --- |
+| 2026-11-16 | [Load and failure test](LOAD_TEST_2026-11-16.md) |
 | 2026-10-04 | [v0.10.0 and dendriticforest.com deployment](DEPLOYMENT_V0100_2026-10-04.md) |
 | 2026-10-03 | [DFM public-site deployment](DEPLOYMENT_DFM_SITE_2026-10-03.md) |
 | 2026-09-29 | [v0.9.0 deployment and participation tooling](DEPLOYMENT_V090_2026-09-29.md) |
