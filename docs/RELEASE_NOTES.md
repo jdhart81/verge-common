@@ -1,5 +1,19 @@
 # Release notes
 
+## Unreleased — production moves onto `main`
+
+Not deployed. Since October every release has been a hand backport onto a separate release line. This release deploys `main` itself, so the two stop drifting.
+
+New for visitors and members, beyond what the backports already shipped:
+
+- **The Hindi home page stays off** until a Hindi speaker has read it (`HINDI_HOME_REVIEWED` in `lib/i18n/home.ts`). Every visitor gets English.
+- **The satellite search tick comes before its form.** The dates and the button were disabled until a tick below them was made.
+- The corrected privacy page summary (corridor uses, facts and edge bands).
+- `llms.txt`, a clearer MCP tool listing (same five public tools), and share cards for invitations.
+- Dependency upgrades, including the app framework (vinext 1.4) and zod 4.
+
+Present but off: optional email updates. The link and its routes exist only when the operator configures them; production does not.
+
 ## v0.11.0 — corridor layer limit set from the production server's speed (deployed 17 November 2026, 01:44 UTC, in release branch `e5085dc`)
 
 See the [receipt](history/RELEASE_CAPACITY_2026-11-17.md).

@@ -3,6 +3,7 @@ import { hydrateRoot } from 'react-dom/client';
 import { HomeContent } from '../components/home-content';
 import type { HomeLocale } from '../lib/i18n/home';
 import { resolveHomeLocale } from '../lib/i18n/locale.mjs';
+import { HINDI_HOME_REVIEWED } from '../lib/i18n/home';
 import Demo from '../app/demo/page';
 import '../app/globals.css';
 
@@ -15,7 +16,7 @@ function getBrowserLocale(): HomeLocale {
   const preferences = navigator.languages?.length
     ? navigator.languages
     : navigator.language;
-  return resolveHomeLocale(preferences);
+  return HINDI_HOME_REVIEWED ? resolveHomeLocale(preferences) : 'en';
 }
 
 function getServerLocale(): HomeLocale {
