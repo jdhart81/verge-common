@@ -16,8 +16,9 @@ Not deployed.
 - Rollback note: the previous build measures a co-op against the single 750 KB limit. After a rollback, a co-op holding more corridor geometry than that would show as full until this build is restored.
 
 ## Unreleased — corridor progress: every woodlot a node
+## v0.11.0 — corridor progress: every woodlot a node (deployed 16 November 2026, 23:35 UTC, in release branch `6ce4f08`)
 
-Not deployed.
+See the [receipt](history/RELEASE_CORRIDOR_PROGRESS_2026-11-16.md).
 
 - **Corridor progress leads the Woodland tab.** It states the aim (one old-growth corridor that branches along streams, valleys and ridges, joined one woodlot at a time) and shows five ordered steps with the next one marked: map the corridor, trace the branches, record the woodlots, owners join, the corridor is whole.
 - **Each woodlot is a node.** A member sees their own woodlots with what each needs next (a boundary, a review, or the owner's consent) and whether the mapped corridor touches it. Stewards see every woodlot. Other members see counts only, never a neighbour's woodlot (CP2, as WS8).
