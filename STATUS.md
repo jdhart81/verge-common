@@ -109,7 +109,7 @@ Details: [self-hosted/SUPABASE_SIGN_IN.md](self-hosted/SUPABASE_SIGN_IN.md), [se
 - Encrypted off-server backup transfer: **active hourly** on the owner Mac (`com.vergecommon.operations` loaded). Live receipts read on 29 Sep show successful encrypted archives, matching server snapshot hashes and isolated restore/deletion-ledger replay. Latest read receipt: 30 Sep 00:37 UTC (29 Sep 20:37 EDT), healthy. Notifications remain local receipts only; independent key custody and alert delivery are unqualified.
 - Failure alerting: GitHub Actions Production monitor is configured for 15-minute health and nightly full launch-gate checks. Full run verified after v0.9.0 deployment in the [deployment receipt](docs/history/DEPLOYMENT_V090_2026-09-29.md). Owner Watching → All activity and actual failure-email delivery remain unverified; no alert rehearsal was performed. The separate Mac webhook remains unconfigured.
 - Historical plaintext archives exist on the owner's Mac (`private-backups/`); their retention/disposal is an open owner decision.
-- Storage model: a bounded JSON aggregate per co-op (5,000 events / 750 KB). Suitable for pilots; needs capacity alerts and a scalable store before large co-ops.
+- Storage model: a bounded JSON aggregate per co-op (5,000 events / 750 KB general records). On `main`, not yet deployed: corridor records get a separate 2.5 MB budget and layers may be 300 KB per version. Suitable for pilots and a first land trust; a co-op still loads and saves as one record, so a scalable store is needed before large co-ops.
 
 Runbooks: [docs/OPERATIONS_BETA.md](docs/OPERATIONS_BETA.md), [docs/OPERATIONS.md](docs/OPERATIONS.md), [self-hosted/README.md](self-hosted/README.md).
 

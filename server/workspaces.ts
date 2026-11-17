@@ -31,19 +31,28 @@ export function guardOrigin(request: Request) {
   if (!origin || origin !== new URL(request.url).origin)
     throw new DomainError('A same-origin browser request is required.', 403);
 }
+/** Ordinary commands stay small. Only saving corridor layers may carry map geometry. */
+export const COMMAND_BODY_BYTES = 100000;
+export const LAYERS_BODY_BYTES = 900000;
 export async function body(request: Request) {
-  if (Number(request.headers.get('content-length') ?? 0) > 100000)
+  if (
+    Number(request.headers.get('content-length') ?? 0) > LAYERS_BODY_BYTES
+  )
     throw new DomainError('Request too large.', 413);
   const text = await request.text();
-  if (text.length > 100000) throw new DomainError('Request too large.', 413);
+  if (text.length > LAYERS_BODY_BYTES)
+    throw new DomainError('Request too large.', 413);
+  let value;
   try {
-    const value = JSON.parse(text);
+    value = JSON.parse(text);
     if (!value || typeof value !== 'object' || Array.isArray(value))
       throw new DomainError('A JSON object is required.');
-    return value;
   } catch {
     throw new DomainError('Invalid JSON.');
   }
+  if (text.length > COMMAND_BODY_BYTES && value.op !== 'save_woodland_layers')
+    throw new DomainError('Request too large.', 413);
+  return value;
 }
 export async function load(id: string) {
   const row = await getD1()
