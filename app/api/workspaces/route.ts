@@ -23,6 +23,16 @@ export async function GET(request: Request) {
     const id = new URL(request.url).searchParams.get('id');
     if (id) {
       const { row, state } = await load(id);
+      // SC5: a refresh that already holds this version gets a short answer instead of the
+      // whole co-op. Membership is still checked first, so a removed member learns nothing.
+      const since = new URL(request.url).searchParams.get('since');
+      if (
+        membership(state, user.id) &&
+        since !== null &&
+        /^\d{1,12}$/.test(since) &&
+        Number(since) === row.version
+      )
+        return json({ unchanged: true, version: row.version });
       if (membership(state, user.id))
         return json({
           ...memberView(state, user.id),

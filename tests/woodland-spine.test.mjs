@@ -26,7 +26,7 @@ import {
   LAYER_KEYS,
   SPINE_PROPERTIES,
 } from '../lib/woodland-input.mjs';
-import { WOODLAND_OPS } from '../lib/woodland.mjs';
+import { WOODLAND_OPS, WOODLAND_LIMITS } from '../lib/woodland.mjs';
 import {
   LINK_KINDS,
   spineParams,
@@ -241,7 +241,7 @@ await test('WS5 spine lines save only when the engine can draft them; versions s
   const bytes = new TextEncoder().encode(
     JSON.stringify(version.layers),
   ).length;
-  assert.ok(bytes < 90_000, `${bytes} bytes`);
+  assert.ok(bytes < WOODLAND_LIMITS.layerBytes, `${bytes} bytes`);
   // A stream without an order, or a width table that narrows downstream, is refused.
   assert.throws(
     () =>

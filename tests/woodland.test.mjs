@@ -2,7 +2,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {newWorkspace, applyCommand, memberView} from '../lib/network.mjs';
-import {previewTreatmentCheck, WOODLAND_OPS} from '../lib/woodland.mjs';
+import {previewTreatmentCheck, WOODLAND_OPS, WOODLAND_LIMITS} from '../lib/woodland.mjs';
+import {corridorBytes, WORKSPACE_CAPACITY, workspaceCapacity} from '../lib/workspace-capacity.mjs';
 import {woodlandEnabled} from '../lib/woodland-config.mjs';
 
 const owner = {id: 'owner'}, reviewer = {id: 'reviewer'}, member = {id: 'member'};
@@ -159,5 +160,39 @@ await test('W7 oversized layers are refused', () => {
   const f = setup();
   const big = layers();
   big.retained = Array.from({length: 300}, (_, i) => F(rect(400 + i, 440, 401 + i, 560), {dfm_id: `r-${i}`, name: 'x'.repeat(250)}));
+  // Under 300 KB that passes; a version over the limit is refused: 80 many-cornered corridors.
+  assert.doesNotThrow(() => f.run('save_woodland_layers', {projectId: f.project, layers: big, params}));
+  const round = (i) => { const pts = Array.from({length: 300}, (_, k) => pt(420 + 3 * i + Math.cos((k / 300) * 2 * Math.PI), 500 + 50 * Math.sin((k / 300) * 2 * Math.PI))); return F({type: 'Polygon', coordinates: [[...pts, pts[0]]]}, {dfm_id: `big-${i}`}); };
+  big.retained = Array.from({length: 80}, (_, i) => round(i));
   assert.throws(() => f.run('save_woodland_layers', {projectId: f.project, layers: big, params}), /Simplify the layers/);
+});
+
+await test('layer history is bounded by bytes as well as by count; the reviewed version always keeps its geometry', () => {
+  const f = setup();
+  const size = (v) => new TextEncoder().encode(JSON.stringify(v)).length;
+  // About 280 KB per version: just under the per-version limit.
+  const version = (shift) => {
+    const l = layers();
+    l.retained = l.retained.concat(Array.from({length: 38}, (_, i) => {
+      const pts = Array.from({length: 300}, (_, k) => pt(420 + 3 * i + shift + Math.cos((k / 300) * 2 * Math.PI), 500 + 50 * Math.sin((k / 300) * 2 * Math.PI)));
+      return F({type: 'Polygon', coordinates: [[...pts, pts[0]]]}, {dfm_id: `big-${i}`});
+    }));
+    return l;
+  };
+  const first = f.run('save_woodland_layers', {projectId: f.project, layers: version(0), params});
+  const stored = f.s.woodlandLayers.at(-1).layers;
+  assert.ok(size(stored) > 200_000 && size(stored) <= WOODLAND_LIMITS.layerBytes, `${size(stored)} bytes`);
+  f.run('review_woodland_layers', {id: first, decision: 'approve', note: 'Checked'}, reviewer);
+  for (let n = 1; n <= 4; n++) f.run('save_woodland_layers', {projectId: f.project, layers: version(n / 10), params});
+  const versions = f.s.woodlandLayers;
+  assert.equal(versions.length, 5, 'every record is kept');
+  const kept = versions.filter((v) => v.layers);
+  assert.ok(size(kept.map((v) => v.layers)) <= WOODLAND_LIMITS.layerHistoryBytes, 'geometry within the history budget');
+  assert.ok(kept.length < 5 && kept.length >= 2);
+  assert.ok(versions.find((v) => v.id === first).layers, 'the reviewed version keeps its geometry');
+  assert.ok(versions.at(-1).layers, 'the newest version keeps its geometry');
+  for (const v of versions.filter((x) => !x.layers)) assert.ok(v.geometryRemovedAt, 'a dropped geometry is dated');
+  // The whole co-op stays well inside the corridor budget and is not paused.
+  assert.ok(corridorBytes(f.s) < WORKSPACE_CAPACITY.corridorGrowthBytes * WORKSPACE_CAPACITY.warningFraction);
+  assert.equal(workspaceCapacity(f.s).level, 'normal');
 });

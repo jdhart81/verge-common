@@ -547,6 +547,8 @@ export function NetworkApp({
   const pendingRequests = useRef(new Map<string, string>());
   const mutationInFlight = useRef(false);
   const loadGeneration = useRef(0);
+  // The version of the co-op currently shown, by id; cleared whenever state changes elsewhere.
+  const heldVersion = useRef<Record<string, number>>({});
   const [appliedSearch, setAppliedSearch] = useState('');
   const [nextId, setNextId] = useState<string | null>(null);
   const [loadingMore, setLoadingMore] = useState(false);
@@ -584,7 +586,13 @@ export function NetworkApp({
         const url =
           mode === 'network'
             ? `/api/network${id ? `?id=${encodeURIComponent(id)}` : `?q=${encodeURIComponent(query)}`}`
-            : `/api/workspaces${id ? `?id=${encodeURIComponent(id)}` : ''}`;
+            : `/api/workspaces${id ? `?id=${encodeURIComponent(id)}` : ''}${
+                // A background refresh says which version it holds, so an unchanged co-op
+                // costs a few bytes instead of the whole record.
+                id && background && heldVersion.current[id] !== undefined
+                  ? `&since=${heldVersion.current[id]}`
+                  : ''
+              }`;
         const r = await fetch(url, {
           cache: 'no-store',
           signal: controller.signal,
@@ -606,6 +614,9 @@ export function NetworkApp({
         setRefreshIssue(false);
         setLastRefreshedAt(Date.now());
         if (background) setError('');
+        if (id && (value as { unchanged?: boolean }).unchanged) return;
+        if (id && typeof value.version === 'number')
+          heldVersion.current = { [id]: value.version };
         if (id) setData(value);
         else {
           setData(null);
@@ -710,6 +721,8 @@ export function NetworkApp({
         chooseCoop('', true);
       } else {
         setData(result);
+        if (selected && typeof result.version === 'number')
+          heldVersion.current = { [selected]: result.version };
         setNotice('Saved to the shared co-op record.');
       }
       return true;

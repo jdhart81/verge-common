@@ -711,7 +711,16 @@ export function createGateway({
       let body;
       try {
         body = isWrite
-          ? await readBody(req, isUpload ? 5 * 1024 * 1024 : 100000)
+          ? await readBody(
+              req,
+              isUpload
+                ? 5 * 1024 * 1024
+                : // Saving corridor layers carries map geometry; the route itself holds every
+                  // other command to 100 KB (server/workspaces.ts).
+                  url.pathname === '/api/workspaces'
+                  ? 900000
+                  : 100000,
+            )
           : undefined;
       } finally {
         if (isUpload && req.method === 'POST') activeUploads -= 1;
