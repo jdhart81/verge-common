@@ -4,6 +4,7 @@ Point-in-time receipts and reviews, preserved unchanged as the audit record. The
 
 | Date | Record |
 | --- | --- |
+| 2026-11-16 | [Corridor progress: every woodlot a node](RELEASE_CORRIDOR_PROGRESS_2026-11-16.md) |
 | 2026-11-16 | [An easier first day for a new co-op](RELEASE_FIRST_DAY_2026-11-16.md) |
 | 2026-11-15 | [The opening page shows how a co-op works](RELEASE_COOP_STORY_2026-11-15.md) |
 | 2026-11-15 | [Uses, facts and edge bands along the corridor; the corridor story](RELEASE_CORRIDOR_USES_2026-11-15.md) |
