@@ -159,8 +159,8 @@ await test('W6 members see plans; review flags only for other stewards; no one r
 await test('W7 oversized layers are refused', () => {
   const f = setup();
   const big = layers();
-  big.retained = Array.from({length: 300}, (_, i) => F(rect(400 + i, 440, 401 + i, 560), {dfm_id: `r-${i}`, name: 'x'.repeat(250)}));
-  // Under 300 KB that passes; a version over the limit is refused: 80 many-cornered corridors.
+  big.retained = Array.from({length: 200}, (_, i) => F(rect(400 + i, 440, 401 + i, 560), {dfm_id: `r-${i}`, name: 'x'.repeat(250)}));
+  // Under 150 KB that passes; a version over the limit is refused: 80 many-cornered corridors.
   assert.doesNotThrow(() => f.run('save_woodland_layers', {projectId: f.project, layers: big, params}));
   const round = (i) => { const pts = Array.from({length: 300}, (_, k) => pt(420 + 3 * i + Math.cos((k / 300) * 2 * Math.PI), 500 + 50 * Math.sin((k / 300) * 2 * Math.PI))); return F({type: 'Polygon', coordinates: [[...pts, pts[0]]]}, {dfm_id: `big-${i}`}); };
   big.retained = Array.from({length: 80}, (_, i) => round(i));
@@ -170,10 +170,10 @@ await test('W7 oversized layers are refused', () => {
 await test('layer history is bounded by bytes as well as by count; the reviewed version always keeps its geometry', () => {
   const f = setup();
   const size = (v) => new TextEncoder().encode(JSON.stringify(v)).length;
-  // About 280 KB per version: just under the per-version limit.
+  // About 140 KB per version: just under the per-version limit.
   const version = (shift) => {
     const l = layers();
-    l.retained = l.retained.concat(Array.from({length: 38}, (_, i) => {
+    l.retained = l.retained.concat(Array.from({length: 19}, (_, i) => {
       const pts = Array.from({length: 300}, (_, k) => pt(420 + 3 * i + shift + Math.cos((k / 300) * 2 * Math.PI), 500 + 50 * Math.sin((k / 300) * 2 * Math.PI)));
       return F({type: 'Polygon', coordinates: [[...pts, pts[0]]]}, {dfm_id: `big-${i}`});
     }));
@@ -181,7 +181,7 @@ await test('layer history is bounded by bytes as well as by count; the reviewed 
   };
   const first = f.run('save_woodland_layers', {projectId: f.project, layers: version(0), params});
   const stored = f.s.woodlandLayers.at(-1).layers;
-  assert.ok(size(stored) > 200_000 && size(stored) <= WOODLAND_LIMITS.layerBytes, `${size(stored)} bytes`);
+  assert.ok(size(stored) > 100_000 && size(stored) <= WOODLAND_LIMITS.layerBytes, `${size(stored)} bytes`);
   f.run('review_woodland_layers', {id: first, decision: 'approve', note: 'Checked'}, reviewer);
   for (let n = 1; n <= 4; n++) f.run('save_woodland_layers', {projectId: f.project, layers: version(n / 10), params});
   const versions = f.s.woodlandLayers;

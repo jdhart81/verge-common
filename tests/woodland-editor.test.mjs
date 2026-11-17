@@ -248,7 +248,7 @@ await test('M4 line/point range, vertex count, self-crossing and feature-specifi
     ).some((p) => /unique/.test(p)),
   );
 });
-await test('M5 exact bytes, 300k/40k, 400 features, 50 units and strict full-body <900k for layers, <100k for plans', () => {
+await test('M5 exact bytes, 150k/40k, 400 features, 50 units and strict full-body <900k for layers, <100k for plans', () => {
   const l = emptyLayers(),
     t = [valid('treatments')];
   t[0].properties.intensity = 'clearcut';
@@ -269,11 +269,11 @@ await test('M5 exact bytes, 300k/40k, 400 features, 50 units and strict full-bod
   const big = {
     ...l,
     retained: [
-      { ...valid('retained'), properties: { name: 'x'.repeat(300000) } },
+      { ...valid('retained'), properties: { name: 'x'.repeat(150000) } },
     ],
   };
   assert.ok(
-    sizeReport('layers', big, [], {}).problems.some((p) => /300000/.test(p)),
+    sizeReport('layers', big, [], {}).problems.some((p) => /150000/.test(p)),
   );
   assert.ok(
     sizeReport(
