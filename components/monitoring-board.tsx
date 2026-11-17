@@ -442,6 +442,18 @@ export function MonitoringBoard({
               </p>
             )}
             <h3 className="mt-8">Find Sentinel-2 scenes</h3>
+            {/* The tick comes first: the dates and the button stay off until it is made. */}
+            <ControlLabel className="flex gap-3 items-start mt-2 mb-4">
+              <Checkbox
+                checked={confirm}
+                onCheckedChange={(v) => setConfirm(v === true)}
+              />
+              <span>
+                Tick to search: send the current boundary’s bounding box and
+                selected dates to Copernicus. Private member details are not
+                sent.
+              </span>
+            </ControlLabel>
             <Form
               submit="Search and save scene receipt"
               disabled={
@@ -477,16 +489,6 @@ export function MonitoringBoard({
                 <Input type="date" name="end" required />
               </ControlLabel>
             </Form>
-            <ControlLabel className="flex gap-3 items-start mt-4">
-              <Checkbox
-                checked={confirm}
-                onCheckedChange={(v) => setConfirm(v === true)}
-              />
-              <span>
-                Send the current boundary’s bounding box and selected dates to
-                Copernicus. Private member details are not sent.
-              </span>
-            </ControlLabel>
             <p className="small mt-3">
               Requires reviewed boundary and recorded consent. Up to 20 newest
               scenes; narrow dates for more detail. No background monitoring is

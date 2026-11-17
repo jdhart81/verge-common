@@ -166,3 +166,36 @@ void test('the corridor story shows how a co-op works, loops without a control a
     /certif|guarantee|carbon credit/i,
   );
 });
+
+await test('Hindi is served only once a Hindi speaker has reviewed it', async () => {
+  const read = (file) =>
+    readFile(new URL(`../${file}`, import.meta.url), 'utf8');
+  const home = await read('lib/i18n/home.ts');
+  // Off until reviewed. Turning it on is a one-line change in a reviewed pull request.
+  assert.match(home, /export const HINDI_HOME_REVIEWED = false;/);
+  // Both ways the home page is served go through the switch, and fall back to English.
+  assert.match(
+    await read('app/page.tsx'),
+    /locale=\{HINDI_HOME_REVIEWED \? requested : 'en'\}/,
+  );
+  assert.match(
+    await read('public-site/main.tsx'),
+    /return HINDI_HOME_REVIEWED \? resolveHomeLocale\(preferences\) : 'en';/,
+  );
+});
+
+await test('the satellite search tick comes before the form it enables', async () => {
+  const board = await readFile(
+    new URL('../components/monitoring-board.tsx', import.meta.url),
+    'utf8',
+  );
+  const heading = board.indexOf('Find Sentinel-2 scenes');
+  const tick = board.indexOf('Tick to search: send the current boundary');
+  const form = board.indexOf('submit="Search and save scene receipt"');
+  assert.ok(heading > 0 && heading < tick && tick < form);
+  // The search still cannot run without the tick, the consent and a reviewed boundary.
+  assert.match(
+    board.slice(form, form + 400),
+    /boundary\?\.status !== 'reviewed' \|\|\s*!boundary\?\.externalSearchAllowed \|\|\s*!confirm/,
+  );
+});
