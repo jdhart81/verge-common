@@ -4,6 +4,7 @@ Point-in-time receipts and reviews, preserved unchanged as the audit record. The
 
 | Date | Record |
 | --- | --- |
+| 2026-11-18 | [First map view, holding checklist, reminders that fail clearly](RELEASE_LAUNCH_FINISH_2026-11-18.md) |
 | 2026-11-17 | [Production runs `main`](RELEASE_MAIN_2026-11-17.md) |
 | 2026-11-17 | [Room for corridor maps and saves that hold up under load](RELEASE_CAPACITY_2026-11-17.md) |
 | 2026-11-16 | [Load and failure test](LOAD_TEST_2026-11-16.md) |
