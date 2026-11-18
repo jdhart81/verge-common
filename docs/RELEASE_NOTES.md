@@ -1,8 +1,8 @@
 # Release notes
 
-## Unreleased — first map view, holding checklist, reminders that fail clearly
+## v0.11.0 — first map view, holding checklist, reminders that fail clearly (deployed 18 November 2026, 00:07 UTC, commit `ac50217`)
 
-Not deployed.
+See the [receipt](history/RELEASE_LAUNCH_FINISH_2026-11-18.md).
 
 - **A first woodlot's map no longer opens on the whole world.** With no boundary to start from, the boundary map opens near land the co-op has already mapped (another woodlot, or the corridor layers); failing that, on the region of the device's time zone; and only then on the world. The corridor map does the same. The time zone is read in the browser; nothing is sent, asked for or stored (`lib/map-start.mjs`, MS1–MS5). A line under the map says where it opened and how to find your land.
 - **The holdings screen says what is missing before a holding can be recorded**, with a button to the tab where each item is resolved. The list and the command's refusal are one function, so they cannot disagree (`holdingBlockers` in `lib/readiness.mjs`, HR1–HR3). Before, a steward met the requirements one refusal at a time.
