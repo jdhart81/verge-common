@@ -89,7 +89,7 @@ export const hi: HomeStrings = {
   getHelp: 'सहायता लें',
   woodlandCorridors: 'वन क्षेत्र के संपर्क मार्ग',
   relatedProjects: 'संबंधित खुली परियोजनाएँ',
-  viridisServices: 'Viridis की भूमि योजनाएँ (अलग सेवा)',
+  viridisServices: 'Viridis की पुराने वन गलियारे की मैपिंग (अलग सेवा)',
   source: 'स्रोत कोड',
   getUpdates: 'अपडेट पाएँ',
   landscapeHeading: 'छोटी जगहें। साझा उद्देश्य।',

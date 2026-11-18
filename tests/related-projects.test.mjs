@@ -43,11 +43,14 @@ await test('R2: one services link, on Viridis, labelled as a separate service', 
   );
   const component = await read('components/related-projects.tsx');
   assert.equal(component.match(/href=\{VIRIDIS_SERVICES_HREF\}/g)?.length, 1);
-  assert.match(component, /Land plans from Viridis \(separate service\)/);
+  assert.match(
+    component,
+    /Old-growth corridor mapping from Viridis \(separate service\)/,
+  );
   const en = await read('lib/i18n/en.ts');
   assert.match(
     en,
-    /viridisServices: 'Land plans from Viridis \(separate service\)'/,
+    /viridisServices:\s+'Old-growth corridor mapping from Viridis \(separate service\)'/,
   );
   const hi = await read('lib/i18n/hi.ts');
   assert.match(
@@ -86,7 +89,7 @@ await test('both public footers render the related projects from the one module'
   ]) {
     assert.doesNotMatch(
       text,
-      /globalsoilintelligence\.com|viridisconservation\.com\/(ecosystem|land-plans)/,
+      /globalsoilintelligence\.com|viridisconservation\.com\/(ecosystem|land-plans|corridor-mapping)/,
       `${name} hard-codes an address`,
     );
   }
