@@ -6,6 +6,16 @@ const availableNow = () =>
   'serviceWorker' in navigator &&
   'PushManager' in window &&
   'Notification' in window;
+const SUBSCRIBE_TIMEOUT_MS = 20000;
+function withTimeout<T>(work: Promise<T>, ms: number, message: string) {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  return Promise.race([
+    work,
+    new Promise<never>((_, reject) => {
+      timer = setTimeout(() => reject(new Error(message)), ms);
+    }),
+  ]).finally(() => clearTimeout(timer));
+}
 export function BrowserReminders() {
   const available = useSyncExternalStore(subscribe, availableNow, () => false);
   const [message, setMessage] = useState(''),
@@ -34,10 +44,16 @@ export function BrowserReminders() {
         };
         if (!config.ok)
           throw new Error(v.error || 'Reminders are unavailable on this host.');
-        subscription ??= await r.pushManager.subscribe({
-          userVisibleOnly: true,
-          applicationServerKey: v.publicKey,
-        });
+        // A browser that cannot reach its notification service never settles this
+        // call. Give up after a while and say so, instead of a button that stays busy.
+        subscription ??= await withTimeout(
+          r.pushManager.subscribe({
+            userVisibleOnly: true,
+            applicationServerKey: v.publicKey,
+          }),
+          SUBSCRIBE_TIMEOUT_MS,
+          'This browser could not reach its notification service. Check your connection and browser settings, then try again. Your co-ops still refresh while the page is open.',
+        );
       }
       if (!subscription)
         throw new Error('Enable reminders on this browser first.');

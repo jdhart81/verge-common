@@ -17,6 +17,7 @@ import {
   agreementCoverageSnapshot,
   projectReadiness,
   assessmentIsCurrent,
+  holdingBlockers,
 } from '../lib/readiness.mjs';
 
 const square = (x = 0, y = 0, side = 0.001) => ({
@@ -500,4 +501,51 @@ await test('coverage snapshots are deterministic and refuse parcels from another
   );
   assert.equal(agreementCoverageSnapshot(f.s, 'other-project', [a]), null);
   assert.equal(landPoolGeometry(f.s, projectId).overlaps.length, 0);
+});
+
+await test('HR1/HR3: the holding checklist and the command refuse for the same reasons, in the same order', () => {
+  const { f, projectId } = fixture();
+  const ids = () => holdingBlockers(f.s, projectId).map((b) => b.id);
+  const refusal = (evidenceId) => {
+    try {
+      f.run('record_lot', { projectId, evidenceId });
+    } catch (error) {
+      return error.message;
+    }
+    return null;
+  };
+  const first = () => holdingBlockers(f.s, projectId)[0]?.message;
+  // With no land yet, the agreement checks have nothing to cover and do not appear.
+  assert.deepEqual(ids(), ['authority', 'consent', 'geometry']);
+  assert.equal(refusal('none'), first());
+  const evidence = f.run('submit_evidence', {
+    projectId,
+    title: 'Synthetic external receipt',
+    method: 'Synthetic',
+    period: 'Test',
+    reference: 'https://example.org/evidence',
+    notes: 'Test only',
+  });
+  f.run('review_evidence', { id: evidence, decision: 'approve', note: 'Test' }, reviewer);
+  f.run('record_authority', { legalName: 'Fixture', jurisdiction: 'Test', reference: 'Test', evidenceId: evidence });
+  f.run('review_authority', { decision: 'approve' }, reviewer);
+  assert.deepEqual(ids(), ['consent', 'geometry']);
+  assert.equal(refusal(evidence), first());
+  const parcelId = f.land(projectId);
+  f.consent(parcelId);
+  assert.deepEqual(ids(), ['participation', 'rights']);
+  assert.equal(refusal(evidence), first());
+  f.agreement(projectId, [parcelId], 'enrollment');
+  assert.deepEqual(ids(), ['rights']);
+  assert.equal(refusal(evidence), first());
+  f.agreement(projectId, [parcelId], 'carbon_rights');
+  assert.deepEqual(ids(), []);
+  // HR3: with no blockers left, what remains is the holding's own content.
+  assert.match(refusal(evidence), /serial|required|Invalid|whole/i);
+  // HR2: a blocker is a message and a tab, nothing else.
+  f.run('revoke_parcel_consent', { parcelId, id: f.s.parcels.find((p) => p.id === parcelId).consents.at(-1).id, reason: 'Withdrawn' });
+  for (const b of holdingBlockers(f.s, projectId))
+    assert.deepEqual(Object.keys(b).sort(), ['id', 'message', 'tab']);
+  assert.equal(ids()[0], 'consent');
+  assert.equal(refusal(evidence), first());
 });
