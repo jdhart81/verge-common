@@ -67,6 +67,13 @@ The five public discovery and planning tools work on the hosted endpoint without
 
 Listed on Glama: [VergeCommon MCP server](https://glama.ai/mcp/servers/jdhart81/verge-common)
 
+### Try it in ChatGPT
+
+Two related Viridis tools are published ChatGPT apps. Open one in ChatGPT, add it and ask in plain words; there is no account, key or setup, and the first 10 calls a day are free. They are separate hosted services, not part of this repository.
+
+- [Viridis GHG Ledger](https://chatgpt.com/plugins/plugin_asdk_app_6aebb509f8d8819196202a14ab8627b5): Scope 1, 2 and 3 emissions from activity data such as kWh, therms or fuel, with the factor and source on every line. Try: `Calculate our 2025 footprint: 12,000 kWh purchased electricity in California (eGRID CAMX) and 800 therms of natural gas.`
+- [Viridis Regulatory Radar](https://chatgpt.com/plugins/plugin_asdk_app_6aebb404b6c48191a42638fe14367e6b): which climate disclosure rules (California SB 253 and SB 261, EU CSRD, ISSB and others) may apply to an organization, with dates and official sources. Results are a screening, not a legal determination.
+
 ### Try it from your agent
 
 The five public tools need no account or token. In Claude Code:
