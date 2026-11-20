@@ -30,7 +30,7 @@ await test('a known predecessor mentioned in the receipt cannot replace its revi
     new URL(`../${receiptPath}`, import.meta.url),
     'utf8',
   );
-  const predecessor = '29c8f2e0cb1c49a4097e38771c28af7fa4750a86';
+  const predecessor = 'ac5021700e387743f63f6b25e39511ebcb04d9a8';
   assert.ok(receipt.includes(predecessor));
   assert.deepEqual(verifyBaselineReceipt(baseline, receipt), baseline);
   assert.throws(
