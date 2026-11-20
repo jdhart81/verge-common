@@ -124,7 +124,8 @@ export const en = {
   getHelp: 'Get help',
   woodlandCorridors: 'Woodland corridors',
   relatedProjects: 'Related open projects',
-  viridisServices: 'Land plans from Viridis (separate service)',
+  viridisServices:
+    'Old-growth corridor mapping from Viridis (separate service)',
   source: 'Source',
   getUpdates: 'Get updates',
 

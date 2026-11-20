@@ -7,7 +7,7 @@ import {
 /** Footer row naming the related open projects and Viridis's separate services. */
 export function RelatedProjects({
   label = 'Related open projects',
-  servicesLabel = 'Land plans from Viridis (separate service)',
+  servicesLabel = 'Old-growth corridor mapping from Viridis (separate service)',
 }: {
   label?: string;
   servicesLabel?: string;
