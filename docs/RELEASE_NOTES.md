@@ -1,5 +1,9 @@
 # Release notes
 
+## v0.11.0 — the one Viridis services link points at corridor mapping (deployed 20 November 2026, 02:20 UTC, commit `6c83caf`)
+
+The single link to Viridis services now reads "Old-growth corridor mapping from Viridis (separate service)" and leads to `viridisconservation.com/corridor-mapping`. One link, labelled as a separate service, no price here. See the [receipt](history/RELEASE_SERVICES_LINK_2026-11-20.md).
+
 ## v0.11.0 — first map view, holding checklist, reminders that fail clearly (deployed 18 November 2026, 00:07 UTC, commit `ac50217`)
 
 See the [receipt](history/RELEASE_LAUNCH_FINISH_2026-11-18.md).
