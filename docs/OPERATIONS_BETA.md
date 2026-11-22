@@ -35,6 +35,14 @@ An old snapshot is restored only with the **latest independently retained commit
 
 The backup process never switches production data or reopens the website. The actual recovery instructions in [the self-hosted operator guide](../self-hosted/README.md) still apply.
 
+## Alerts from the production monitor
+
+`.github/workflows/uptime.yml` checks `/healthz` and the public MCP tools, and nightly the full launch gate. A failing check opens one GitHub issue (labels `alert-health`, `alert-mcp`, `alert-launch-gate`) **assigned to the repository owner**, so GitHub notifies the owner whatever their watch setting; recovery closes it. Before 22 November 2026 these issues were opened unassigned: three alerts fired that month and no notification email reached the owner.
+
+To test delivery without an outage, run the workflow by hand with `test_alert` ticked. It opens and closes an issue labelled `alert-test`. A passing run proves the issue was raised; only the owner can confirm the notification arrived.
+
+GitHub starts scheduled workflows late under load. The "every 15 minutes" schedule ran about every five hours in November 2026 (90 runs in 19 days), so an outage can go unnoticed for hours. The monitor is a slow backstop, not a pager. A faster independent check is an owner decision.
+
 ## Health and freshness
 
 Each check records canonical HTTPS gateway health, Docker application health, server disk use, backup age, encrypted archive checksums, ledger state and isolated recovery results in `status.json`. The last completed recovery receipt is also retained in `last-success.json`. No credentials, archive contents, member names or raw tombstones are logged.

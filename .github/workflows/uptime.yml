@@ -3,8 +3,19 @@ name: Production monitor
 # Every 15 minutes: /healthz must answer {"status":"ok"} over HTTPS, and an
 # anonymous MCP initialize + tools/list at /mcp must list the public tools.
 # Nightly: the full launch gate must pass against the reviewed production-baseline.json.
-# A failure opens (or comments on) one GitHub issue labelled "production-alert",
-# which GitHub emails to repository watchers; recovery closes it.
+# A failure opens (or comments on) one GitHub issue per failing check (labels alert-health,
+# alert-mcp, alert-launch-gate); recovery closes it.
+#
+# Alert delivery invariants
+#   AL1 Every alert issue is assigned to the repository owner when it is opened. GitHub
+#       notifies an assignee whatever their watch setting. (Before this, the three alerts of
+#       November 2026 were opened unassigned and no email reached the owner.)
+#   AL2 If assigning fails, the issue is still opened: an unassigned alert beats none.
+#   AL3 A test alert can be raised on demand (workflow_dispatch, test_alert). It uses its own
+#       label, opens and closes in one run, touches no real alert and never fails the run.
+#
+# GitHub starts scheduled workflows late under load. In November 2026 this "every 15 minutes"
+# schedule ran about every five hours. Treat it as a slow backstop, not a pager.
 on:
   schedule:
     - cron: '*/15 * * * *'
@@ -15,6 +26,10 @@ on:
         description: Run the full launch gate
         type: boolean
         default: true
+      test_alert:
+        description: Open and close a test alert assigned to the owner (no outage)
+        type: boolean
+        default: false
 permissions:
   contents: read
   issues: write
@@ -29,6 +44,7 @@ jobs:
       ORIGIN: https://vergecommon.com
       GH_TOKEN: ${{ github.token }}
       GH_REPO: ${{ github.repository }}
+      OWNER: ${{ github.repository_owner }}
     steps:
       - uses: actions/checkout@v7
         with:
@@ -79,14 +95,18 @@ jobs:
           HEALTH: ${{ steps.health.outcome }}
           MCP: ${{ steps.mcp.outcome }}
           GATE: ${{ steps.gate.outcome }}
+          TEST_ALERT: ${{ github.event_name == 'workflow_dispatch' && inputs.test_alert }}
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
         run: |
           now=$(date -u +%FT%TZ)
+          open() { # arguments for a new issue; AL1 assigned to the owner, AL2 opened even if that fails
+            gh issue create --assignee "$OWNER" "$@" || gh issue create "$@"
+          }
           alert() { # label title detail
             gh label create "$1" --color B60205 --description "Automated production monitor" 2>/dev/null || true
             existing=$(gh issue list --label "$1" --state open --json number --jq '.[0].number')
             if [ -n "$existing" ]; then gh issue comment "$existing" --body "Still failing at $now. $3"
-            else gh issue create --label "$1" --title "$2" --body "Failed at $now. $3
+            else open --label "$1" --title "$2" --body "Failed at $now. $3
 
           Runbook: STATUS.md and self-hosted/README.md. Run the v0.9.0 rollback compatibility guard before restarting a pre-v0.9.0 writer. If new participation records exist, retain current data and ship a compatibility/forward repair. Never restore an old backup over live data."; fi
           }
@@ -95,6 +115,11 @@ jobs:
               gh issue close "$n" --comment "Recovered at $now ($RUN_URL)."
             done
           }
+          if [ "$TEST_ALERT" = true ]; then # AL3
+            gh label create alert-test --color 5319E7 --description "Production monitor test alert (no outage)" 2>/dev/null || true
+            url=$(open --label alert-test --title "Test alert: production monitor ($now)" --body "This is a test of alert delivery. Nothing is wrong with vergecommon.com. Run: $RUN_URL") \
+              && gh issue close "$url" --comment "Test complete at $now." || echo "test alert could not be opened"
+          fi
           failed=0
           if [ "$HEALTH" = failure ]; then alert alert-health "Production down: vergecommon.com health check failing" "Run: $RUN_URL"; failed=1
           elif [ "$HEALTH" = success ]; then resolve alert-health; fi
