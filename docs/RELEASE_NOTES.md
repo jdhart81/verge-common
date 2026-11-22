@@ -1,5 +1,14 @@
 # Release notes
 
+## Unreleased — keyboard focus on tab panels, no sideways scroll on phones
+
+Not deployed.
+
+- **A tab panel now shows where keyboard focus is.** Moving from the tabs into a panel by keyboard landed on the panel with no visible indicator (WCAG 2.4.7). Selects and disclosure summaries get the same focus ring as links and buttons.
+- **The Care & participation tab no longer scrolls sideways on a phone.** The reminders menu was as wide as its longest option; selects are now capped at their container's width (WCAG 1.4.10).
+
+Found by an audit of the opening, woodland, support, privacy, report and sign-in pages and twelve workspace tabs: automated WCAG 2.1 A/AA rules (axe-core), phone width, 200% text and a keyboard walk. After these two fixes every audited page has no rule violations, no sideways scrolling at 390 px or at 200% text, a visible focus indicator on every stop and no keyboard trap. A screen reader and real devices were not used.
+
 ## v0.11.0 — the one Viridis services link points at corridor mapping (deployed 20 November 2026, 02:20 UTC, commit `6c83caf`)
 
 The single link to Viridis services now reads "Old-growth corridor mapping from Viridis (separate service)" and leads to `viridisconservation.com/corridor-mapping`. One link, labelled as a separate service, no price here. See the [receipt](history/RELEASE_SERVICES_LINK_2026-11-20.md).
