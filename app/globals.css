@@ -62,9 +62,22 @@ textarea {
 a:focus-visible,
 button:focus-visible,
 input:focus-visible,
+select:focus-visible,
+summary:focus-visible,
 textarea:focus-visible {
   outline: 3px solid #ad6810;
   outline-offset: 4px;
+}
+/* A tab panel takes keyboard focus on the way from its tabs to its content. Show where
+   focus is (WCAG 2.4.7); drawn inside the panel so the page edge does not clip it. */
+[role='tabpanel']:focus-visible {
+  outline: 3px solid #ad6810;
+  outline-offset: -3px;
+}
+/* A select is as wide as its longest option unless told otherwise; on a phone that pushed
+   the page sideways (WCAG 1.4.10). */
+select {
+  max-width: 100%;
 }
 button {
   cursor: pointer;
