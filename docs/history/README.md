@@ -4,6 +4,7 @@ Point-in-time receipts and reviews, preserved unchanged as the audit record. The
 
 | Date | Record |
 | --- | --- |
+| 2026-11-23 | [Google ownership file](RELEASE_SITE_OWNERSHIP_2026-11-23.md) |
 | 2026-11-23 | [Patched HTTP client library; Google sign-in and revocation verified](RELEASE_UNDICI_2026-11-23.md) |
 | 2026-11-22 | [Alerts that reach the owner, and two accessibility fixes](RELEASE_ALERTS_A11Y_2026-11-22.md) |
 | 2026-11-20 | [The one Viridis services link points at corridor mapping](RELEASE_SERVICES_LINK_2026-11-20.md) |
