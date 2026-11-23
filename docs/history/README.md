@@ -4,6 +4,7 @@ Point-in-time receipts and reviews, preserved unchanged as the audit record. The
 
 | Date | Record |
 | --- | --- |
+| 2026-11-22 | [Alerts that reach the owner, and two accessibility fixes](RELEASE_ALERTS_A11Y_2026-11-22.md) |
 | 2026-11-20 | [The one Viridis services link points at corridor mapping](RELEASE_SERVICES_LINK_2026-11-20.md) |
 | 2026-11-18 | [First map view, holding checklist, reminders that fail clearly](RELEASE_LAUNCH_FINISH_2026-11-18.md) |
 | 2026-11-17 | [Production runs `main`](RELEASE_MAIN_2026-11-17.md) |
