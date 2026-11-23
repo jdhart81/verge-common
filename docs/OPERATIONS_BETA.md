@@ -43,6 +43,18 @@ To test delivery without an outage, run the workflow by hand with `test_alert` t
 
 GitHub starts scheduled workflows late under load. The "every 15 minutes" schedule ran about every five hours in November 2026 (90 runs in 19 days), so an outage can go unnoticed for hours. The monitor is a slow backstop, not a pager. A faster independent check is an owner decision.
 
+## Outage watch on a second server
+
+Installed 23 November 2026 because the GitHub monitor runs hours apart and its alerts depend on the owner's GitHub notification settings.
+
+- **What it is:** `/usr/local/bin/vergecommon-watch`, run every five minutes by root's cron on the Viridis server, which is a different machine from the one serving vergecommon.com. Log: `/var/log/vergecommon-watch.log`. State: `/var/lib/vergecommon-watch/`.
+- **What it does:** one read-only request to `https://vergecommon.com/healthz`. After three failed runs in a row (10–15 minutes) it emails the Viridis operations address: one email when the site goes down, one when it recovers, and a reminder every six hours while it stays down.
+- **How it sends:** through the Viridis site's existing mail service. It reads the mail key, sender and operations address from the running `viridis-app` container at each run and never stores or prints them. If that container is not running, no email can be sent and the log says `no-credentials`.
+- **Test:** `/usr/local/bin/vergecommon-watch --test` sends one email marked TEST and changes no state. The first test, at 00:21 UTC on 23 November, was reported delivered by the mail service.
+- **Remove:** delete its line from root's crontab on the Viridis server (the crontab from before is saved as `/root/crontab.before-vergecommon-watch-20261123`) and delete the script.
+
+Limits: it does not watch the Viridis site itself; if the Viridis server is down, nothing watches vergecommon.com except the slow GitHub monitor; email is not a pager and is only seen when someone reads it.
+
 ## Health and freshness
 
 Each check records canonical HTTPS gateway health, Docker application health, server disk use, backup age, encrypted archive checksums, ledger state and isolated recovery results in `status.json`. The last completed recovery receipt is also retained in `last-success.json`. No credentials, archive contents, member names or raw tombstones are logged.
