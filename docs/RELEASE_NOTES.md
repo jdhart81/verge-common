@@ -1,5 +1,12 @@
 # Release notes
 
+## Unreleased — patched HTTP client library in the build
+
+Not deployed.
+
+- The pinned `undici` (an HTTP client pulled in by build tooling) moves from 7.30.0 to 7.30.2, which clears the one high-severity advisory `npm audit` reported for production dependencies. The server does not load this library, so nothing a member can reach changes.
+- Eight moderate advisories remain, all in build or image-generation tooling (`shadcn`, `ts-morph`, `minimatch`, `vinext`, `@vercel/og`, `satori`, `fflate`); their fixes need new releases from those projects.
+
 ## v0.11.0 — keyboard focus on tab panels, no sideways scroll on phones (deployed 22 November 2026, 23:58 UTC, commit `6b988f1`)
 
 See the [receipt](history/RELEASE_ALERTS_A11Y_2026-11-22.md).
