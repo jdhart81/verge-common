@@ -1,8 +1,8 @@
 # Release notes
 
-## Unreleased — Google ownership file
+## v0.11.0 — Google ownership file (deployed 23 November 2026, 01:52 UTC, commit `16d1450`)
 
-Not deployed.
+See the [receipt](history/RELEASE_SITE_OWNERSHIP_2026-11-23.md).
 
 - The site serves Google's one-line ownership file at its root. Proving ownership of `https://vergecommon.com/` is what lets Google show "VergeCommon" on its sign-in screen in place of the sign-in service's own address. The file carries no markup and must stay in place.
 
