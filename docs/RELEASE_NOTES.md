@@ -1,8 +1,8 @@
 # Release notes
 
-## Unreleased — keyboard focus on tab panels, no sideways scroll on phones
+## v0.11.0 — keyboard focus on tab panels, no sideways scroll on phones (deployed 22 November 2026, 23:58 UTC, commit `6b988f1`)
 
-Not deployed.
+See the [receipt](history/RELEASE_ALERTS_A11Y_2026-11-22.md).
 
 - **A tab panel now shows where keyboard focus is.** Moving from the tabs into a panel by keyboard landed on the panel with no visible indicator (WCAG 2.4.7). Selects and disclosure summaries get the same focus ring as links and buttons.
 - **The Care & participation tab no longer scrolls sideways on a phone.** The reminders menu was as wide as its longest option; selects are now capped at their container's width (WCAG 1.4.10).
