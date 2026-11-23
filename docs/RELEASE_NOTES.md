@@ -1,5 +1,11 @@
 # Release notes
 
+## Unreleased — Google ownership file
+
+Not deployed.
+
+- The site serves Google's one-line ownership file at its root. Proving ownership of `https://vergecommon.com/` is what lets Google show "VergeCommon" on its sign-in screen in place of the sign-in service's own address. The file carries no markup and must stay in place.
+
 ## v0.11.0 — patched HTTP client library in the build (deployed 23 November 2026, 01:06 UTC, commit `bda2f64`)
 
 See the [receipt](history/RELEASE_UNDICI_2026-11-23.md).
